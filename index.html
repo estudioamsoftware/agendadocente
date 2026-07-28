@@ -475,7 +475,8 @@
   .doc-chip a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
   .doc-chip a{color:var(--primary);font-weight:600;text-decoration:none;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .doc-chip a:hover{text-decoration:underline;}
-  .doc-del{background:none;color:var(--primary);font-size:14px;font-weight:700;padding:0 2px;line-height:1;}
+  .doc-del{background:#fdeaea;color:#c0392b;font-size:16px;font-weight:700;padding:4px;line-height:1;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:2px;}
+  .doc-del:active{background:#f5c6c6;}
   .doc-up-btn{width:30px;height:30px;border-radius:8px;border:1.5px dashed var(--line);display:grid;place-items:center;font-size:15px;cursor:pointer;flex:none;color:var(--muted);}
   .doc-up-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-tint);}
   .doc-entregado{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--line);background:#fff;font-size:13px;font-weight:700;color:var(--faint);display:grid;place-items:center;flex:none;}
@@ -2495,7 +2496,7 @@ function docsHTML(g){
   return `<div class="card" style="margin-bottom:16px;">`+DOC_CATS.map(cat=>{
     const files=docs[cat.key]||[];
     const filesHTML=files.map(f=>`<span class="doc-chip"><a href="${esc(f.url)}" target="_blank" title="${esc(f.name)}">${esc(f.name.length>28?f.name.slice(0,26)+'…':f.name)}</a>
-      <button class="doc-del" data-cat="${cat.key}" data-fid="${f.id}" data-fname="${esc(f.name)}" data-furl="${esc(f.url)}" title="Mover a papelera">${I.trash}</button></span>`).join('');
+      <button class="doc-del" data-cat="${cat.key}" data-fid="${f.id}" data-fname="${esc(f.name)}" data-furl="${esc(f.url)}" title="Eliminar">${I.trash}</button></span>`).join('');
     const hasFechaField=FECHA_CATS.includes(cat.key);
     const fd=hasFechaField?(fechas[cat.key]||""):"";
     const entregado=hasFechaField?((inf.entregado||{})[cat.key]||false):false;
@@ -2904,7 +2905,7 @@ function wireDocumentosSection(g,body){
     e.target.value="";
   }));
   body.querySelectorAll(".doc-del").forEach(b=>b.onclick=()=>{ 
-    confirmDlg("¿Mover a la papelera?","Podés recuperar este PDF desde la papelera cuando quieras.","Mover",()=>{ moveDocToTrash(g,b.dataset.cat,b.dataset.fid); render(); toast("PDF movido a la papelera"); });
+    confirmDlg("¿Eliminar este PDF?","Se va a la papelera. Podés recuperarlo desde ahí cuando quieras.","Eliminar",()=>{ moveDocToTrash(g,b.dataset.cat,b.dataset.fid); render(); toast("PDF eliminado"); });
   });
   body.querySelectorAll("[data-doc-restore]").forEach(b=>b.onclick=()=>{ restoreDocFromTrash(g,b.dataset.docRestore); render(); toast("PDF recuperado"); });
   body.querySelectorAll("[data-doc-empty]").forEach(b=>b.onclick=()=>{ confirmDlg("¿Borrar definitivamente?","El archivo sigue en Drive, pero se pierde el link de acá. No se puede deshacer.","Borrar",()=>{ emptyDocTrash(g,b.dataset.docEmpty); render(); }); });
