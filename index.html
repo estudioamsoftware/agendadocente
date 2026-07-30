@@ -648,6 +648,10 @@
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
         <span>Restaurar backup de Drive<small>Recuperá una copia guardada en tu Drive</small></span>
       </button>
+      <button class="sheet-item" id="actLocalSnaps">
+        <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
+        <span>Copias en este dispositivo<small>Una por día, sin depender de Drive ni de internet</small></span>
+      </button>
       <hr>
       <button class="sheet-item" id="actAyuda">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
@@ -677,6 +681,7 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
+const APP_BUILD='2026-07-30-respaldos';
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
   const a=year%19, b=Math.floor(year/100), c=year%100, d=Math.floor(b/4), e=b%4,
@@ -869,6 +874,95 @@ function migrate(st){
     }
   });
   return st;
+}
+/* ===== Copias locales en este dispositivo =====
+   Independientes de Google Drive y de internet. Se guarda una copia completa
+   por día (las últimas 6) en el propio celular/tablet/compu, ANTES de que
+   cualquier sincronización pueda tocar algo. Es la última red de seguridad:
+   si Drive falla, si una sincronización pisa algo, o si simplemente no te
+   acordás qué dispositivo tenía lo último, siempre podés volver acá. */
+const SNAP_KEY="agendaDocente.snapshots";
+const SNAP_KEEP=6;
+function deviceLabel(){
+  const ua=navigator.userAgent||"";
+  if(/iPad|Tablet/i.test(ua)) return "Tablet";
+  if(/Android|iPhone|Mobile/i.test(ua)) return "Celular";
+  return "Computadora";
+}
+/* Cuenta lo que de verdad importa, para poder comparar dos versiones sin
+   confiar solo en la fecha: alumnos, notas cargadas y clases registradas. */
+function countData(st){
+  let students=0,grades=0,sessions=0;
+  (st&&st.groups||[]).forEach(g=>{
+    students+=(g.students||[]).length;
+    ["1","2"].forEach(k=>{
+      const T=(g.terms||{})[k]; if(!T) return;
+      sessions+=(T.sessions||[]).length;
+      Object.keys(T.grades||{}).forEach(sid=>{
+        Object.keys(T.grades[sid]||{}).forEach(eid=>{
+          const cell=T.grades[sid][eid];
+          if(cell&&(cell.nota!==undefined&&cell.nota!==null&&cell.nota!=="")) grades++;
+        });
+      });
+      Object.keys(T.avance||{}).forEach(()=>{ grades++; });
+    });
+  });
+  return {groups:(st&&st.groups||[]).length,students,grades,sessions};
+}
+function countSummary(st){
+  const c=countData(st);
+  return c.groups+" curso(s) · "+c.students+" alumno(s) · "+c.grades+" nota(s)";
+}
+function todayStampAD(){
+  const d=new Date(); const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function saveLocalSnapshot(force){
+  try{
+    let snaps=[]; const raw=localStorage.getItem(SNAP_KEY);
+    if(raw){ try{ snaps=JSON.parse(raw)||[]; }catch(e){ snaps=[]; } }
+    if(!Array.isArray(snaps)) snaps=[];
+    const stamp=todayStampAD();
+    if(!force && snaps.some(s=>s.stamp===stamp)) return;
+    if(force) snaps=snaps.filter(s=>s.stamp!==stamp);
+    snaps.push({stamp,at:Date.now(),device:deviceLabel(),summary:countSummary(state),data:JSON.stringify(state)});
+    while(snaps.length>SNAP_KEEP) snaps.shift();
+    localStorage.setItem(SNAP_KEY,JSON.stringify(snaps));
+  }catch(e){ /* si no hay espacio no interrumpe: es una red extra */ }
+}
+function listLocalSnapshots(){
+  try{ const raw=localStorage.getItem(SNAP_KEY); const s=raw?JSON.parse(raw):[]; return Array.isArray(s)?s.slice().reverse():[]; }catch(e){ return []; }
+}
+function openLocalSnapshotsDlg(){
+  closeMenu();
+  const snaps=listLocalSnapshots();
+  let rows;
+  if(!snaps.length){
+    rows='<p style="font-size:13px;color:var(--muted);margin:0">Todavía no hay copias guardadas en este dispositivo. Se guarda una por día automáticamente al abrir la agenda.</p>';
+  } else {
+    rows=snaps.map((s,i)=>`<button class="btn ${i===0?'':'subtle'}" data-snapi="${i}" style="margin-bottom:8px;font-size:13.5px;text-align:left;">🛟 ${s.stamp} <span style="opacity:.75">· ${s.device||''} · ${s.summary||''}</span></button>`).join('');
+  }
+  openDlg("Copias en este dispositivo",`
+    <p style="font-size:13.5px;color:var(--muted);margin:0 0 6px;line-height:1.5;">Guardadas acá mismo, sin depender de Drive ni de internet. Se conservan las últimas ${SNAP_KEEP}.</p>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Ahora mismo tenés: <b>${countSummary(state)}</b></p>
+    <div id="snap_list">${rows}</div>
+    <div class="dlg-actions" style="margin-top:8px;">
+      <button class="btn subtle" id="snap_now">💾 Guardar copia ahora</button>
+      <button class="btn subtle" id="snap_cancel">Cerrar</button>
+    </div>`);
+  $("#snap_cancel").onclick=closeDlg;
+  $("#snap_now").onclick=()=>{ saveLocalSnapshot(true); closeDlg(); toastSuccess("✓ Copia guardada en este dispositivo","#CBA52E"); };
+  $("#snap_list").querySelectorAll("[data-snapi]").forEach(b=>b.onclick=()=>{
+    const snap=listLocalSnapshots()[Number(b.dataset.snapi)]; if(!snap) return;
+    closeDlg();
+    confirmDlg("¿Restaurar esta copia?","Se vuelve a como estaba todo el "+snap.stamp+" ("+(snap.summary||'')+"). Lo que cargaste después se pierde.","Restaurar",()=>{
+      try{
+        saveLocalSnapshot(true); // por las dudas, guardamos lo actual antes de pisarlo
+        state=migrate(JSON.parse(snap.data)); save(); view={screen:"home"}; render();
+        toastSuccess("✓ Copia restaurada","#CBA52E");
+      }catch(e){ toastError("No se pudo restaurar esa copia"); }
+    });
+  });
 }
 let undoStack=[];
 let redoStack=[];
@@ -5319,20 +5413,78 @@ ${temas?`<div class="blk"><h2>Temas por clase</h2>${temas}</div>`:""}
   const w=window.open("","_blank"); if(!w){ toast("Permití las ventanas emergentes"); return; }
   w.document.open(); w.document.write(html); w.document.close();
 }
+/* ===== Backups fechados en Drive =====
+   El archivo principal ("Datos de Agenda Docente.json") se sobreescribe en
+   cada cambio, así que por sí solo no sirve para volver atrás. Estos backups
+   con fecha y hora sí: antes existían pero SOLO si te acordabas de tocar el
+   botón. Ahora se generan solos (como máximo uno por día), y se rotan para
+   que la carpeta no crezca sin control: los últimos AD_BK_RECENT tal cual,
+   después uno por día durante AD_BK_DAILY_DAYS, y más atrás uno por semana. */
+const AD_BK_RECENT=10;
+const AD_BK_DAILY_DAYS=45;
+function adBackupFilename(tag){
+  const d=new Date(); const p=n=>String(n).padStart(2,'0');
+  return 'Backup '+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+'h'+p(d.getMinutes())+(tag?(' ('+tag+')'):'')+'.json';
+}
+async function backupSnapshotToDrive(st,tag){
+  if(!gd.tok) return;
+  await gdEnsureToken();
+  const folderId=await gdGetRoot();
+  const body=JSON.stringify({app:"AgendaDocente",version:5,exported:new Date().toISOString(),data:st},null,2);
+  const form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify({name:adBackupFilename(tag),parents:[folderId]})],{type:'application/json'}));
+  form.append('file',new Blob([body],{type:'application/json'}));
+  await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+    {method:'POST',headers:{Authorization:'Bearer '+gd.tok},body:form});
+  pruneDriveBackups().catch(()=>{});
+}
+function adPickBackupsToPrune(files){
+  const sorted=files.slice().sort((a,b)=> a.name<b.name?1:(a.name>b.name?-1:0)); // más nuevo primero
+  const keep=new Set();
+  sorted.slice(0,AD_BK_RECENT).forEach(f=>keep.add(f.id));
+  const dayMs=86400000, cutoff=Date.now()-AD_BK_DAILY_DAYS*dayMs;
+  const seenDay=new Set(), seenWeek=new Set();
+  sorted.slice(AD_BK_RECENT).forEach(f=>{
+    const m=/(\d{4}-\d{2}-\d{2})/.exec(f.name||''); const dayKey=m?m[1]:'';
+    const t=dayKey?Date.parse(dayKey):NaN;
+    if(!isNaN(t)&&t>=cutoff){ if(!seenDay.has(dayKey)){ seenDay.add(dayKey); keep.add(f.id); } }
+    else {
+      let wk=dayKey;
+      if(!isNaN(t)){ const d=new Date(t); const oj=new Date(d.getFullYear(),0,1); wk=d.getFullYear()+'-w'+Math.ceil((((d-oj)/dayMs)+oj.getDay()+1)/7); }
+      if(!seenWeek.has(wk)){ seenWeek.add(wk); keep.add(f.id); }
+    }
+  });
+  return files.filter(f=>!keep.has(f.id));
+}
+async function pruneDriveBackups(){
+  if(!gd.tok) return;
+  const folderId=await gdGetRoot();
+  const q=encodeURIComponent(`name contains 'Backup' and '${folderId}' in parents and trashed=false`);
+  const d=await gdFetchJSON(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1000`,{headers:{Authorization:'Bearer '+gd.tok}});
+  const files=(d.files||[]).filter(f=>f.name&&f.name.startsWith('Backup')&&f.name.endsWith('.json'));
+  for(const f of adPickBackupsToPrune(files)){
+    try{ await fetch('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE',headers:{Authorization:'Bearer '+gd.tok}}); }catch(e){}
+  }
+}
+/* Backup automático diario a Drive: se dispara al conectar/sincronizar, y
+   solo si hoy todavía no se hizo uno. */
+const AD_LAST_AUTOBK_KEY="agendaDocente.lastAutoBackup";
+async function maybeAutoBackupToDrive(){
+  if(!gd.tok) return;
+  try{
+    if(localStorage.getItem(AD_LAST_AUTOBK_KEY)===todayStampAD()) return;
+    await backupSnapshotToDrive(state,'automático');
+    localStorage.setItem(AD_LAST_AUTOBK_KEY,todayStampAD());
+  }catch(e){ /* si falla, se reintenta la próxima vez */ }
+}
 async function backup(){
   if(!gd.tok){ toastSuccess('Conectá Drive primero','#CBA52E'); return; }
   closeMenu();
   toastSuccess('Subiendo backup a Drive…','#CBA52E');
   try{
-    const folderId=await gdGetRoot();
-    const body=JSON.stringify({app:"AgendaDocente",version:5,exported:new Date().toISOString(),data:state},null,2);
-    const filename='Backup '+todayISO()+' '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}).replace(':','h')+'.json';
-    const form=new FormData();
-    form.append('metadata',new Blob([JSON.stringify({name:filename,parents:[folderId]})],{type:'application/json'}));
-    form.append('file',new Blob([body],{type:'application/json'}));
-    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-      {method:'POST',headers:{Authorization:'Bearer '+gd.tok},body:form});
-    toastSuccess('✓ Backup guardado en Drive','#CBA52E');
+    await backupSnapshotToDrive(state,'manual');
+    saveLocalSnapshot(true); // de paso, una copia local también
+    toastSuccess('✓ Backup guardado en Drive y en este dispositivo','#CBA52E');
   }catch(e){ toastError('No se pudo guardar el backup: '+(e&&e.message?e.message:'')); }
 }
 async function restoreFromDrive(){
@@ -5343,7 +5495,7 @@ async function restoreFromDrive(){
     const folderId=await gdGetRoot();
     const q=encodeURIComponent(`name contains 'Backup' and '${folderId}' in parents and trashed=false`);
     const ord=encodeURIComponent('modifiedTime desc');
-    const d=await gdFetchJSON(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=${ord}&fields=files(id,name,modifiedTime)&pageSize=10`,
+    const d=await gdFetchJSON(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=${ord}&fields=files(id,name,modifiedTime)&pageSize=40`,
       {headers:{Authorization:'Bearer '+gd.tok}});
     const files=(d.files||[]).filter(f=>f.name.endsWith('.json')&&f.name.startsWith('Backup'));
     if(!files.length){ toastSuccess('No hay backups guardados en Drive','#CBA52E'); return; }
@@ -5362,7 +5514,8 @@ async function restoreFromDrive(){
         const parsed=await resp.json();
         let incoming=parsed&&parsed.data&&Array.isArray(parsed.data.groups)?parsed.data:(parsed&&Array.isArray(parsed.groups)?parsed:null);
         if(!incoming) throw new Error("formato inválido");
-        confirmDlg("¿Restaurar este backup?","Esto reemplaza TODOS los datos actuales por los del backup elegido.","Restaurar",()=>{
+        confirmDlg("¿Restaurar este backup?","Ese backup tiene: "+countSummary(incoming)+".\nAhora mismo tenés: "+countSummary(state)+".\n\nEsto reemplaza TODOS los datos actuales. Antes de hacerlo se guarda una copia de lo que hay ahora en este dispositivo, por las dudas.","Restaurar",()=>{
+          saveLocalSnapshot(true);
           state=migrate(incoming); save(); view={screen:"home"}; render();
           toastSuccess("✓ Backup restaurado","#CBA52E");
         });
@@ -5391,7 +5544,9 @@ function promptAyuda(){
           <div>2. <b>Sincronizar ahora</b> (si querés forzar la subida) → Menú ⋯ → "Sincronizar ahora"</div>
           <div>3. <b>Hacer backup en Drive</b> (copia extra de seguridad) → Menú ⋯ → "Hacer backup en Drive"</div>
           <div>4. <b>Restaurar backup de Drive</b> → Menú ⋯ → "Restaurar backup de Drive"</div>
+          <div>5. <b>Copias en este dispositivo</b> (una por día, sin depender de Drive) → Menú ⋯ → "Copias en este dispositivo"</div>
         </div>
+        <div style="font-size:11.5px;color:var(--muted);opacity:.65;margin-bottom:12px;">Versión: ${APP_BUILD}</div>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
         <div style="font-weight:700;margin-bottom:8px;">Instalar como app:</div>
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
@@ -5446,6 +5601,7 @@ const actAyudaBtn=$("#actAyuda"); if(actAyudaBtn) actAyudaBtn.onclick=promptAyud
 $("#reloadBtn").onclick=()=>{ location.reload(); };
 $("#actBackup").onclick=backup;
 $("#actRestore").onclick=restoreFromDrive;
+$("#actLocalSnaps").onclick=openLocalSnapshotsDlg;
 ["menuScrim","dlgScrim"].forEach(id=>{ const el=$("#"+id); el.addEventListener("click",e=>{ if(e.target===el) el.classList.remove("open"); }); });
 // Cuando se abre el teclado en el celular/tablet, el visor real (visualViewport) se achica
 // aunque el layout no siempre lo note. Guardamos ese alto real en --vvh para que los cuadros
@@ -5462,6 +5618,7 @@ $("#actRestore").onclick=restoreFromDrive;
 let toastT;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200); }
 
+saveLocalSnapshot(); // copia local del día ANTES de que cualquier sincronización toque algo
 render();
 initSplash();
 initClock();
@@ -5580,7 +5737,7 @@ async function gdGetUserEmail(){
     console.warn('No se pudo obtener el email:',e);
   }
 }
-async function gdAfterAuth(){ gd.st='syncing'; await gdGetUserEmail(); gd.st='ok'; gdUI(); toastSuccess('Conectando con Drive…','var(--primary-press)'); await gdPull(); }
+async function gdAfterAuth(){ gd.st='syncing'; await gdGetUserEmail(); gd.st='ok'; gdUI(); toastSuccess('Conectando con Drive…','var(--primary-press)'); await gdPull(); maybeAutoBackupToDrive(); }
 
 async function gdPull(){
   if(!gd.tok) return;
@@ -5607,14 +5764,26 @@ async function gdPull(){
       const localChanged=!!(state.lastModified&&state.lastModified>lastSynced);
       const remoteChanged=!!(remote.lastModified&&remote.lastModified>lastSynced);
       const sonDistintos=state.lastModified!==remote.lastModified;
+      /* Antes alcanzaba con "gana el que tiene la fecha más nueva" para pisar
+         todo en silencio. Eso es peligroso: un dispositivo recién instalado
+         (o con datos incompletos) puede tener fecha más nueva y borrar el
+         trabajo real — es exactamente lo que pasó al cambiar de dominio.
+         Ahora, además de la fecha, se comparan los DATOS: si la versión que
+         entraría tiene bastante menos que la que ya hay, no se pisa nada sin
+         preguntar, con los números a la vista. */
+      const cLocal=countData(state), cRemote=countData(remote);
+      const remotePierdeDatos = (cRemote.students < cLocal.students) || (cRemote.grades < cLocal.grades) || (cRemote.groups < cLocal.groups);
+      const localPierdeDatos  = (cLocal.students < cRemote.students) || (cLocal.grades < cRemote.grades) || (cLocal.groups < cRemote.groups);
       if(localChanged&&remoteChanged&&sonDistintos){
         gd.st='ok'; gdUI();
         showSyncConflictDialog(remote);
         return;
       } else if(remote.lastModified&&(!state.lastModified||remote.lastModified>=state.lastModified)){
+        if(remotePierdeDatos){ gd.st='ok'; gdUI(); showSyncConflictDialog(remote); return; }
         state=migrate(remote); state.lastSyncedAt=remote.lastModified; localStorage.setItem(KEY,JSON.stringify(state)); render();
         toastSuccess('✓ Datos cargados desde Drive','var(--primary-press)');
       } else {
+        if(localPierdeDatos){ gd.st='ok'; gdUI(); showSyncConflictDialog(remote); return; }
         await gdPushNow();
         state.lastSyncedAt=state.lastModified; localStorage.setItem(KEY,JSON.stringify(state));
         toastSuccess('✓ Tus cambios locales eran más nuevos, se subieron a Drive','var(--primary-press)');
@@ -5659,18 +5828,32 @@ function gdPush(){ if(gd.tok) gdPushNow().catch(e=>{ gd.st='error'; gdUI(); cons
 
 function fmtDateTime(ts){ if(!ts) return "un momento indefinido"; const d=new Date(ts); return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }
 function showSyncConflictDialog(remote){
-  openDlg("Hay cambios en dos lugares",`
-    <div style="font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-      Este dispositivo tiene cambios de las <b>${fmtDateTime(state.lastModified)}</b> que todavía no se subieron.<br>
-      En Drive hay una versión guardada de las <b>${fmtDateTime(remote.lastModified)}</b> (probablemente de otro dispositivo).<br><br>
-      Elegí cuál te querés quedar — la otra versión se pierde.
+  const cL=countData(state), cR=countData(remote);
+  const warn=(a,b)=> a<b ? ' style="color:#B4453A;font-weight:700"' : '';
+  openDlg("¿Cuál versión querés quedarte?",`
+    <div style="font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+      Hay dos versiones distintas. Mirá los números antes de elegir: <b>la que no elijas se pierde.</b>
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:14px;">
+      <tr style="color:var(--muted);"><th style="text-align:left;padding:4px 0;"></th><th style="text-align:center;">📱 Este dispositivo</th><th style="text-align:center;">☁️ Drive</th></tr>
+      <tr><td style="padding:4px 0;">Cursos</td><td align="center"${warn(cL.groups,cR.groups)}>${cL.groups}</td><td align="center"${warn(cR.groups,cL.groups)}>${cR.groups}</td></tr>
+      <tr><td style="padding:4px 0;">Alumnos</td><td align="center"${warn(cL.students,cR.students)}>${cL.students}</td><td align="center"${warn(cR.students,cL.students)}>${cR.students}</td></tr>
+      <tr><td style="padding:4px 0;">Notas cargadas</td><td align="center"${warn(cL.grades,cR.grades)}>${cL.grades}</td><td align="center"${warn(cR.grades,cL.grades)}>${cR.grades}</td></tr>
+      <tr><td style="padding:4px 0;">Clases</td><td align="center"${warn(cL.sessions,cR.sessions)}>${cL.sessions}</td><td align="center"${warn(cR.sessions,cL.sessions)}>${cR.sessions}</td></tr>
+      <tr style="color:var(--muted);font-size:12px;"><td style="padding:6px 0 0;">Última edición</td><td align="center" style="padding:6px 2px 0;">${fmtDateTime(state.lastModified)}</td><td align="center" style="padding:6px 2px 0;">${fmtDateTime(remote.lastModified)}</td></tr>
+    </table>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
+      Lo marcado en rojo es lo que <b>perderías</b> si elegís esa columna. Ante la duda, quedate con la que tenga más notas — y antes de decidir podés guardar una copia de lo que hay acá.
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <button class="btn" id="sc_remote">⬇ Traer de Drive</button>
-      <button class="btn subtle" id="sc_local">⬆ Subir este dispositivo</button>
-      <button class="btn subtle" id="sc_cancel">Ahora no</button>
+      <button class="btn subtle" id="sc_snap">🛟 Guardar copia de este dispositivo primero</button>
+      <button class="btn" id="sc_remote">⬇ Quedarme con la de Drive</button>
+      <button class="btn subtle" id="sc_local">⬆ Quedarme con la de este dispositivo</button>
+      <button class="btn subtle" id="sc_cancel">Ahora no (no tocar nada)</button>
     </div>`);
+  $("#sc_snap").onclick=()=>{ saveLocalSnapshot(true); toastSuccess("✓ Copia guardada en este dispositivo","#CBA52E"); };
   $("#sc_remote").onclick=()=>{
+    saveLocalSnapshot(true); // red de seguridad antes de pisar lo local
     closeDlg();
     state=migrate(remote); state.lastSyncedAt=remote.lastModified;
     localStorage.setItem(KEY,JSON.stringify(state)); render();
@@ -5678,6 +5861,9 @@ function showSyncConflictDialog(remote){
   };
   $("#sc_local").onclick=async()=>{
     closeDlg();
+    // Antes de pisar lo que hay en Drive, se guarda ESO como backup fechado:
+    // si la elección fue equivocada, se puede recuperar desde "Restaurar backup".
+    try{ await backupSnapshotToDrive(remote,'Drive-antes-de-pisar'); }catch(e){}
     try{ await gdPushNow(); toastSuccess('✓ Subido a Drive','var(--primary-press)'); }
     catch(e){ toastError('No se pudo subir: '+(e&&e.message?e.message:'')); }
   };
