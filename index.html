@@ -3990,9 +3990,18 @@ const EXAM_TYPE_META={
 };
 function examTypeMeta(type){ return EXAM_TYPE_META[type]||{label:"Evaluaci\u00f3n",icon:"\ud83d\udcdd"}; }
 
+function examTermSegHTML(){
+  const tk=view.term||"1";
+  return `<div class="seg" role="group" aria-label="Cuatrimestre" style="margin-bottom:10px;"><button data-term="1" aria-pressed="${tk==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${tk==="2"}">2° Cuatrimestre</button></div>`;
+}
+function wireExamTermSeg(body){
+  // Al cambiar de cuatrimestre volvemos al listado: el examen abierto es de otro cuatrimestre.
+  body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.examId; render(); });
+}
 function renderExam(g,t,body){
   if(view.examId){ const e=t.exams.find(x=>x.id===view.examId); if(!e){ delete view.examId; renderExam(g,t,body); return; } return renderExamEntry(g,t,e,body); }
   if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para cargar exámenes.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
+  const termSeg=examTermSegHTML();
   const list=t.exams.length?`<div class="evallist">`+t.exams.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
     const icon=examTypeMeta(e.type).icon;
     return `<button class="erow" data-eval="${e.id}"><span class="einfo"><span class="ename">${icon} ${esc(e.name)}</span>
@@ -4006,9 +4015,10 @@ function renderExam(g,t,body){
       <button class="xbtn" data-exam-empty="${entry.exam.id}">${I.trash}</button>
     </div>`).join("")}
   </div>`:"";
-  body.innerHTML=`${list}<button class="btn" id="newExam">${I.plus} Agregar</button>
+  body.innerHTML=`${termSeg}${list}<button class="btn" id="newExam">${I.plus} Agregar</button>
     ${t.exams.length?`<button class="btn subtle sm" id="csvEx" style="margin-top:10px;">${I.doc} Exportar notas (CSV)</button>`:""}
     ${trashHTML}`;
+  wireExamTermSeg(body);
   body.querySelectorAll("[data-eval]").forEach(b=>b.onclick=()=>{ view.examId=b.dataset.eval; render(); });
   body.querySelectorAll("[data-exam-restore]").forEach(b=>b.onclick=()=>{ restoreExamFromTrash(t,b.dataset.examRestore); render(); toast("Examen recuperado con todas sus notas"); });
   body.querySelectorAll("[data-exam-empty]").forEach(b=>b.onclick=()=>{ confirmDlg("¿Borrar definitivamente?","Se pierden todas las notas de este examen. No se puede deshacer.","Borrar",()=>{ t.examTrash=t.examTrash.filter(x=>x.exam.id!==b.dataset.examEmpty); save(); render(); }); });
@@ -4036,7 +4046,7 @@ function renderExamEntry(g,t,e,body){
   const typeLabel=`${typeMetaHere.icon} ${typeMetaHere.label}`;
   const periodLabel=e.type==="intens_eval"?(e.period==="otro"?(e.periodOtro||"Otro mes"):(e.period?(INTENS_PERIOD_OPTIONS.find(p=>p.id===e.period)||{}).label:null)):null;
   const periodBadge=periodLabel?`<span style="display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--primary);background:var(--primary-tint);padding:1px 8px;border-radius:99px;vertical-align:middle;">${esc(periodLabel)}</span>`:(e.type==="intens_eval"?`<span style="display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--absent-ink);background:var(--absent-tint);padding:1px 8px;border-radius:99px;vertical-align:middle;">Sin período — tocá ✎ para elegir</span>`:"");
-  body.innerHTML=`<button class="link" id="backEx" style="margin:-4px 0 8px;display:inline-flex;align-items:center;gap:4px;">${I.left} Exámenes y recup</button>
+  body.innerHTML=`${examTermSegHTML()}<button class="link" id="backEx" style="margin:-4px 0 8px;display:inline-flex;align-items:center;gap:4px;">${I.left} Exámenes y recup</button>
     <div class="card pad" style="margin-bottom:14px;"><div style="display:flex;align-items:flex-start;gap:10px;">
       <div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;">${typeLabel}${periodBadge}</div>
       <div style="font-weight:600;font-size:17px;word-break:break-word;">${esc(e.name)}</div>
@@ -4152,6 +4162,7 @@ function renderExamEntry(g,t,e,body){
   if(!locked){
     $("#saveExGrades").onclick=()=>{ e.locked=true; save(); render(); toast("Notas bloqueadas"); };
   } else { $("#editExGrades").onclick=()=>{ e.locked=false; save(); render(); }; }
+  wireExamTermSeg(body);
   $("#backEx").onclick=()=>{ delete view.examId; render(); };
   $("#editEx").onclick=()=>promptEditExam(t,e);
   $("#delEx").onclick=()=>{ confirmDlg("¿Mover a la papelera?",'Podés recuperar "'+e.name+'" con todas sus notas desde la papelera.',"Mover",()=>{ moveExamToTrash(t,e.id); delete view.examId; render(); toast("Examen movido a la papelera"); }); };
