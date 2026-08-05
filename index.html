@@ -650,7 +650,7 @@
       </button>
       <button class="sheet-item" id="actSyncNow" style="display:none;">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></span>
-        <span>Sincronizar ahora<small>Subir tus datos a Drive en este momento</small></span>
+        <span>Actualizar Drive<small>Reintenta subir lo que haya quedado pendiente (por ejemplo, si te quedaste sin internet)</small></span>
       </button>
       <hr>
       <button class="sheet-item" id="actBackup">
@@ -5567,7 +5567,7 @@ function promptAyuda(){
         <div style="font-weight:700;margin-bottom:10px;">Primeros pasos:</div>
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
           <div>1. <b>Conectar Google Drive</b> → Menú ⋯ → "Conectar con Google Drive"</div>
-          <div>2. <b>Sincronizar ahora</b> (si querés forzar la subida) → Menú ⋯ → "Sincronizar ahora"</div>
+          <div>2. <b>Actualizar Drive</b> (por si algo quedó sin subir) → Menú ⋯ → "Actualizar Drive"</div>
           <div>3. <b>Crear backup / punto de restauración</b> (para poder volver atrás si borrás algo sin querer) → Menú ⋯ → "Crear backup / punto de restauración"</div>
           <div>4. <b>Restaurar backup de Drive</b> (volver a un punto guardado) → Menú ⋯ → "Restaurar backup de Drive"</div>
           <div>5. <b>Copias en este dispositivo</b> (una por día, sin depender de Drive) → Menú ⋯ → "Copias en este dispositivo"</div>
@@ -5609,7 +5609,7 @@ function promptAyuda(){
           <div><b>📚 Datos → Contenidos</b><br>Cargá del DC PBA o agregá vocabulario extra; aparecen al crear exámenes</div>
           <div><b>✓ Tildes en Notas finales</b><br>Solo para marcarte que ya pasaste la nota al cuaderno. No afecta cálculos</div>
           <div><b>1 · Motivo (Faltó / NQ / IA)</b><br>Aparece cuando cargás un 1 en evaluación. Ahí marcás el motivo. Se ve como marquita en General</div>
-          <div><b>Sincronizar ahora</b><br>Solo si cambiás dispositivo y querés asegurar que subió. De todos los días no hace falta</div>
+          <div><b>Actualizar Drive</b><br>Todo se sube solo al cargarlo. Este botón es para reintentar si algo quedó pendiente — por ejemplo, después de estar sin internet</div>
         </div>
       </div>
     </div>
@@ -5994,8 +5994,8 @@ function toastSuccess(msg,color){ const t=$("#toast"); if(!t) return; t.textCont
 function toastError(msg){ const t=$("#toast"); if(!t) return; t.textContent=msg; t.style.background="var(--absent-ink)"; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); t.style.background=""; },3000); }
 async function gdSyncNow(){
   if(!gd.tok){ toastSuccess('Conectá Drive primero','var(--primary-press)'); return; }
-  toastSuccess('Sincronizando…','var(--primary-press)');
-  try{ await gdPushNow(); gd.st='ok'; flashSuccess("#actSyncNow","var(--primary-tint)"); toastSuccess('✓ Subido a Drive correctamente','var(--primary-press)'); }
+  toastSuccess('Actualizando Drive…','var(--primary-press)');
+  try{ await gdPushNow(); gd.st='ok'; flashSuccess("#actSyncNow","var(--primary-tint)"); toastSuccess('✓ Drive actualizado','var(--primary-press)'); }
   catch(e){ gd.st='error'; console.error('gdSyncNow',e); flashError("#actSyncNow"); toastError('❌ Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
 }
