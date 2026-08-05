@@ -43,13 +43,13 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
     font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;padding-bottom:calc(64px + env(safe-area-inset-bottom));}
   .bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:35;display:flex;background:rgba(247,239,231,.92);backdrop-filter:saturate(180%) blur(10px);-webkit-backdrop-filter:saturate(180%) blur(10px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));}
-  /* En compu / tablet apaisada: la barra deja de flotar abajo tapando contenido, y pasa a
-     ser una tira fija arriba, debajo del logo — más parecido a una barra de herramientas
-     de escritorio que a una tab bar de celular. */
+  /* En compu / tablet apaisada la barra sigue abajo, igual que en el celular:
+     lo único que cambia es que los botones se juntan en el centro en vez de
+     estirarse a lo ancho de toda la pantalla. */
+  /* Con .bottomnav adelante para que gane a la regla .bn-item de más abajo. */
   @media (min-width:860px){
-    body{padding-bottom:0;}
-    .bottomnav{position:sticky;top:90px;bottom:auto;left:auto;right:auto;justify-content:center;gap:28px;border-top:none;border-bottom:1px solid var(--line);padding:8px 4px;margin-bottom:8px;}
-    .bn-item{flex:none;min-width:60px;}
+    .bottomnav{justify-content:center;gap:28px;}
+    .bottomnav .bn-item{flex:none;min-width:76px;padding:6px 10px;}
   }
   .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;color:var(--muted);font-size:10.5px;font-weight:600;border-radius:10px;margin:4px 3px;}
   .bn-item svg{width:21px;height:21px;}
