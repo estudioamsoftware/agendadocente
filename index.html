@@ -196,6 +196,9 @@
   .daybtn.on{background:var(--primary);color:#fff;border-color:var(--primary);}
   .daybtn:active{transform:scale(.93);}
   .hoy-panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;box-shadow:var(--shadow);}
+  .listado-alert{display:block;width:100%;text-align:left;background:#FDF4E6;border:1.5px solid var(--amber-bd);border-radius:14px;padding:12px 14px;margin-bottom:14px;cursor:pointer;font:inherit;}
+  .listado-alert-row{font-size:13.5px;font-weight:700;color:#D97706;animation:pendBlink 1.8s ease-in-out infinite;}
+  .listado-alert-row+.listado-alert-row{margin-top:4px;}
   .hoy-title{font-weight:700;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
   .hoy-card{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;margin-bottom:6px;cursor:pointer;}
   .hoy-card:last-child{margin-bottom:0;}
@@ -1513,6 +1516,22 @@ function setEventArchived(id,val){ const ev=getGlobalEvents().find(e=>e.id===id)
 function archivePastEvents(){ const today=todayISO(); let n=0; getGlobalEvents().forEach(ev=>{ if(!ev.archived&&ev.hasta<today){ ev.archived=true; n++; } }); save(); return n; }
 function unarchiveAllEvents(){ let n=0; getGlobalEvents().forEach(ev=>{ if(ev.archived){ delete ev.archived; n++; } }); save(); return n; }
 
+/* ============ Listados de inscripción (oficial / MAD / acrecentamiento / otros) ============ */
+const LISTADO_FIJOS=[
+  {tipo:"oficial",label:"Listado oficial"},
+  {tipo:"mad",label:"MAD"},
+  {tipo:"acrecentamiento",label:"Acrecentamiento"}
+];
+function getListados(){ return state.listados||(state.listados=[]); }
+function addListado(it){ getListados().push({id:uid(),...it}); save(); }
+function updateListado(id,patch){ const l=getListados().find(x=>x.id===id); if(l){ Object.assign(l,patch); save(); } }
+function removeListado(id){ state.listados=getListados().filter(l=>l.id!==id); save(); }
+function diasHasta(iso){ return Math.round((parseISO(iso)-parseISO(todayISO()))/86400000); }
+function listadosProximosAVencer(){
+  const today=todayISO(), limite=addDays(today,7);
+  return getListados().filter(l=>l.hasta&&l.hasta>=today&&l.hasta<=limite).sort((a,b)=>a.hasta<b.hasta?-1:1);
+}
+
 const GLOBAL_PRESETS=[
   {label:"🤒 Licencia",motivo:"Licencia docente",docente:true,licencia:true},
   {label:"✊ Paro",motivo:"Paro docente",docente:true,licencia:false},
@@ -1787,6 +1806,34 @@ function promptGlobalEvent(){
     const n=applyGlobalEvent(ev);
     closeDlg();
     toastSuccess(n?`✓ ${n} clase${n===1?"":"s"} anulada${n===1?"":"s"} en todos los grupos`:"No había clases en ese período",'#A9500A');
+    render();
+  };
+}
+function promptListado(tipo,otroId){
+  const isOtro=tipo==="otro";
+  const fijo=LISTADO_FIJOS.find(f=>f.tipo===tipo);
+  const existing=isOtro?getListados().find(l=>l.id===otroId):getListados().find(l=>l.tipo===tipo);
+  const title=isOtro?(existing?"Editar listado":"Agregar listado"):fijo.label;
+  openDlg(title,`
+    ${isOtro?`<div class="dlg-field"><label>Nombre del listado</label><input id="ls_nombre" placeholder="Ej: Listado regional" value="${existing?esc(existing.nombre):""}" autocomplete="off"></div>`:""}
+    <div style="display:flex;gap:10px;">
+      <div class="dlg-field" style="flex:1;"><label>Inicio de inscripción</label><input id="ls_desde" type="date" value="${existing?.desde||""}"></div>
+      <div class="dlg-field" style="flex:1;"><label>Cierre de inscripción</label><input id="ls_hasta" type="date" value="${existing?.hasta||""}"></div>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn subtle" id="ls_cancel">Cancelar</button>
+      <button class="btn" id="ls_ok">Guardar</button>
+    </div>`);
+  $("#ls_cancel").onclick=closeDlg;
+  $("#ls_ok").onclick=()=>{
+    const nombre=isOtro?$("#ls_nombre").value.trim():fijo.label;
+    const desde=$("#ls_desde").value, hasta=$("#ls_hasta").value;
+    if(isOtro&&!nombre){ toast("Escribí un nombre para el listado"); return; }
+    if(desde&&hasta&&desde>hasta){ toast("La fecha de inicio tiene que ser antes que la de cierre"); return; }
+    if(existing) updateListado(existing.id,{nombre,desde,hasta});
+    else addListado({tipo,nombre,desde,hasta});
+    closeDlg();
+    toastSuccess("✓ Guardado","var(--present-ink)");
     render();
   };
 }
@@ -2077,6 +2124,16 @@ function renderHome(){
     <div style="font-size:14px;font-weight:600;color:var(--ink);">${countText}</div>
   </div>`;
 
+  // ---- Alerta de listados de inscripción por vencer (7 días antes) ----
+  const listadosAlerta=listadosProximosAVencer();
+  const listadosAlertHTML=listadosAlerta.length?`<button type="button" class="listado-alert" id="listadoAlertBtn">
+    ${listadosAlerta.map(l=>{
+      const dias=diasHasta(l.hasta);
+      const cuando=dias===0?"¡cierra hoy!":dias===1?"¡cierra mañana!":`cierra en ${dias} días`;
+      return `<div class="listado-alert-row">⏰ ${esc(l.nombre)}: ${cuando} (${fmtShort(l.hasta)})</div>`;
+    }).join("")}
+  </button>`:"";
+
   // ---- Hint para cursos sin configurar (compacto) ----
   const needsSetup=active.filter(g=>g.students.length===0||!["1","2"].some(k=>g.terms[k].sessions.length>0));
   const onboardHTML=needsSetup.length?`<div style="font-size:12px;color:var(--muted);background:var(--line-soft);border-radius:10px;padding:8px 12px;margin-bottom:12px;">
@@ -2139,6 +2196,7 @@ function renderHome(){
   const viewToggle=""; // Sacamos el toggle
   const hintHTML=coursesWithSchedule.length>0?`<div style="font-size:14px;color:var(--muted);margin-bottom:16px;text-align:center;padding:12px;background:var(--line-soft);border-radius:10px;"><em>💡 Toca un bloque para entrar al curso</em></div>`:"";
   app.innerHTML=`<div style="height:12px;"></div>
+    ${listadosAlertHTML}
     ${hoyHTML}
     ${hintHTML}
     ${onboardHTML}
@@ -2149,6 +2207,7 @@ function renderHome(){
     <div class="pagefoot">Tus datos se sincronizan con Google Drive · Podés hacer un backup extra desde el menú ⋯</div>`;
 
   app.querySelectorAll(".schedule-course").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"asist"}));
+  const listadoAlertBtn=$("#listadoAlertBtn"); if(listadoAlertBtn) listadoAlertBtn.onclick=()=>go({screen:"eventos"});
   
   // Plegar/desplegar el panel de configuración rápida.
   // No llama a render(): sólo muestra/oculta, así el toque es instantáneo y no salta el scroll.
@@ -2278,9 +2337,35 @@ function renderEventos(){
         </div>`:""}
       </div>`;
   const derivedNoteHTML=derivedRows.length?`<div style="font-size:11px;color:var(--faint);margin:-6px 0 14px;line-height:1.4;">ℹ️ Las que dicen "N cursos" las anulaste directo en cada curso (no con "+ Agregar" acá) — por eso ahora también aparecen listadas y sumadas.</div>`:"";
+  const listadosAll=getListados();
+  const listadoOtros=listadosAll.filter(l=>l.tipo==="otro");
+  const listadoFijoRow=(f)=>{
+    const it=listadosAll.find(l=>l.tipo===f.tipo);
+    return `<button class="lic-tally-row" data-listado-fijo="${f.tipo}">
+      <span style="flex:1;text-align:left;">${f.label}</span>
+      <span style="color:var(--muted);font-size:12px;">${it&&it.hasta?"Cierra "+fmtShort(it.hasta):"Sin fecha"}</span>
+    </button>`;
+  };
+  const listadoOtroRow=(it)=>`<div class="lic-tally-row" style="cursor:default;">
+      <span style="flex:1;text-align:left;cursor:pointer;" data-listado-otro-edit="${it.id}">${esc(it.nombre)}</span>
+      <span style="color:var(--muted);font-size:12px;margin-right:6px;">${it.hasta?"Cierra "+fmtShort(it.hasta):"Sin fecha"}</span>
+      <button class="gevent-del" data-listado-otro-del="${it.id}" title="Eliminar">${I.trash}</button>
+    </div>`;
+  const listadosHTML=`<div class="card pad" style="margin-bottom:16px;">
+      <label class="fieldlbl">📋 INSCRIPCIONES Y LISTADOS</label>
+      ${listadoFijoRow(LISTADO_FIJOS[0])}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
+        ${listadoFijoRow(LISTADO_FIJOS[1])}
+        ${listadoFijoRow(LISTADO_FIJOS[2])}
+      </div>
+      ${listadoOtros.length?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">${listadoOtros.map(listadoOtroRow).join("")}</div>`:""}
+      <button class="link" id="addOtroListado" style="display:block;margin-top:12px;font-size:12.5px;">+ Agregar otro listado</button>
+      <div style="font-size:11px;color:var(--faint);margin-top:10px;">Cargá la fecha de cierre de inscripción y te avisamos en Inicio una semana antes de que venza.</div>
+    </div>`;
   app.innerHTML=`<div class="ghead" style="align-items:center;"><div style="flex:1;min-width:0;"><h1 style="margin:0;">📅 Calendario académico</h1>
       <span class="count" style="margin:0;">Licencias, paros, suspensiones y vacaciones</span></div>
       <button class="btn" id="addGlobalEvent2" style="flex:none;width:auto;">+ Agregar</button></div>
+    ${listadosHTML}
     ${tallyHTML}
     ${derivedNoteHTML}
     <div class="gevents-list">${proximosHTML}</div>
@@ -2288,6 +2373,15 @@ function renderEventos(){
     ${archToggleHTML}
     ${archBtnHTML}`;
   $("#addGlobalEvent2").onclick=promptGlobalEvent;
+  app.querySelectorAll("[data-listado-fijo]").forEach(b=>b.onclick=()=>promptListado(b.dataset.listadoFijo));
+  const addOtroListado=$("#addOtroListado"); if(addOtroListado) addOtroListado.onclick=()=>promptListado("otro");
+  app.querySelectorAll("[data-listado-otro-edit]").forEach(b=>b.onclick=()=>promptListado("otro",b.dataset.listadoOtroEdit));
+  app.querySelectorAll("[data-listado-otro-del]").forEach(b=>b.onclick=(e)=>{
+    e.stopPropagation();
+    const id=b.dataset.listadoOtroDel;
+    const it=getListados().find(l=>l.id===id);
+    confirmDlg("¿Eliminar listado?",`¿Eliminar "${esc(it?.nombre||"")}"?`,"Eliminar",()=>{ removeListado(id); render(); toast("Listado eliminado"); });
+  });
   const ap=$("#archivePast"); if(ap) ap.onclick=()=>{
     const yrAnt=new Date().getFullYear()-1;
     confirmDlg("Archivar eventos del "+yrAnt,"Se van a archivar todos los eventos del año "+yrAnt+". Quedan guardados y los podés ver desde \"Ver archivadas\".","Archivar",()=>{
