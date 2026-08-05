@@ -606,7 +606,7 @@
     <div class="splash-greet" id="splashGreet">¡Bienvenida!</div>
     <div class="splash-tag"><span class="st-rule"></span><span class="st-dot"></span><span class="st-rule"></span></div>
     <div class="splash-lema">Ella organiza. <span>Vos enseñás.</span></div>
-    <div class="splash-sub">by EnglishBeats</div>
+    <div class="splash-sub">Hecha con ✏️❤️ por Estudio AM</div>
   </div>
   <div class="topbar">
     <div class="wrap topbar-in">
@@ -614,7 +614,7 @@
         <img class="mark" src="icon-192.png" alt="AD">
         <div style="min-width:0;flex:1;">
           <div class="name">Agenda <span class="name-accent">Docente</span></div>
-          <div class="sub">by EnglishBeats</div>
+          <div class="sub">Hecha con ✏️❤️ por Estudio AM</div>
         </div>
       </div>
       <div class="clockbar" id="clockBar"></div>
@@ -1897,10 +1897,10 @@ function wireBottomNav(){
   };
 }
 function setTopBack(onBack){ const left=$("#topLeft");
-  // El logo y "Agenda Docente by EnglishBeats" quedan siempre visibles.
+  // El logo y "Agenda Docente" con su subtítulo quedan siempre visibles.
   // Adentro de un curso, se agrega nada más un "Atrás" chico debajo.
   const backRow=onBack?`<button class="topback-link" id="topBack"><span style="width:16px;height:16px;display:inline-flex;flex:none;">${I.back}</span>Atrás</button>`:"";
-  left.innerHTML=`<img class="mark" src="icon-192.png" alt="AD"><div style="min-width:0;flex:1;"><div class="name">Agenda <span class="name-accent">Docente</span></div><div class="sub">by EnglishBeats</div>${backRow}</div>`;
+  left.innerHTML=`<img class="mark" src="icon-192.png" alt="AD"><div style="min-width:0;flex:1;"><div class="name">Agenda <span class="name-accent">Docente</span></div><div class="sub">Hecha con ✏️❤️ por Estudio AM</div>${backRow}</div>`;
   if(onBack){ $("#topBack").onclick=onBack; }
 }
 
@@ -2484,7 +2484,7 @@ function renderAboutInfo(){
       </div>
     </div>
 
-    <p style="margin:20px 4px 0;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.5;">© 2026 EnglishBeats · Annie Müller.<br>Todos los derechos reservados.</p>
+    <p style="margin:20px 4px 0;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.5;">Hecha con ✏️❤️ por Estudio AM<br>© 2026 Estudio AM · Todos los derechos reservados.</p>
   `;
 }
 
