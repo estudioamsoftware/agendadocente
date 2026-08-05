@@ -1516,19 +1516,31 @@ function setEventArchived(id,val){ const ev=getGlobalEvents().find(e=>e.id===id)
 function archivePastEvents(){ const today=todayISO(); let n=0; getGlobalEvents().forEach(ev=>{ if(!ev.archived&&ev.hasta<today){ ev.archived=true; n++; } }); save(); return n; }
 function unarchiveAllEvents(){ let n=0; getGlobalEvents().forEach(ev=>{ if(ev.archived){ delete ev.archived; n++; } }); save(); return n; }
 
-/* ============ Listados de inscripción (oficial / MAD / acrecentamiento / otros) ============ */
+/* ============ Listados de inscripción (oficial / MAD y Acrecentamiento / otros) ============ */
+const LISTADO_ALERTA_DIAS=3;
 const LISTADO_FIJOS=[
   {tipo:"oficial",label:"Listado oficial"},
-  {tipo:"mad",label:"MAD"},
-  {tipo:"acrecentamiento",label:"Acrecentamiento"}
+  {tipo:"mad_acrecentamiento",label:"MAD y Acrecentamiento"}
 ];
-function getListados(){ return state.listados||(state.listados=[]); }
+function getListados(){
+  if(!state.listados) state.listados=[];
+  // Migración: MAD y Acrecentamiento se cargaban por separado, ahora van unificados.
+  const mad=state.listados.find(l=>l.tipo==="mad"), acrec=state.listados.find(l=>l.tipo==="acrecentamiento");
+  if(mad||acrec){
+    const desde=[mad?.desde,acrec?.desde].filter(Boolean).sort()[0]||"";
+    const hasta=[mad?.hasta,acrec?.hasta].filter(Boolean).sort()[0]||"";
+    state.listados=state.listados.filter(l=>l.tipo!=="mad"&&l.tipo!=="acrecentamiento");
+    state.listados.push({id:uid(),tipo:"mad_acrecentamiento",nombre:"MAD y Acrecentamiento",desde,hasta});
+    save();
+  }
+  return state.listados;
+}
 function addListado(it){ getListados().push({id:uid(),...it}); save(); }
 function updateListado(id,patch){ const l=getListados().find(x=>x.id===id); if(l){ Object.assign(l,patch); save(); } }
 function removeListado(id){ state.listados=getListados().filter(l=>l.id!==id); save(); }
 function diasHasta(iso){ return Math.round((parseISO(iso)-parseISO(todayISO()))/86400000); }
 function listadosProximosAVencer(){
-  const today=todayISO(), limite=addDays(today,7);
+  const today=todayISO(), limite=addDays(today,LISTADO_ALERTA_DIAS);
   return getListados().filter(l=>l.hasta&&l.hasta>=today&&l.hasta<=limite).sort((a,b)=>a.hasta<b.hasta?-1:1);
 }
 
@@ -2356,11 +2368,10 @@ function renderEventos(){
       ${listadoFijoRow(LISTADO_FIJOS[0])}
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
         ${listadoFijoRow(LISTADO_FIJOS[1])}
-        ${listadoFijoRow(LISTADO_FIJOS[2])}
       </div>
       ${listadoOtros.length?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">${listadoOtros.map(listadoOtroRow).join("")}</div>`:""}
       <button class="link" id="addOtroListado" style="display:block;margin-top:12px;font-size:12.5px;">+ Agregar otro listado</button>
-      <div style="font-size:11px;color:var(--faint);margin-top:10px;">Cargá la fecha de cierre de inscripción y te avisamos en Inicio una semana antes de que venza.</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:10px;">Cargá la fecha de cierre de inscripción y te avisamos en Inicio ${LISTADO_ALERTA_DIAS} días antes de que venza.</div>
     </div>`;
   app.innerHTML=`<div class="ghead" style="align-items:center;"><div style="flex:1;min-width:0;"><h1 style="margin:0;">📅 Calendario académico</h1>
       <span class="count" style="margin:0;">Licencias, paros, suspensiones y vacaciones</span></div>
