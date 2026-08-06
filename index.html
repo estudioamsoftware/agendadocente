@@ -4344,8 +4344,12 @@ function renderExamEntry(g,t,e,body){
       // Si quedó una recu cargada a mano con el modo viejo, esa manda (es la que pesa
       // en la nota efectiva), así nunca se esconde algo ya cargado.
       const rv=typeof c.recu==="number"?c.recu:getGrade(t,s.id,myRecu.id).nota;
-      return typeof rv==="number"
-        ?`<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`
+      if(typeof rv==="number") return `<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`;
+      // Si faltó también al recuperatorio (según Asistencia de esa fecha, o a mano
+      // desde su propia hoja), se refleja acá con la misma "A", no un "–" ambiguo.
+      const ausRecuLinked=gradeAusenteEffective(t,g,s.id,myRecu.id,"nota",myRecu.date);
+      return ausRecuLinked
+        ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;">A</span>`
         :`<span class="eg-na">–</span>`;
     };
     const ausenteR=gradeAusenteEffective(t,g,s.id,e.id,"recu",e.recuDate);
@@ -4502,9 +4506,14 @@ function renderNotasFinalesGrid(g,body,modeSeg){
         const ausN=gradeAusenteEffective(tObj,g,s.id,it.id,"nota",it.date);
         out+=singleCell(ausN?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
         if(hasRecuType(it)){
-          const yaAprobo=c.recu==null&&typeof c.nota==="number"&&c.nota>=pm;
-          const ausR=gradeAusenteEffective(tObj,g,s.id,it.id,"recu",it.recuDate);
-          out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(ausR?"A":(c.recu!=null?c.recu:null),c.motivoRecu||null);
+          // Si la recu se cargó como examen aparte (recuOf), la nota y el "A" de
+          // ausente viven en ESA hoja, no en el campo "recu" viejo de este item.
+          const linked=linkedRecuExam(tObj,it.id);
+          const recuVal=linked?getGrade(tObj,s.id,linked.id).nota:c.recu;
+          const recuMotivo=linked?getGrade(tObj,s.id,linked.id).motivoNota:c.motivoRecu;
+          const yaAprobo=recuVal==null&&typeof c.nota==="number"&&c.nota>=pm;
+          const ausR=linked?gradeAusenteEffective(tObj,g,s.id,linked.id,"nota",linked.date):gradeAusenteEffective(tObj,g,s.id,it.id,"recu",it.recuDate);
+          out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(ausR?"A":(recuVal!=null?recuVal:null),recuMotivo||null);
         }
       } else { out+=singleCell(getTpGrade(tObj,s.id,it.id),null); }
     }); return out; };
