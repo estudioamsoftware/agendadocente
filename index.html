@@ -2017,6 +2017,20 @@ function termYearStats(g,term,pm){
   });
   return {previstas:previstas*mod,dictadas:dictadas*mod,alumnos:g.students.length,aprobados,desaprobados,sinEvaluar};
 }
+// Cuenta alumnos (no tildes) a los que les falta pasar alguna nota ya cargada
+// (avance o final, en cualquiera de los dos cuatrimestres) al cuaderno de comunicaciones.
+function faltaComuCount(g,t1,t2,pm){
+  const pending=new Set();
+  [t1,t2].forEach(tObj=>{
+    g.students.forEach(s=>{
+      const av=avanceOf(tObj,s.id,g);
+      if(av!=null&&!comunicadoOf(tObj,s.id,"avance")) pending.add(s.id);
+      const fin=finalOf(tObj,s.id,pm);
+      if(fin!=null&&!comunicadoOf(tObj,s.id,"final")) pending.add(s.id);
+    });
+  });
+  return pending.size;
+}
 function estado(g,t,sid){
   const pm=g.passMark||7; const f=finalOf(t,sid,pm); const ipm=intensPM(g);
   if(f==null) return {label:"Sin cierre",cls:"none"};
@@ -4290,7 +4304,8 @@ function renderExam(g,t,body){
   if(view.examId){ const e=t.exams.find(x=>x.id===view.examId); if(!e){ delete view.examId; renderExam(g,t,body); return; } return renderExamEntry(g,t,e,body); }
   if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para cargar exámenes.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
   const termSeg=examTermSegHTML();
-  const list=t.exams.length?`<div class="evallist">`+t.exams.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
+  const examsSorted=t.exams.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
     const icon=examTypeMeta(e.type).icon;
     return `<button class="erow" data-eval="${e.id}"><span class="einfo"><span class="ename">${icon} ${esc(e.name)}</span>
       <span class="edate">${fmtLong(e.date)} · ${c}/${g.students.length} cargadas${recu?" · con recu":""}</span></span><span class="echev">${I.chev}</span></button>`;}).join("")+`</div>`:emptyInline(I.book,"Todavía no hay evaluaciones en este cuatrimestre.");
@@ -4603,7 +4618,8 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       <tr class="gs-apr"><td>Aprobados (≥${pm})</td><td>${a.aprobados}</td><td>${b.aprobados}</td></tr>
       <tr class="gs-des"><td>Desaprobados (&lt;${pm})</td><td>${a.desaprobados}</td><td>${b.desaprobados}</td></tr>
       <tr class="gs-ne"><td>Sin evaluar (TED)</td><td>${a.sinEvaluar}</td><td>${b.sinEvaluar}</td></tr>
-    </table>`;
+    </table>
+    ${(()=>{ const n=faltaComuCount(g,t1,t2,pm); return n?`<div class="listado-alert-row" style="margin-top:10px;">⚠ ${n} alumno${n===1?"":"s"} con notas sin pasar al cuaderno de comunicaciones</div>`:""; })()}`;
   }
   body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
     <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
@@ -4638,6 +4654,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       const nv=!comunicadoOf(tObj,sid,field);
       setComunicado(tObj,sid,field,nv);
       btn.classList.toggle("on",nv);
+      refreshStats();
     });
     trEl.querySelectorAll("[data-av-sid]").forEach(td=>td.onclick=(ev)=>{
       ev.stopPropagation();
