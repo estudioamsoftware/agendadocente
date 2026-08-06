@@ -1137,6 +1137,14 @@ function autoLink(s){ return esc(s).replace(/((https?:\/\/|www\.)[^\s<]+)/gi,(m)
 function fmtNum(n){ if(n==null||isNaN(n)) return "–"; const r=Math.round(n*100)/100; return Number.isInteger(r)?String(r):String(r).replace(".",","); }
 function gradeTierClass(v,pm){ pm=pm||7; if(v==null||typeof v!=="number"||isNaN(v)) return ""; return v>=pm?"gnum-blue":"gnum-green"; }
 function parseNum(raw){ raw=String(raw).trim().replace(",","."); if(raw==="") return null; const v=parseFloat(raw); if(isNaN(v)) return null; return Math.max(0,Math.min(10,v)); }
+// Corta el valor mientras se escribe si ya se pasó de 10, para que nunca se llegue a ver
+// (ni quede cargado) un "76" — no hace falta esperar a que se vaya del campo.
+function clampNumInputLive(inp){
+  const raw=inp.value.trim().replace(",",".");
+  if(raw==="" ) return;
+  const v=parseFloat(raw);
+  if(!isNaN(v)&&v>10) inp.value="10";
+}
 function dispName(s){ const a=(s.apellido||"").trim(), n=(s.nombre||"").trim(); if(a&&n) return a+", "+n; return a||n||(s.name||"")||"(sin nombre)"; }
 function recBadge(s){ return s.recursa?'<span class="rtag" title="Recursante">R</span>':''; }
 function liveDot(s,g){
@@ -1463,18 +1471,26 @@ function setGradeField(t,sid,eid,field,val){
   if(val==null) delete t.grades[sid][eid][field]; else t.grades[sid][eid][field]=val;
   delete t.grades[sid][eid][field==="recu"?"ausenteRecu":"ausenteNota"];
   const c=t.grades[sid][eid];
-  if(c.nota==null&&c.recu==null&&!c.se&&!c.ausenteNota&&!c.ausenteRecu&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
+  if(c.nota==null&&c.recu==null&&!c.se&&c.ausenteNota==null&&c.ausenteRecu==null&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
   save();
 }
 // "Ausente" es un estado propio del casillero de nota (no una nota de 1), para que no
-// pese en los promedios: excluye la nota del campo en vez de forzar un número.
-function getGradeAusente(t,sid,eid,field){ const c=getGrade(t,sid,eid); return !!(field==="recu"?c.ausenteRecu:c.ausenteNota); }
+// pese en los promedios: excluye la nota del campo en vez de forzar un número. Por
+// default se toma solo de la Asistencia del día del examen — sin tocar nada. El
+// booleano guardado (true/false) es una excepción a mano que pisa lo que diga la
+// asistencia (ej.: faltó a la clase pero rindió el examen igual, o al revés).
+function gradeAusenteEffective(t,g,sid,eid,field,checkDate){
+  const c=getGrade(t,sid,eid);
+  const key=field==="recu"?"ausenteRecu":"ausenteNota";
+  if(c[key]===true) return true;
+  if(c[key]===false) return false;
+  if(typeof c[field]==="number") return false;
+  return checkDate?attOf(t,sid,checkDate,g)==="A":false;
+}
 function setGradeAusente(t,sid,eid,field,val){
   t.grades[sid]=t.grades[sid]||{}; t.grades[sid][eid]=t.grades[sid][eid]||{};
   const key=field==="recu"?"ausenteRecu":"ausenteNota";
-  if(val){ t.grades[sid][eid][key]=true; delete t.grades[sid][eid][field]; } else delete t.grades[sid][eid][key];
-  const c=t.grades[sid][eid];
-  if(c.nota==null&&c.recu==null&&!c.se&&!c.ausenteNota&&!c.ausenteRecu&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
+  if(val){ t.grades[sid][eid][key]=true; delete t.grades[sid][eid][field]; } else t.grades[sid][eid][key]=false;
   save();
 }
 function getGradeMotivo(t,sid,eid,field){ const c=getGrade(t,sid,eid); return (field==="recu"?c.motivoRecu:c.motivoNota)||null; }
@@ -4297,7 +4313,7 @@ function renderExamEntry(g,t,e,body){
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <button class="btn danger sm" id="delEx" style="margin-top:10px;">${I.trash} Borrar</button>
-    <div class="pagefoot">El botón "A" junto a la nota marca ausente, sin que cuente como un 1 en el promedio; tocalo de nuevo para sacarlo. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
+    <div class="pagefoot">Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
       :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
       :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
@@ -4313,7 +4329,7 @@ function renderExamEntry(g,t,e,body){
     const recuMotivo=c.motivoRecu||null;
     const recuTag=motivoTagHTML(s.id,e.id,"recu",recuMotivo,typeof c.recu==="number"?c.recu:null);
     const seMarcado=isTP&&c.se&&typeof c.nota!=="number";
-    const ausenteN=!!c.ausenteNota;
+    const ausenteN=gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date);
     const notaCell=seMarcado
       ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
       :`<div class="grade-cell" style="${notaTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin ${ausenteN?"gnum-red":gradeTierClass(typeof c.nota==="number"?c.nota:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="nota" placeholder="–" value="${ausenteN?"A":(typeof c.nota==="number"?fmtNum(c.nota):"")}" ${dis||ausenteN?"disabled":""}><button type="button" class="ausbtn ${ausenteN?"on":""}" data-sid="${s.id}" data-af="nota" title="Ausente" ${dis}>A</button></div>${notaTag}</div>`;
@@ -4327,7 +4343,7 @@ function renderExamEntry(g,t,e,body){
         ?`<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`
         :`<span class="eg-na">–</span>`;
     };
-    const ausenteR=!!c.ausenteRecu;
+    const ausenteR=gradeAusenteEffective(t,g,s.id,e.id,"recu",e.recuDate);
     const recuCol=isTP
       ?`<button type="button" class="snhbtn ${c.se?"aus-on":""}" style="${typeof c.nota==="number"?"opacity:.55;":""}" data-sid="${s.id}" data-se="1">${c.se?"✕ No entregó":"Marcar S/E"}</button>`
       :(myRecu?linkedRecuCell()
@@ -4341,10 +4357,13 @@ function renderExamEntry(g,t,e,body){
   function wireRow(rowEl){
     rowEl.querySelectorAll(".ausbtn").forEach(b=>b.onclick=()=>{
       const sid=b.dataset.sid, field=b.dataset.af;
-      setGradeAusente(t,sid,e.id,field,!getGradeAusente(t,sid,e.id,field));
+      const checkDate=field==="recu"?e.recuDate:e.date;
+      const cur=gradeAusenteEffective(t,g,sid,e.id,field,checkDate);
+      setGradeAusente(t,sid,e.id,field,!cur);
       syncIntensEvalGrade(t,sid,e);
       updateRow(sid);
     });
+    rowEl.querySelectorAll("input.numin").forEach(inp=>inp.addEventListener("input",()=>clampNumInputLive(inp)));
     rowEl.querySelectorAll(".numin").forEach(inp=>inp.addEventListener("change",()=>{
       const v=parseNum(inp.value); const sid=inp.dataset.sid; const field=inp.dataset.f;
       setGradeField(t,sid,e.id,field,v);
@@ -4472,10 +4491,12 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     const itemCells=(tObj,items)=>{ let out=""; items.forEach(it=>{
       if(it.kind==="avance"){ out+=avChip(tObj,s.id); }
       else if(it.kind==="exam"){ const c=getGrade(tObj,s.id,it.id);
-        out+=singleCell(c.ausenteNota?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
+        const ausN=gradeAusenteEffective(tObj,g,s.id,it.id,"nota",it.date);
+        out+=singleCell(ausN?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
         if(hasRecuType(it)){
           const yaAprobo=c.recu==null&&typeof c.nota==="number"&&c.nota>=pm;
-          out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(c.ausenteRecu?"A":(c.recu!=null?c.recu:null),c.motivoRecu||null);
+          const ausR=gradeAusenteEffective(tObj,g,s.id,it.id,"recu",it.recuDate);
+          out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(ausR?"A":(c.recu!=null?c.recu:null),c.motivoRecu||null);
         }
       } else { out+=singleCell(getTpGrade(tObj,s.id,it.id),null); }
     }); return out; };
@@ -4592,6 +4613,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
         </div>`);
       const inp=$("#fin_dlg_inp");
       setTimeout(()=>{ inp.focus(); inp.select(); },30);
+      inp.addEventListener("input",()=>clampNumInputLive(inp));
       const doSave=()=>{ const v=parseNum(inp.value); setFinal(tObj,sid,v); closeDlg(); updateRow(sid); };
       $("#fin_dlg_save").onclick=doSave;
       inp.addEventListener("keydown",e=>{ if(e.key==="Enter") doSave(); });
@@ -4686,7 +4708,7 @@ function renderGrid(g,t,body){
         const nota=gr.nota;
         const approved=typeof nota==="number"&&nota>=(g.passMark||7);
         if(re&&approved){ r+=`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`; return; }
-        const ausente=fld==="recu"?gr.ausenteRecu:gr.ausenteNota;
+        const ausente=gradeAusenteEffective(term,g,s.id,ex.id,fld,fld==="recu"?ex.recuDate:ex.date);
         const motivo=fld==="recu"?gr.motivoRecu:gr.motivoNota;
         if(ausente){ r+=`<td class="gc-num gnum-red">A</td>`; }
         else if(v==null){ r+=`<td class="gc-num"></td>`; }
@@ -4921,6 +4943,7 @@ function renderIntens(g,t,body){
     render();
   });
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; render(); });
+  body.querySelectorAll("[data-pnota-sid]").forEach(inp=>inp.addEventListener("input",()=>clampNumInputLive(inp)));
   body.querySelectorAll("[data-pnota-sid]").forEach(inp=>inp.addEventListener("change",()=>{
     const sid=inp.dataset.pnotaSid, pid=inp.dataset.pnotaPid;
     const v=parseNum(inp.value);
@@ -5652,7 +5675,7 @@ function exportAttCSV(g,t){
 function exportExamsCSV(g,t){
   if(!t.exams.length){ toast("No hay exámenes"); return; }
   const head=["Alumno"]; t.exams.forEach(e=>{ head.push(e.name+" nota"); head.push(e.name+" recu"); }); head.push("Prom. exámenes"); const rows=[head];
-  g.students.forEach(s=>{ const r=[dispName(s)]; t.exams.forEach(e=>{ const c=getGrade(t,s.id,e.id); r.push(c.ausenteNota?"A":(c.nota!=null?fmtNum(c.nota):"")); r.push(c.ausenteRecu?"A":(c.recu!=null?fmtNum(c.recu):"")); }); r.push(fmtNum(stats(g,t,s.id).prom)); rows.push(r); });
+  g.students.forEach(s=>{ const r=[dispName(s)]; t.exams.forEach(e=>{ const c=getGrade(t,s.id,e.id); r.push(gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date)?"A":(c.nota!=null?fmtNum(c.nota):"")); r.push(gradeAusenteEffective(t,g,s.id,e.id,"recu",e.recuDate)?"A":(c.recu!=null?fmtNum(c.recu):"")); }); r.push(fmtNum(stats(g,t,s.id).prom)); rows.push(r); });
   download("examenes_"+safeName(g.name)+"_"+termLabel()+".csv",csvRows(rows),"text/csv;charset=utf-8"); toast("Notas exportadas");
 }
 function exportSummaryCSV(g,t){
@@ -5679,7 +5702,7 @@ function printGrilla(g,t,mode){
       if(mode==="asist"){ const av=attOf(t,s.id,se.date,g); r+=av==="A"?`<td class="c ab">A</td>`:av==null?`<td class="c"></td>`:`<td class="c">${av==="U"?"":"•"}</td>`; return; }
       const ev=t.exams.find(e=>e.date===se.date); const re=ev?null:t.exams.find(e=>e.recuDate===se.date);
       if(ev||re){ const ex=ev||re; const fld=ev?"nota":"recu"; const gr=getGrade(t,s.id,ex.id); const v=gr[fld];
-        const ausente=fld==="recu"?gr.ausenteRecu:gr.ausenteNota;
+        const ausente=gradeAusenteEffective(t,g,s.id,ex.id,fld,fld==="recu"?ex.recuDate:ex.date);
         if(ausente){ r+=`<td class="c num numR">A</td>`; }
         else if(v==null){ r+=`<td class="c num"></td>`; }
         else if(typeof v==="number"){ const pc=v>=7?"numB":v>=4?"numV":"numR"; r+=`<td class="c num ${pc}">${fmtNum(v)}</td>`; }
