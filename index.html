@@ -234,13 +234,11 @@
   .comu-chk.on{background:var(--present);border-color:var(--present);color:#fff;}
   .comu-chk:active{transform:scale(.9);}
   .motivo-tag{height:24px;padding:0 8px;border-radius:8px;border:1.5px solid var(--line);background:#fff;color:var(--faint);font-size:10.5px;font-weight:700;flex:none;white-space:nowrap;}
-  .motivo-tag.on.ausente{background:var(--absent-tint);color:var(--absent-ink);border-color:var(--absent-bd);}
   .motivo-tag.on.no_quiso{background:#FFF3D6;color:#92620A;border-color:#F0D9A0;}
   .motivo-tag.on.ia{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-bd);}
   .motivo-tag:active{transform:scale(.95);}
   .motivo-pop{position:fixed;z-index:200;display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 4px 16px rgba(0,0,0,.15);}
   .motivo-pop button{height:32px;padding:0 12px;border-radius:8px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;text-align:left;white-space:nowrap;}
-  .motivo-pop button.mo-ausente.on{background:var(--absent-tint);color:var(--absent-ink);border-color:var(--absent-bd);}
   .motivo-pop button.mo-no_quiso.on{background:#FFF3D6;color:#92620A;border-color:#F0D9A0;}
   .motivo-pop button.mo-ia.on{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-bd);}
   .motivo-pop button.mo-clear{color:var(--faint);}
@@ -355,6 +353,10 @@
   .snhbtn.snh-on{background:var(--absent-tint);color:var(--absent-ink);border-color:var(--absent-bd);}
   .snhbtn.aus-on{background:var(--absent-tint);color:var(--absent-ink);border-color:var(--absent-bd);box-shadow:0 2px 8px rgba(200,31,69,.18);}
   .snhbtn:disabled{opacity:.6;}
+  .ausbtn{width:26px;height:36px;border-radius:8px;border:1.5px solid var(--line);background:#fff;font-weight:800;font-size:11.5px;color:var(--faint);flex:none;cursor:pointer;}
+  .ausbtn:active{transform:scale(.92);}
+  .ausbtn.on{background:var(--absent);color:#fff;border-color:var(--absent);}
+  .ausbtn:disabled{opacity:.6;}
   .eg-na{font-size:12px;color:var(--present-ink);font-weight:700;background:var(--present-tint);padding:4px 8px;border-radius:99px;}
   .numin{width:52px;height:36px;border-radius:9px;border:1.5px solid var(--line);background:#fff;text-align:center;font-weight:700;font-size:15px;color:var(--ink);flex:none;}
   .numin:focus{border-color:var(--primary);outline:none;background:var(--primary-tint);} .numin::placeholder{color:var(--faint);font-weight:500;} .numin.recu{border-style:dashed;}
@@ -865,6 +867,17 @@ function migrate(st){
       T.deudas=T.deudas||{};
       T.comunicado=T.comunicado||{};
       T.avanceFecha=T.avanceFecha||{};
+      // "Ausente" dejó de cargarse como nota 1 + motivo: a las notas viejas marcadas así
+      // se les saca el 1 (para que no siga pesando en el promedio) y pasan al estado nuevo.
+      if(T.grades){
+        Object.keys(T.grades).forEach(sid=>{
+          Object.keys(T.grades[sid]||{}).forEach(eid=>{
+            const c=T.grades[sid][eid];
+            if(c.motivoNota==="ausente"){ delete c.motivoNota; delete c.nota; c.ausenteNota=true; }
+            if(c.motivoRecu==="ausente"){ delete c.motivoRecu; delete c.recu; c.ausenteRecu=true; }
+          });
+        });
+      }
       if(Array.isArray(T.exams)) T.exams.forEach(ex=>{ if(!ex.type) ex.type="eval_escrita"; });
       // Recuperatorios que ya estaban cargados como examen suelto: los atamos a la
       // evaluación anterior más cercana, así filtran la lista y reflejan las notas solos.
@@ -1448,8 +1461,20 @@ function getGrade(t,sid,eid){ return (t.grades[sid]&&t.grades[sid][eid])||{}; }
 function setGradeField(t,sid,eid,field,val){
   t.grades[sid]=t.grades[sid]||{}; t.grades[sid][eid]=t.grades[sid][eid]||{};
   if(val==null) delete t.grades[sid][eid][field]; else t.grades[sid][eid][field]=val;
+  delete t.grades[sid][eid][field==="recu"?"ausenteRecu":"ausenteNota"];
   const c=t.grades[sid][eid];
-  if(c.nota==null&&c.recu==null&&!c.se&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
+  if(c.nota==null&&c.recu==null&&!c.se&&!c.ausenteNota&&!c.ausenteRecu&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
+  save();
+}
+// "Ausente" es un estado propio del casillero de nota (no una nota de 1), para que no
+// pese en los promedios: excluye la nota del campo en vez de forzar un número.
+function getGradeAusente(t,sid,eid,field){ const c=getGrade(t,sid,eid); return !!(field==="recu"?c.ausenteRecu:c.ausenteNota); }
+function setGradeAusente(t,sid,eid,field,val){
+  t.grades[sid]=t.grades[sid]||{}; t.grades[sid][eid]=t.grades[sid][eid]||{};
+  const key=field==="recu"?"ausenteRecu":"ausenteNota";
+  if(val){ t.grades[sid][eid][key]=true; delete t.grades[sid][eid][field]; } else delete t.grades[sid][eid][key];
+  const c=t.grades[sid][eid];
+  if(c.nota==null&&c.recu==null&&!c.se&&!c.ausenteNota&&!c.ausenteRecu&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
   save();
 }
 function getGradeMotivo(t,sid,eid,field){ const c=getGrade(t,sid,eid); return (field==="recu"?c.motivoRecu:c.motivoNota)||null; }
@@ -1459,9 +1484,8 @@ function setGradeMotivo(t,sid,eid,field,motivo){
   if(motivo==null) delete t.grades[sid][eid][key]; else t.grades[sid][eid][key]=motivo;
   save();
 }
-const MOTIVO_LABEL={ausente:"Faltó",no_quiso:"No quiso",ia:"Usó IA"};
+const MOTIVO_LABEL={no_quiso:"No quiso",ia:"Usó IA"};
 function motivoMark(motivo){
-  if(motivo==="ausente") return `<span style="font-size:8px;font-weight:800;color:var(--absent-ink);margin-left:2px;vertical-align:top;">F</span>`;
   if(motivo==="no_quiso") return `<span style="font-size:8px;font-weight:800;color:#92620A;margin-left:2px;vertical-align:top;">NQ</span>`;
   if(motivo==="ia") return `<span style="font-size:8px;font-weight:800;color:var(--primary);margin-left:2px;vertical-align:top;">IA</span>`;
   return "";
@@ -4097,7 +4121,7 @@ function promptValSchemeCustom(g){
   }
 }
 
-/* ---- Motivo de nota baja (Faltó / No quiso hacerla) ---- */
+/* ---- Motivo de nota baja (No quiso hacerla / Usó IA) ---- */
 function motivoTagHTML(sid,eid,field,motivo,val){
   const show=(typeof val==="number"&&val<=1)||motivo;
   if(!show) return "";
@@ -4112,8 +4136,7 @@ function wireMotivoTags(container,t,onSaved){
     const cur=getGradeMotivo(t,sid,eid,field);
     const pop=document.createElement("div");
     pop.className="motivo-pop";
-    pop.innerHTML=`<button class="mo-ausente ${cur==="ausente"?"on":""}" data-mo="ausente">Faltó (ausente)</button>
-      <button class="mo-no_quiso ${cur==="no_quiso"?"on":""}" data-mo="no_quiso">No quiso hacerla</button>
+    pop.innerHTML=`<button class="mo-no_quiso ${cur==="no_quiso"?"on":""}" data-mo="no_quiso">No quiso hacerla</button>
       <button class="mo-ia ${cur==="ia"?"on":""}" data-mo="ia">Usó IA</button>
       <button class="mo-clear" data-mo="">Sin motivo</button>`;
     const rect=btn.getBoundingClientRect();
@@ -4274,7 +4297,7 @@ function renderExamEntry(g,t,e,body){
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <button class="btn danger sm" id="delEx" style="margin-top:10px;">${I.trash} Borrar</button>
-    <div class="pagefoot">${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
+    <div class="pagefoot">El botón "A" junto a la nota marca ausente, sin que cuente como un 1 en el promedio; tocalo de nuevo para sacarlo. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
       :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
       :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
@@ -4290,9 +4313,10 @@ function renderExamEntry(g,t,e,body){
     const recuMotivo=c.motivoRecu||null;
     const recuTag=motivoTagHTML(s.id,e.id,"recu",recuMotivo,typeof c.recu==="number"?c.recu:null);
     const seMarcado=isTP&&c.se&&typeof c.nota!=="number";
+    const ausenteN=!!c.ausenteNota;
     const notaCell=seMarcado
       ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
-      :`<div class="grade-cell" style="${notaTag?"flex-direction:column;":""}"><input class="numin ${gradeTierClass(typeof c.nota==="number"?c.nota:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="nota" placeholder="–" value="${typeof c.nota==="number"?fmtNum(c.nota):""}" ${dis}>${notaTag}</div>`;
+      :`<div class="grade-cell" style="${notaTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin ${ausenteN?"gnum-red":gradeTierClass(typeof c.nota==="number"?c.nota:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="nota" placeholder="–" value="${ausenteN?"A":(typeof c.nota==="number"?fmtNum(c.nota):"")}" ${dis||ausenteN?"disabled":""}><button type="button" class="ausbtn ${ausenteN?"on":""}" data-sid="${s.id}" data-af="nota" title="Ausente" ${dis}>A</button></div>${notaTag}</div>`;
     // Con recuperatorio aparte, la columna sólo refleja lo cargado allá (no se edita acá):
     // nota para los que lo rindieron, "–" para el resto.
     const linkedRecuCell=()=>{
@@ -4303,10 +4327,11 @@ function renderExamEntry(g,t,e,body){
         ?`<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`
         :`<span class="eg-na">–</span>`;
     };
+    const ausenteR=!!c.ausenteRecu;
     const recuCol=isTP
       ?`<button type="button" class="snhbtn ${c.se?"aus-on":""}" style="${typeof c.nota==="number"?"opacity:.55;":""}" data-sid="${s.id}" data-se="1">${c.se?"✕ No entregó":"Marcar S/E"}</button>`
       :(myRecu?linkedRecuCell()
-        :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`:`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><input class="numin recu ${gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${typeof c.recu==="number"?fmtNum(c.recu):""}" ${dis}>${recuTag}</div>`));
+        :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`:`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin recu ${ausenteR?"gnum-red":gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${ausenteR?"A":(typeof c.recu==="number"?fmtNum(c.recu):"")}" ${dis||ausenteR?"disabled":""}><button type="button" class="ausbtn ${ausenteR?"on":""}" data-sid="${s.id}" data-af="recu" title="Ausente" ${dis}>A</button></div>${recuTag}</div>`));
     // Quién está hoy, para no tener que volver a Asistencia mientras se cargan notas.
     const hoyBadge=attDotHTML(g,t,todayISO(),s.id);
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}${hoyBadge}</span>
@@ -4314,6 +4339,12 @@ function renderExamEntry(g,t,e,body){
       ${!noRecu?`<div class="eg-col eg-col-recu">${recuCol}</div>`:""}`;
   }
   function wireRow(rowEl){
+    rowEl.querySelectorAll(".ausbtn").forEach(b=>b.onclick=()=>{
+      const sid=b.dataset.sid, field=b.dataset.af;
+      setGradeAusente(t,sid,e.id,field,!getGradeAusente(t,sid,e.id,field));
+      syncIntensEvalGrade(t,sid,e);
+      updateRow(sid);
+    });
     rowEl.querySelectorAll(".numin").forEach(inp=>inp.addEventListener("change",()=>{
       const v=parseNum(inp.value); const sid=inp.dataset.sid; const field=inp.dataset.f;
       setGradeField(t,sid,e.id,field,v);
@@ -4420,7 +4451,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     const dt=fecha?fmtShort(fecha):"";
     return `<th class="gh-tot" data-avhead-term="${term}" style="cursor:pointer;line-height:1.2;">${dt?`<div>${dt}</div>`:`<div style="font-size:9px;color:var(--faint);">tocá y</div>`}<div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${dt?"Notas de avance":"poné fecha"}</div></th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>`;
   };
-  const singleCell=(v,motivo)=>{ if(v==null) return `<td class="gc-num">–</td>`; const cls=gradeTierClass(typeof v==="number"?v:null,pm); return `<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":fmtNum(v)}${motivoMark(motivo)}</td>`; };
+  const singleCell=(v,motivo)=>{ if(v==null) return `<td class="gc-num">–</td>`; const cls=v==="A"?"gc-A":gradeTierClass(typeof v==="number"?v:null,pm); return `<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":v==="A"?"A":fmtNum(v)}${motivoMark(motivo)}</td>`; };
   const items1=[...t1.exams.map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
   const items2=[...t2.exams.map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
   const intensHead=()=>PERIODOS.map(p=>`<th class="gh-tot" style="font-size:9px;line-height:1.2;white-space:nowrap;">Intens.<div>${esc(p.label.slice(0,3))}</div></th>`).join("");
@@ -4441,10 +4472,10 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     const itemCells=(tObj,items)=>{ let out=""; items.forEach(it=>{
       if(it.kind==="avance"){ out+=avChip(tObj,s.id); }
       else if(it.kind==="exam"){ const c=getGrade(tObj,s.id,it.id);
-        out+=singleCell(c.nota!=null?c.nota:(c.se?"SE":null),c.motivoNota||null);
+        out+=singleCell(c.ausenteNota?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
         if(hasRecuType(it)){
           const yaAprobo=c.recu==null&&typeof c.nota==="number"&&c.nota>=pm;
-          out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(c.recu!=null?c.recu:null,c.motivoRecu||null);
+          out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(c.ausenteRecu?"A":(c.recu!=null?c.recu:null),c.motivoRecu||null);
         }
       } else { out+=singleCell(getTpGrade(tObj,s.id,it.id),null); }
     }); return out; };
@@ -4655,8 +4686,10 @@ function renderGrid(g,t,body){
         const nota=gr.nota;
         const approved=typeof nota==="number"&&nota>=(g.passMark||7);
         if(re&&approved){ r+=`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`; return; }
+        const ausente=fld==="recu"?gr.ausenteRecu:gr.ausenteNota;
         const motivo=fld==="recu"?gr.motivoRecu:gr.motivoNota;
-        if(v==null){ r+=`<td class="gc-num"></td>`; }
+        if(ausente){ r+=`<td class="gc-num gnum-red">A</td>`; }
+        else if(v==null){ r+=`<td class="gc-num"></td>`; }
         else if(typeof v==="number"){ r+=`<td class="gc-num ${gradeTierClass(v,pm)}">${fmtNum(v)}${motivoMark(motivo)}</td>`; }
         else { r+=`<td class="gc-num gnum-red">${esc(v)}</td>`; }
         return; }
@@ -5619,7 +5652,7 @@ function exportAttCSV(g,t){
 function exportExamsCSV(g,t){
   if(!t.exams.length){ toast("No hay exámenes"); return; }
   const head=["Alumno"]; t.exams.forEach(e=>{ head.push(e.name+" nota"); head.push(e.name+" recu"); }); head.push("Prom. exámenes"); const rows=[head];
-  g.students.forEach(s=>{ const r=[dispName(s)]; t.exams.forEach(e=>{ const c=getGrade(t,s.id,e.id); r.push(c.nota!=null?fmtNum(c.nota):""); r.push(c.recu!=null?fmtNum(c.recu):""); }); r.push(fmtNum(stats(g,t,s.id).prom)); rows.push(r); });
+  g.students.forEach(s=>{ const r=[dispName(s)]; t.exams.forEach(e=>{ const c=getGrade(t,s.id,e.id); r.push(c.ausenteNota?"A":(c.nota!=null?fmtNum(c.nota):"")); r.push(c.ausenteRecu?"A":(c.recu!=null?fmtNum(c.recu):"")); }); r.push(fmtNum(stats(g,t,s.id).prom)); rows.push(r); });
   download("examenes_"+safeName(g.name)+"_"+termLabel()+".csv",csvRows(rows),"text/csv;charset=utf-8"); toast("Notas exportadas");
 }
 function exportSummaryCSV(g,t){
@@ -5645,8 +5678,10 @@ function printGrilla(g,t,mode){
     ses.forEach(se=>{ if(se.cancelled){ r+=`<td class="c cx"></td>`; return; }
       if(mode==="asist"){ const av=attOf(t,s.id,se.date,g); r+=av==="A"?`<td class="c ab">A</td>`:av==null?`<td class="c"></td>`:`<td class="c">${av==="U"?"":"•"}</td>`; return; }
       const ev=t.exams.find(e=>e.date===se.date); const re=ev?null:t.exams.find(e=>e.recuDate===se.date);
-      if(ev||re){ const ex=ev||re; const v=getGrade(t,s.id,ex.id)[ev?"nota":"recu"];
-        if(v==null){ r+=`<td class="c num"></td>`; }
+      if(ev||re){ const ex=ev||re; const fld=ev?"nota":"recu"; const gr=getGrade(t,s.id,ex.id); const v=gr[fld];
+        const ausente=fld==="recu"?gr.ausenteRecu:gr.ausenteNota;
+        if(ausente){ r+=`<td class="c num numR">A</td>`; }
+        else if(v==null){ r+=`<td class="c num"></td>`; }
         else if(typeof v==="number"){ const pc=v>=7?"numB":v>=4?"numV":"numR"; r+=`<td class="c num ${pc}">${fmtNum(v)}</td>`; }
         else { r+=`<td class="c num numR">${esc(v)}</td>`; }
         return; }
