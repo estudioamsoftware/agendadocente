@@ -4580,7 +4580,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   const typeIcon={"eval_escrita":"✏️","eval_oral":"🎤","tp":"📋","exam":"📝","carpeta":"📓"};
   const hasRecuType=(it)=>it.kind==="exam"&&it.type!=="tp"&&it.type!=="carpeta"&&!!it.recuDate;
   const stripTrailingDate=(name)=>(name||"").replace(/\s*[\(\[]?\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?[\)\]]?\s*$/,"").trim();
-  const itemHeadHTML=(it,sub)=>{ const dt=sub==="Recup."?(it.recuDate?fmtShort(it.recuDate):"s/fecha"):fmtShort(it.date); const nm=stripTrailingDate(it.name)||it.name||""; return `<th style="white-space:nowrap;line-height:1.2;"><div>${typeIcon[it.type||it.kind]||"📝"} ${dt}</div><div style="font-size:9px;color:var(--muted);font-weight:600;white-space:normal;max-width:76px;line-height:1.2;margin:1px auto;">${esc(nm)}</div>${sub?`<div style="font-size:8px;color:var(--faint);font-weight:800;text-transform:uppercase;letter-spacing:.02em;margin-top:2px;">${sub}</div>`:""}</th>`; };
+  const itemHeadHTML=(it,sub)=>{ const dt=sub==="Recup."?(it.recuDate?fmtShort(it.recuDate):"s/fecha"):fmtShort(it.date); const nm=stripTrailingDate(it.name)||it.name||""; return `<th style="white-space:nowrap;line-height:1.2;"><div>${typeIcon[it.type||it.kind]||"📝"} ${dt}</div><div style="font-size:9px;color:var(--muted);font-weight:600;white-space:normal;max-width:76px;line-height:1.2;margin:1px auto;">${esc(nm)}</div>${sub?`<div style="font-size:8px;color:var(--faint);font-weight:800;text-transform:uppercase;letter-spacing:.02em;margin-top:2px;white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:64px;margin-left:auto;margin-right:auto;">${sub}</div>`:""}</th>`; };
   // "Notas de avance" es una columna más, con su propia fecha (una sola, para todo el curso — no por alumno).
   // Sin fecha puesta todavía, queda primera. Apenas le ponés fecha, se ordena sola entre los exámenes según cuándo fue.
   const avanceHeadHTML=(term)=>{
@@ -4589,10 +4589,15 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     return `<th class="gh-tot" data-avhead-term="${term}" style="cursor:pointer;line-height:1.2;">${dt?`<div>${dt}</div>`:`<div style="font-size:9px;color:var(--faint);">tocá y</div>`}<div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${dt?"Notas de avance":"poné fecha"}</div></th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>`;
   };
   const singleCell=(v,motivo)=>{ if(v==null) return `<td class="gc-num">–</td>`; const cls=v==="A"?"gc-A":gradeTierClass(typeof v==="number"?v:null,pm); return `<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":v==="A"?"A":fmtNum(v)}${motivoMark(motivo)}</td>`; };
-  const items1=[...t1.exams.map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
-  const items2=[...t2.exams.map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
+  // Un recu cargado como examen aparte (recuOf) ya se refleja en la columna "Recup." del
+  // examen original — si además se lista como item propio, la nota del recu aparece 2 veces.
+  const items1=[...t1.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
+  const items2=[...t2.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
   const intensHead=()=>PERIODOS.map(p=>`<th class="gh-tot" style="font-size:9px;line-height:1.2;white-space:nowrap;">Intens.<div>${esc(p.label.slice(0,3))}</div></th>`).join("");
-  const itemHead=(it)=>{ if(it.kind==="avance") return avanceHeadHTML(it.term); if(hasRecuType(it)) return itemHeadHTML(it,"Nota")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
+  const itemHead=(it)=>{ if(it.kind==="avance") return avanceHeadHTML(it.term);
+    const hasParts=it.kind==="exam"&&Array.isArray(it.parts)&&it.parts.length>=2;
+    if(hasParts){ const partsHTML=it.parts.map(label=>itemHeadHTML(it,label.toUpperCase())).join(""); return hasRecuType(it)?partsHTML+itemHeadHTML(it,"Recup."):partsHTML; }
+    if(hasRecuType(it)) return itemHeadHTML(it,"Nota")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
   let head=`<tr><th class="stick">Alumno</th>`;
   items1.forEach(it=>{ head+=itemHead(it); });
   head+=`<th class="gh-tot">Nota C1°</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
@@ -4609,15 +4614,24 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     const itemCells=(tObj,items)=>{ let out=""; items.forEach(it=>{
       if(it.kind==="avance"){ out+=avChip(tObj,s.id); }
       else if(it.kind==="exam"){ const c=getGrade(tObj,s.id,it.id);
-        const ausN=gradeAusenteEffective(tObj,g,s.id,it.id,"nota",it.date);
-        out+=singleCell(ausN?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
+        const hasParts=Array.isArray(it.parts)&&it.parts.length>=2;
+        if(hasParts){
+          it.parts.forEach((_,pi)=>{
+            const field="p"+pi; const val=c[field];
+            const ausP=gradeAusenteEffective(tObj,g,s.id,it.id,field,it.date);
+            out+=singleCell(ausP?"A":(val!=null?val:null),getGradeMotivo(tObj,s.id,it.id,field)||null);
+          });
+        } else {
+          const ausN=gradeAusenteEffective(tObj,g,s.id,it.id,"nota",it.date);
+          out+=singleCell(ausN?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
+        }
         if(hasRecuType(it)){
           // Si la recu se cargó como examen aparte (recuOf), la nota y el "A" de
           // ausente viven en ESA hoja, no en el campo "recu" viejo de este item.
           const linked=linkedRecuExam(tObj,it.id);
           const recuVal=linked?getGrade(tObj,s.id,linked.id).nota:c.recu;
           const recuMotivo=linked?getGrade(tObj,s.id,linked.id).motivoNota:c.motivoRecu;
-          const yaAprobo=recuVal==null&&typeof c.nota==="number"&&c.nota>=pm;
+          const yaAprobo=recuVal==null&&(hasParts?examPartsAllPassed(tObj,s.id,it,pm):(typeof c.nota==="number"&&c.nota>=pm));
           const ausR=linked?gradeAusenteEffective(tObj,g,s.id,linked.id,"nota",linked.date):gradeAusenteEffective(tObj,g,s.id,it.id,"recu",it.recuDate);
           out+=yaAprobo?`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`:singleCell(ausR?"A":(recuVal!=null?recuVal:null),recuMotivo||null);
         }
