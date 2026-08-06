@@ -3993,8 +3993,7 @@ function renderClase(g,t,body){
     <div class="rows" id="rows"></div>
     <div class="tally" style="margin-top:8px;"><div class="pill tp">Calificados <span id="cCal">0</span></div><div class="pill ta">Ausentes <span id="cAu">0</span></div></div>
     ${locked?`<div class="savedbar"><span class="savedtag">🔒 Lista bloqueada</span><button class="btn subtle sm" id="editDay">Editar</button></div>`
-            :`<button class="btn" id="saveDay" style="margin-bottom:6px;">Bloquear lista</button>`}
-    <button class="btn subtle sm" id="markExam" style="margin-top:8px;">📝 Registrar evaluación / TP</button>
+            :`<button class="btn" id="saveDay" style="margin-bottom:6px;">Guardar notas</button>`}
     <div class="pagefoot">${schemeFootNote(scheme)}</div>`;
   const rows=$("#rows");
   const compactCls=scheme.levels.length>4?"compact":"";
@@ -4027,7 +4026,6 @@ function renderClase(g,t,body){
   } else { $("#editDay").onclick=()=>{ setWorkLocked(t,date,false); render(); }; }
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
   wireTemas(t,date);
-  $("#markExam").onclick=()=>{ view.tab="exam"; delete view.examId; render(); };
   wireDateNav(g,t,date);
   const vsb=$("#valSchemeBtn"); if(vsb) vsb.onclick=()=>promptValScheme(g);
 }
