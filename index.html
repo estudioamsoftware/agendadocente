@@ -184,6 +184,11 @@
   .tbtn:not(.locked):active,.pa-seg:not(.locked) button:active{transform:scale(.96);}
   .abschip{height:36px;padding:0 11px;border-radius:10px;display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;background:var(--line-soft);color:var(--muted);flex:none;}
   .abschip.abs-red{background:var(--absent-tint);color:var(--absent-ink);font-weight:800;min-width:36px;justify-content:center;padding:0;}
+  /* Puntito de asistencia: sólo aparece si ya se tomó asistencia de esa clase.
+     Verde encendido = presente (aunque haya llegado tarde) · Rojo con A = ausente. */
+  .attdot{width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;line-height:1;vertical-align:middle;}
+  .attdot.on{background:var(--present);box-shadow:0 0 0 2px var(--present-tint);}
+  .attdot.off{background:var(--absent);color:#fff;box-shadow:0 0 0 2px var(--absent-tint);}
   .sched-card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 12px 10px;margin-top:12px;box-shadow:var(--shadow);}
   .sched-title{font-weight:700;font-size:13px;margin-bottom:9px;color:var(--ink);}
   .sched-row{margin-bottom:8px;} .sched-row label,.sched-row2 label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:4px;}
@@ -337,7 +342,7 @@
   .eg-row.eg-head{background:var(--line-soft);min-height:34px;color:var(--faint);font-size:10px;font-weight:800;letter-spacing:.03em;align-items:center;}
   .eg-nm{flex:1;min-width:0;padding:8px 10px 8px 14px;font-weight:600;font-size:14px;word-break:break-word;display:flex;align-items:center;flex-wrap:wrap;gap:6px;text-transform:uppercase;}
   .eg-head .eg-nm{font-weight:800;}
-  .eg-hoy-badge{text-transform:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;flex:none;white-space:nowrap;}
+  .eg-nm .attdot{margin-left:6px;}
   .eg-col{width:108px;flex:none;display:flex;align-items:flex-start;justify-content:center;padding:6px 4px;border-left:1px solid var(--line-soft);min-height:44px;}
   .eg-head .eg-col{min-height:32px;text-align:center;justify-content:center;line-height:1.25;align-items:center;}
   .eg-col-recu{background:#FBFAFE;}
@@ -1341,6 +1346,18 @@ function hasCompleteAttendance(t,date,g){
   if(isFuture(date)) return true; // futura = no requiere todavía
   if(ses.attLocked) return true; // tocaste el check "Ya tomé asistencia" — ÚNICA forma de marcar el día como completo
   return false; // mientras no toques ese check, sigue pendiente aunque ya hayas marcado a algún alumno
+}
+// Puntito de asistencia para las pantallas donde se trabaja con notas, así se sabe
+// quién está sin volver a Asistencia. Sólo marca algo si ESA clase existe, no está
+// anulada y ya se tomó asistencia; si no, no muestra nada (ni siquiera en blanco).
+// Verde = presente, sin importar si llegó tarde. Rojo con "A" = ausente.
+function attDotHTML(g,t,iso,sid){
+  const ses=getSession(t,iso);
+  if(!ses||ses.cancelled||!ses.attLocked) return "";
+  if(!studentExistedOn(g,sid,iso)) return "";
+  const ausente=attOf(t,sid,iso,g)==="A";
+  const lbl=ausente?"Ausente":"Presente";
+  return `<span class="attdot ${ausente?"off":"on"}" title="${lbl}" aria-label="${lbl}">${ausente?"A":""}</span>`;
 }
 function getIncompleteAttendanceDates(t,g){
   const incomplete=[];
@@ -3891,9 +3908,11 @@ function renderClase(g,t,body){
   if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para registrar las valoraciones.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
   const k=view.term||"1";
   const scheme=getValScheme(g);
-  const schemeBtn=`<button type="button" id="valSchemeBtn" class="btn subtle sm" style="width:auto;flex:none;">🎚️ Valoraciones</button>`;
-  const termSegInner=`<div class="seg" role="group" aria-label="Cuatrimestre" style="flex:1;min-width:0;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
-  const termSeg=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">${schemeBtn}${termSegInner}</div>`;
+  // La escala de valoración se elige una sola vez para todo el cuatrimestre, no clase a
+  // clase: por eso va como un enlace chico a la derecha y no como botón en cada hoja.
+  const termSegInner=`<div class="seg" role="group" aria-label="Cuatrimestre" style="margin-bottom:4px;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
+  const schemeLink=`<div style="display:flex;justify-content:flex-end;margin:0 2px 10px;"><button type="button" class="link" id="valSchemeBtn" style="font-size:12px;">Valoraciones</button></div>`;
+  const termSeg=`${termSegInner}${schemeLink}`;
   let date=defaultDate(t); view.date=date;
   const ses=getSession(t,date)||{}; const canc=!!ses.cancelled; const locked=!!ses.workLocked;
   if(canc){
@@ -3917,27 +3936,24 @@ function renderClase(g,t,body){
     ${locked?`<div class="savedbar"><span class="savedtag">🔒 Lista bloqueada</span><button class="btn subtle sm" id="editDay">Editar</button></div>`
             :`<button class="btn" id="saveDay" style="margin-bottom:6px;">Bloquear lista</button>`}
     <button class="btn subtle sm" id="markExam" style="margin-top:8px;">📝 Registrar evaluación / TP</button>
-    <div class="pagefoot">${schemeFootNote(scheme)} A los ausentes marcales si se pusieron al día con la tarea.</div>`;
+    <div class="pagefoot">${schemeFootNote(scheme)}</div>`;
   const rows=$("#rows");
   const compactCls=scheme.levels.length>4?"compact":"";
   rows.innerHTML=g.students.map((s,i)=>{
     if(!studentExistedOn(g,s.id,date)) return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span><span class="abschip" style="background:var(--line-soft);color:var(--faint);">– Pendiente</span></div>`;
-    if(attOf(t,s.id,date,g)==="A"){ const cu=catchupOf(t,s.id,date);
-      return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span><span class="abschip">Ausente</span>
-        <button class="catchup ${cu?"on":""} ${locked?"locked":""}" data-cu="${s.id}" title="¿Se puso al día con la tarea?"><span class="cu-dot"></span><span class="cu-lbl">${cu?"Al día":"Pendiente"}</span></button></div>`; }
     const w=workOf(t,s.id,date);
-    const tardeTag=attOf(t,s.id,date,g)==="T"?`<span class="abschip" style="background:var(--present-tint);color:var(--present-ink);font-size:11px;">Presente/T</span>`:"";
+    // La fila es igual para presentes y ausentes: el puntito dice quién estuvo y las
+    // valoraciones quedan siempre a mano, para cargar la nota cuando el ausente entrega.
     const levelBtns=scheme.levels.map(lv=>{
       const pressed=w===lv.key;
       const sizeStyle=levelBtnSizeStyle(lv);
       const pressStyle=pressed?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"";
       return `<button data-v="${esc(lv.key)}" aria-pressed="${pressed}" style="${sizeStyle}${pressStyle}">${esc(lv.symbol||lv.label)}</button>`;
     }).join("");
-    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${tardeTag}
+    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
       <div class="valseg ${locked?"locked":""} ${compactCls}" data-sid="${s.id}">${levelBtns}</div></div>`;}).join("");
-  function tally(){ let cal=0,au=0; g.students.forEach(s=>{ if(!studentExistedOn(g,s.id,date)) return; if(attOf(t,s.id,date,g)==="A"){au++;return;} const w=workOf(t,s.id,date); if(w&&scheme.levels.some(l=>l.key===w)) cal++; }); $("#cCal").textContent=cal; $("#cAu").textContent=au; }
+  function tally(){ let cal=0,au=0; g.students.forEach(s=>{ if(!studentExistedOn(g,s.id,date)) return; if(attOf(t,s.id,date,g)==="A") au++; const w=workOf(t,s.id,date); if(w&&scheme.levels.some(l=>l.key===w)) cal++; }); $("#cCal").textContent=cal; $("#cAu").textContent=au; }
   tally();
-  rows.querySelectorAll(".catchup:not(.locked)").forEach(b=>b.onclick=()=>{ const sid=b.dataset.cu; const nv=!catchupOf(t,sid,date); setCatchup(t,sid,date,nv); b.classList.toggle("on",nv); b.querySelector(".cu-lbl").textContent=nv?"Al día":"Pendiente"; });
   if(!locked){
     rows.querySelectorAll(".valseg button").forEach(b=>b.onclick=()=>{ const seg=b.closest(".valseg"); const sid=seg.dataset.sid; const v=b.dataset.v; const cur=workOf(t,sid,date);
       const nv=cur===v?null:v; setWork(t,sid,date,nv);
@@ -4073,15 +4089,10 @@ function renderClaseExam(g,t,body,date,ses,ex,field,kind){
   rows.innerHTML=g.students.map((s,i)=>{
     const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
     const motivo=getGradeMotivo(t,s.id,ex.id,field);
-    if(attOf(t,s.id,date,g)==="A"){ const cu=catchupOf(t,s.id,date);
-      return `<div class="arow" style="flex-wrap:wrap;"><span class="nm">${i+1}. ${nameHTML(s,g)}</span><span class="abschip abs-red">A</span>
-        ${displayGrade(val,motivo,se)}
-        <button class="catchup ${cu?"on":""} ${ex.locked?"locked":""}" data-cu="${s.id}" title="¿Se puso al día / dio el recuperatorio?"><span class="cu-dot"></span><span class="cu-lbl">${cu?"Al día":"Pendiente"}</span></button></div>`; }
-    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>
+    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
       ${displayGrade(val,motivo,se)}</div>`;}).join("");
   function tally(){ let n=0,au=0; g.students.forEach(s=>{ if(attOf(t,s.id,date,g)==="A")au++; if(getGrade(t,s.id,ex.id)[field]!=null)n++; }); $("#cN").textContent=n; $("#cA").textContent=au; }
   tally();
-  rows.querySelectorAll(".catchup:not(.locked)").forEach(b=>b.onclick=()=>{ const sid=b.dataset.cu; const nv=!catchupOf(t,sid,date); setCatchup(t,sid,date,nv); b.classList.toggle("on",nv); b.querySelector(".cu-lbl").textContent=nv?"Al día":"Pendiente"; });
   $("#toExam").onclick=()=>{ view.tab="exam"; view.examId=ex.id; render(); };
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
   wireDateNav(g,t,date);
@@ -4201,10 +4212,8 @@ function renderExamEntry(g,t,e,body){
     const recuCol=isTP
       ?`<button type="button" class="snhbtn ${c.se?"aus-on":""}" style="${typeof c.nota==="number"?"opacity:.55;":""}" data-sid="${s.id}" data-se="1">${c.se?"✕ No entregó":"Marcar S/E"}</button>`
       :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`:`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><input class="numin recu ${gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${typeof c.recu==="number"?fmtNum(c.recu):""}" ${dis}>${recuTag}</div>`);
-    const todayIso=todayISO(); const todaySes=getSession(t,todayIso);
-    const hoyBadge=(todaySes&&!todaySes.cancelled&&studentExistedOn(g,s.id,todayIso))
-      ?(attOf(t,s.id,todayIso,g)==="A"?`<span class="eg-hoy-badge" style="background:var(--absent-tint);color:var(--absent-ink);">Ausente hoy</span>`:`<span class="eg-hoy-badge" style="background:var(--present-tint);color:var(--present-ink);">Presente hoy</span>`)
-      :"";
+    // Quién está hoy, para no tener que volver a Asistencia mientras se cargan notas.
+    const hoyBadge=attDotHTML(g,t,todayISO(),s.id);
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}${hoyBadge}</span>
       <div class="eg-col eg-col-nota">${notaCell}</div>
       ${!noRecu?`<div class="eg-col eg-col-recu">${recuCol}</div>`:""}`;
