@@ -4703,7 +4703,9 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   const mismoAlumnos=s1.alumnos===s2.alumnos;
   function statsFooterHTML(){
     const a=termYearStats(g,t1,pm), b=termYearStats(g,t2,pm); const mismo=a.alumnos===b.alumnos;
-    return `<div class="gs-title">Resumen del año</div>
+    const n=faltaComuCount(g,t1,t2,pm);
+    return `${n?`<div class="listado-alert-row" style="margin-bottom:10px;">⚠ ${n} alumno${n===1?"":"s"} con notas sin pasar al cuaderno de comunicaciones</div>`:""}
+    <div class="gs-title">Resumen del año</div>
     <div style="font-size:11px;color:var(--faint);margin:-6px 0 10px;">Aprobados/Desaprobados según la Nota C1°/C2° cargada · Previstas y dictadas en módulos (${g.modulos||2} por día de clase) · Previstas = todo el cuatrimestre salvo feriados/suspensiones (incluye lo que falta dar) · Dictadas = solo lo efectivamente dado hasta hoy (${fmtShort(todayISO())})</div>
     <table class="gs-table">
       <tr><th></th><th>1° Cuatri</th><th>2° Cuatri</th></tr>
@@ -4713,8 +4715,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       <tr class="gs-apr"><td>Aprobados (≥${pm})</td><td>${a.aprobados}</td><td>${b.aprobados}</td></tr>
       <tr class="gs-des"><td>Desaprobados (&lt;${pm})</td><td>${a.desaprobados}</td><td>${b.desaprobados}</td></tr>
       <tr class="gs-ne"><td>Sin evaluar (TED)</td><td>${a.sinEvaluar}</td><td>${b.sinEvaluar}</td></tr>
-    </table>
-    ${(()=>{ const n=faltaComuCount(g,t1,t2,pm); return n?`<div class="listado-alert-row" style="margin-top:10px;">⚠ ${n} alumno${n===1?"":"s"} con notas sin pasar al cuaderno de comunicaciones</div>`:""; })()}`;
+    </table>`;
   }
   body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
     <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
