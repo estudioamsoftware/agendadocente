@@ -895,6 +895,13 @@ function migrate(st){
           recu.recuOf=cand.id;
           if(!cand.recuDate) cand.recuDate=recu.date;
         });
+        // La fecha que se refleja en la evaluación original tiene que ser siempre la
+        // real del recuperatorio — si se editó la fecha del recuperatorio en algún
+        // momento sin este arreglo, quedaba desactualizada y aparecían las dos.
+        T.exams.filter(ex=>ex.recuOf).forEach(recu=>{
+          const parent=T.exams.find(x=>x.id===recu.recuOf);
+          if(parent&&parent.recuDate!==recu.date) parent.recuDate=recu.date;
+        });
       }
       if(Array.isArray(T.sessions)) markFeriadosAuto(T);
     });
@@ -4353,10 +4360,13 @@ function renderExamEntry(g,t,e,body){
         :`<span class="eg-na">–</span>`;
     };
     const ausenteR=gradeAusenteEffective(t,g,s.id,e.id,"recu",e.recuDate);
+    // "approved" manda siempre, tenga o no un recuperatorio aparte cargado: quien ya
+    // aprobó no necesita rendirlo, así que nunca hace falta marcarle nada ahí.
     const recuCol=isTP
       ?`<button type="button" class="snhbtn ${c.se?"aus-on":""}" style="${typeof c.nota==="number"?"opacity:.55;":""}" data-sid="${s.id}" data-se="1">${c.se?"✕ No entregó":"Marcar S/E"}</button>`
-      :(myRecu?linkedRecuCell()
-        :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`:`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin recu ${ausenteR?"gnum-red":gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${ausenteR?"A":(typeof c.recu==="number"?fmtNum(c.recu):"")}" ${dis||ausenteR?"disabled":""}><button type="button" class="ausbtn ${ausenteR?"on":""}" data-sid="${s.id}" data-af="recu" title="Ausente" ${dis}>A</button></div>${recuTag}</div>`));
+      :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`
+        :(myRecu?linkedRecuCell()
+          :`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin recu ${ausenteR?"gnum-red":gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${ausenteR?"A":(typeof c.recu==="number"?fmtNum(c.recu):"")}" ${dis||ausenteR?"disabled":""}><button type="button" class="ausbtn ${ausenteR?"on":""}" data-sid="${s.id}" data-af="recu" title="Ausente" ${dis}>A</button></div>${recuTag}</div>`));
     // Quién está hoy, para no tener que volver a Asistencia mientras se cargan notas.
     const hoyBadge=attDotHTML(g,t,todayISO(),s.id);
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}${hoyBadge}</span>
@@ -4370,7 +4380,7 @@ function renderExamEntry(g,t,e,body){
       const cur=gradeAusenteEffective(t,g,sid,e.id,field,checkDate);
       setGradeAusente(t,sid,e.id,field,!cur);
       syncIntensEvalGrade(t,sid,e);
-      updateRow(sid);
+      renderRows();
     });
     rowEl.querySelectorAll("input.numin").forEach(inp=>inp.addEventListener("input",()=>clampNumInputLive(inp)));
     rowEl.querySelectorAll(".numin").forEach(inp=>inp.addEventListener("change",()=>{
@@ -4378,7 +4388,7 @@ function renderExamEntry(g,t,e,body){
       setGradeField(t,sid,e.id,field,v);
       if(v==null||v>1) setGradeMotivo(t,sid,e.id,field,null);
       syncIntensEvalGrade(t,sid,e);
-      updateRow(sid);
+      renderRows();
     }));
     rowEl.querySelectorAll(".snhbtn").forEach(b=>b.onclick=()=>{
       if(locked) return;
@@ -4386,49 +4396,48 @@ function renderExamEntry(g,t,e,body){
       const doToggle=()=>{
         if(!c.se&&typeof c.nota==="number") setGradeField(t,b.dataset.sid,e.id,"nota",null);
         setGradeField(t,b.dataset.sid,e.id,"se",!c.se);
-        updateRow(b.dataset.sid);
+        renderRows();
       };
       if(!c.se&&typeof c.nota==="number"){
         confirmDlg("¿Borrar la nota?","Ya tiene una nota cargada ("+fmtNum(c.nota)+"). Se borra y se marca como Sin Entregar.","Borrar y marcar",doToggle);
       } else { doToggle(); }
     });
-    wireMotivoTags(rowEl,t,(sid)=>updateRow(sid));
+    wireMotivoTags(rowEl,t,()=>renderRows());
+  }
+  const isIntensType=e.type==="intens_eval"||e.type==="intens_modulo";
+  // Los que ya tienen nota (o están ausentes) van al final, así arriba quedan siempre
+  // los que todavía faltan calificar — se reordena solo, apenas se carga una nota.
+  function buildRoster(){
+    const base=parentEx
+      ? recuRoster(g,t,parentEx.id,e.id)
+      : (isIntensType
+        ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
+        : g.students);
+    const pendingWeight=(s)=>{ const c=getGrade(t,s.id,e.id); const done=typeof c.nota==="number"||gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date); return done?1:0; };
+    return base.slice().sort((a,b)=>pendingWeight(a)-pendingWeight(b));
   }
   function tally(){
     let ok=0,bad=0;
-    rosterStudents.forEach(s=>{
+    buildRoster().forEach(s=>{
       const eff=isTP?getGrade(t,s.id,e.id).nota:examEffective(t,s.id,e.id);
       if(typeof eff!=="number") return;
       if(eff>=pm) ok++; else bad++;
     });
     $("#cOk").textContent=ok; $("#cBad").textContent=bad;
   }
-  function updateRow(sid){
-    const s=g.students.find(x=>x.id===sid); if(!s) return;
-    const rowEl=rows.querySelector(`[data-row-sid="${sid}"]`); if(!rowEl) return;
-    rowEl.innerHTML=rowInnerHTML(s);
-    wireRow(rowEl);
+  function renderRows(){
+    const rosterStudents=buildRoster();
+    rows.innerHTML=rosterStudents.map(s=>`<div class="eg-row" data-row-sid="${s.id}"></div>`).join("")
+      ||(parentEx?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">Aprobaron todos ${esc(parentEx.name)}: no hay nadie para recuperar.</div>`
+        :(isIntensType?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">No hay alumnos en intensificación en este cuatrimestre ahora mismo.</div>`:""));
+    rows.querySelectorAll("[data-row-sid]").forEach(rowEl=>{
+      const s=g.students.find(x=>x.id===rowEl.dataset.rowSid);
+      rowEl.innerHTML=rowInnerHTML(s);
+      if(!locked) wireRow(rowEl);
+    });
     tally();
   }
-  const isIntensType=e.type==="intens_eval"||e.type==="intens_modulo";
-  let rosterStudents=parentEx
-    ? recuRoster(g,t,parentEx.id,e.id)
-    : (isIntensType
-      ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
-      : g.students);
-  // Los que ya tienen nota (o están ausentes) van al final, así arriba quedan siempre
-  // los que todavía faltan calificar.
-  const pendingWeight=(s)=>{ const c=getGrade(t,s.id,e.id); const done=typeof c.nota==="number"||gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date); return done?1:0; };
-  rosterStudents=rosterStudents.slice().sort((a,b)=>pendingWeight(a)-pendingWeight(b));
-  rows.innerHTML=rosterStudents.map(s=>`<div class="eg-row" data-row-sid="${s.id}"></div>`).join("")
-    ||(parentEx?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">Aprobaron todos ${esc(parentEx.name)}: no hay nadie para recuperar.</div>`
-      :(isIntensType?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">No hay alumnos en intensificación en este cuatrimestre ahora mismo.</div>`:""));
-  rows.querySelectorAll("[data-row-sid]").forEach(rowEl=>{
-    const s=g.students.find(x=>x.id===rowEl.dataset.rowSid);
-    rowEl.innerHTML=rowInnerHTML(s);
-    if(!locked) wireRow(rowEl);
-  });
-  tally();
+  renderRows();
   const etBtn=$("#editTopics"); if(etBtn) etBtn.onclick=()=>{
     let extraCurrent=(e.extraTopics||[]).slice();
     const extraListHTML=()=>extraCurrent.length?`<div style="margin-top:12px;"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);margin-bottom:6px;">Contenido extra cargado</label><div class="topicchecks" id="et_extra_list">${extraCurrent.map((et,i)=>`<span class="topicchk on" data-exidx="${i}" style="cursor:pointer;">${esc(et)} <b style="margin-left:4px;">✕</b></span>`).join("")}</div></div>`:"";
@@ -5378,6 +5387,12 @@ function promptEditExam(t,e){
     e.type=selType;
     if(selType==="intens_eval"){ if(selPeriod){ e.period=selPeriod; e.periodOtro=selPeriod==="otro"?((eePeriodOtro&&eePeriodOtro.value.trim())||""):""; } }
     setExamMeta(t,e.id,$("#ee_name").value,eeDate.value,""); setExamLink(t,e.id,$("#ee_link").value.trim());
+    if(e.recuOf){
+      // Esto es un recuperatorio atado a otra evaluación: la fecha que se refleja ahí
+      // tiene que ser siempre esta, la real, no la que quedó de cuando se creó.
+      const parent=t.exams.find(x=>x.id===e.recuOf);
+      if(parent){ parent.recuDate=e.date; save(); }
+    }
     if(selType==="intens_eval") syncAllIntensEvalGrades(t,e);
     closeDlg(); render();
   };
