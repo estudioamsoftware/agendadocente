@@ -4374,10 +4374,9 @@ function renderExamEntry(g,t,e,body){
     <div class="card pad" style="margin-bottom:14px;"><div style="display:flex;align-items:flex-start;gap:10px;">
       <div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;">${typeLabel}${periodBadge}</div>
       <div style="font-weight:600;font-size:17px;word-break:break-word;">${esc(e.name)}</div>
-      <div class="muted" style="font-size:13px;margin-top:5px;">${fmtLong(e.date)}${!isTP&&e.recuDate?` · Recuperatorio: ${fmtLong(e.recuDate)}`:""}</div></div>
+      <div class="muted" style="font-size:13px;margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span>${fmtLong(e.date)}${!isTP&&e.recuDate?` · Recuperatorio: ${fmtLong(e.recuDate)}`:""}</span>${e.link?`<a href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" style="font-weight:600;color:var(--primary);text-decoration:none;">🔗 Abrir examen ↗</a>`:""}</div></div>
       <button class="titleEdit" id="editEx" aria-label="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
       </div></div>
-    ${e.link?`<a href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;background:var(--primary-tint);border:1.5px solid var(--primary);border-radius:12px;padding:11px 14px;margin-bottom:14px;text-decoration:none;color:var(--primary);font-weight:600;font-size:14px;">🔗 Abrir examen online<span style="margin-left:auto;font-size:12px;font-weight:500;">↗</span></a>`:""}
     ${parentEx?`<div style="display:flex;align-items:center;gap:8px;background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:9px 12px;margin-bottom:14px;font-size:12.5px;color:var(--primary);font-weight:600;">
       <span>🔁</span><span style="flex:1;min-width:0;">Recupera <b>${esc(parentEx.name)}</b> (${fmtShort(parentEx.date)}) · sólo los que no aprobaron</span></div>`:""}
     ${contPanel}
@@ -4486,16 +4485,12 @@ function renderExamEntry(g,t,e,body){
     wireMotivoTags(rowEl,t,()=>renderRows());
   }
   const isIntensType=e.type==="intens_eval"||e.type==="intens_modulo";
-  // Los que ya tienen nota (o están ausentes) van al final, así arriba quedan siempre
-  // los que todavía faltan calificar — se reordena solo, apenas se carga una nota.
   function buildRoster(){
-    const base=parentEx
+    return parentEx
       ? recuRoster(g,t,parentEx.id,e.id)
       : (isIntensType
         ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
         : g.students);
-    const pendingWeight=(s)=>{ const c=getGrade(t,s.id,e.id); const done=typeof c.nota==="number"||gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date); return done?1:0; };
-    return base.slice().sort((a,b)=>pendingWeight(a)-pendingWeight(b));
   }
   function tally(){
     let ok=0,bad=0;
@@ -5371,7 +5366,7 @@ function promptNewExam(t,g,type){
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Acá sólo van a aparecer los que no aprobaron esa evaluación y los que faltaron. Las notas que cargues se ven al lado de la original.</div>`
       :`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:9px 11px;">Primero cargá la evaluación: un recuperatorio siempre sale de una evaluación anterior.</div>`}
     </div>`:"";
-  const partsPanel=!isRecu?`<div class="dlg-field"><label>¿Se carga en partes? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label><input id="e_parts" placeholder="Separadas por coma" autocomplete="off"><div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio.</div></div>`:"";
+  const partsPanel=!isRecu?`<div class="dlg-field"><label>¿Necesitás poner varias notas en este examen? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label><input id="e_parts" placeholder="Separadas por coma" autocomplete="off"><div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio.</div></div>`:"";
   const isIntensEval=type==="intens_eval";
   const guessedPeriod=isIntensEval?guessIntensPeriodByDate(todayISO()):null;
   const periodPanel=isIntensEval?`<div class="dlg-field"><label>¿De qué período de intensificación es esta nota?</label>
@@ -5445,7 +5440,7 @@ function promptEditExam(t,e){
       <input id="ee_period_otro" placeholder="Ej.: Junio, Agosto…" autocomplete="off" value="${esc(e.periodOtro||"")}" style="display:${e.period==="otro"?"block":"none"};margin-top:8px;width:100%;height:40px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;font-size:14px;">
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Así, cuando cargues acá la nota de cada alumno, se completa sola en Intensificación.</div></div>`;
   const isRecu0=String(e.type||"").startsWith("recu_");
-  const partsRowHTML=`<div class="dlg-field" id="ee_parts_field" style="${isRecu0?"display:none;":""}"><label>¿Se carga en partes? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label>
+  const partsRowHTML=`<div class="dlg-field" id="ee_parts_field" style="${isRecu0?"display:none;":""}"><label>¿Necesitás poner varias notas en este examen? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label>
       <input id="ee_parts" placeholder="Separadas por coma" autocomplete="off" value="${esc((e.parts||[]).join(", "))}">
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio. Si ya hay notas cargadas por parte, sacarlas de acá no las borra, sólo deja de mostrarlas separadas.</div></div>`;
   openDlg("Editar",`<div class="dlg-field"><label>Tipo</label>
@@ -5503,7 +5498,7 @@ function promptEditExam(t,e){
     closeDlg(); render();
   };
   $("#ee_cancel").onclick=closeDlg;
-  $("#ee_del").onclick=()=>{ confirmDlg("¿Mover a la papelera?",'Podés recuperar "'+e.name+'" con todas sus notas desde la papelera.',"Mover",()=>{ moveExamToTrash(t,e.id); delete view.examId; render(); toast("Examen movido a la papelera"); }); };
+  $("#ee_del").onclick=()=>{ confirmDlg("¿Estás seguro de eliminar?",'Podés recuperar "'+e.name+'" con todas sus notas desde la papelera.',"Eliminar",()=>{ moveExamToTrash(t,e.id); delete view.examId; render(); toast("Examen movido a la papelera"); }); };
 }
 
 /* ---- Parse raw name lines → [{apellido,nombre}] ---- */
