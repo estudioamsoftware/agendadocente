@@ -1538,24 +1538,41 @@ function linkedRecuNota(t,sid,eid){
   const v=getGrade(t,sid,r.id).nota;
   return typeof v==="number"?v:null;
 }
+// Si el examen se carga en partes (ej. Gramática/Vocabulario), "aprobó" significa que
+// llegó al mínimo en TODAS las partes — el promedio puede tapar que se llevó una sola.
+function examPartsAllPassed(t,sid,e,pm){
+  return e.parts.every((_,pi)=>{ const v=getGrade(t,sid,e.id)["p"+pi]; return typeof v==="number"&&v>=pm; });
+}
 // Quiénes rinden el recuperatorio: los que no aprobaron la evaluación, más los que
 // faltaron o quedaron sin nota. Se mira la nota original (no la efectiva) para que nadie
 // desaparezca de la lista al cargarle la recu, y se respeta a cualquiera que ya tenga
 // nota cargada en este recuperatorio.
 function recuRoster(g,t,parentId,recuId){
   const pm=g.passMark||7;
+  const parent=t.exams.find(x=>x.id===parentId);
+  const hasParts=parent&&Array.isArray(parent.parts)&&parent.parts.length>=2;
   return g.students.filter(s=>{
     if(recuId&&typeof getGrade(t,s.id,recuId).nota==="number") return true;
+    if(hasParts) return !examPartsAllPassed(t,s.id,parent,pm);
     const v=getGrade(t,s.id,parentId).nota;
     return typeof v!=="number"||v<pm;
   });
 }
-function examEffective(t,sid,eid){
+function examEffective(t,sid,eid,pm){
+  pm=pm||((getGroup(view.groupId)||{}).passMark)||7;
   const c=getGrade(t,sid,eid);
   if(c.recu!=null) return c.recu;
   const lr=linkedRecuNota(t,sid,eid);
   if(lr!=null) return lr;
-  return c.nota!=null?c.nota:null;
+  if(c.nota==null) return null;
+  const e=t.exams.find(x=>x.id===eid);
+  const hasParts=e&&Array.isArray(e.parts)&&e.parts.length>=2;
+  if(hasParts&&!e.recuDate&&!linkedRecuExam(t,eid)&&!examPartsAllPassed(t,sid,e,pm)){
+    // Sin recu para redimir la parte que no llegó al mínimo: que la nota efectiva no lo
+    // tape detrás del promedio, así cae en Intensificación como corresponde.
+    return Math.min(c.nota,pm-1);
+  }
+  return c.nota;
 }
 
 function realSessions(t){ return t.sessions.filter(s=>!s.cancelled); }
@@ -1643,7 +1660,7 @@ function finalAuto(t,sid,pm){
   // Promedio de todas las notas que ya tiene el alumno en el cuatrimestre (exámenes, recup., TP, etc.)
   pm=pm||7;
   const vals=[];
-  t.exams.forEach(e=>{ const v=examEffective(t,sid,e.id); if(typeof v==="number") vals.push(v); });
+  t.exams.forEach(e=>{ const v=examEffective(t,sid,e.id,pm); if(typeof v==="number") vals.push(v); });
   (t.tps||[]).forEach(tp=>{ const v=getTpGrade(t,sid,tp.id); if(typeof v==="number") vals.push(v); });
   if(!vals.length) return null;
   const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -2006,7 +2023,7 @@ function stats(g,t,sid){
   const faltas=N-presEq; const pct=N?Math.round(presEq/N*100):null;
   let presN=0; const scheme=getValScheme(g); const val={SC:0}; scheme.levels.forEach(lv=>{ val[lv.key]=0; });
   past.forEach(s=>{ const av=attOf(t,sid,s.date,g); if(av==="P"||av==="T"){ presN++; const w=workOf(t,sid,s.date); if(w&&val[w]!=null){ val[w]++; } else val.SC++; } });
-  const eff=t.exams.map(e=>examEffective(t,sid,e.id)).filter(v=>v!=null&&typeof v==="number");
+  const eff=t.exams.map(e=>examEffective(t,sid,e.id,g.passMark||7)).filter(v=>v!=null&&typeof v==="number");
   const prom=eff.length?eff.reduce((a,b)=>a+b,0)/eff.length:null;
   return { N, Nmod:N*mod, pres:presEq, faltas, faltasMod:faltas*mod, pct, presN, val, prom, final:finalOf(t,sid,g.passMark||7), mod, tarde };
 }
@@ -4255,7 +4272,8 @@ function renderClaseExam(g,t,body,date,ses,items){
     rows.innerHTML=g.students.map((s,i)=>{
       const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
       const motivo=getGradeMotivo(t,s.id,ex.id,field);
-      const approved=field==="nota"&&typeof c.nota==="number"&&c.nota>=(g.passMark||7);
+      const pmHere=g.passMark||7;
+      const approved=field==="nota"&&(hasParts?examPartsAllPassed(t,s.id,ex,pmHere):(typeof c.nota==="number"&&c.nota>=pmHere));
       const ausente=!approved&&gradeAusenteEffective(t,g,s.id,ex.id,field,field==="recu"?ex.recuDate:ex.date);
       const partsCells=hasParts?ex.parts.map((_,pi)=>{
         const pf="p"+pi; const pv=c[pf];
@@ -4321,7 +4339,7 @@ function renderExam(g,t,body){
   if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para cargar exámenes.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
   const termSeg=examTermSegHTML();
   const examsSorted=t.exams.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
-  const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
+  const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id,g.passMark||7)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
     const icon=examTypeMeta(e.type).icon;
     return `<button class="erow" data-eval="${e.id}"><span class="einfo"><span class="ename">${icon} ${esc(e.name)}</span>
       <span class="edate">${fmtLong(e.date)} · ${c}/${g.students.length} cargadas${recu?" · con recu":""}</span></span><span class="echev">${I.chev}</span></button>`;}).join("")+`</div>`:emptyInline(I.book,"Todavía no hay evaluaciones en este cuatrimestre.");
@@ -4405,7 +4423,9 @@ function renderExamEntry(g,t,e,body){
   function rowInnerHTML(s){
     const idx=g.students.indexOf(s);
     const c=getGrade(t,s.id,e.id);
-    const approved=!isTP&&typeof c.nota==="number"&&c.nota>=pm;
+    // Con partes, el promedio puede tapar que se llevó una sola: "aprobado" exige el
+    // mínimo en todas, no sólo en el promedio.
+    const approved=!isTP&&(hasParts?examPartsAllPassed(t,s.id,e,pm):(typeof c.nota==="number"&&c.nota>=pm));
     const seMarcado=isTP&&c.se&&typeof c.nota!=="number";
     const notaCell=hasParts
       ?e.parts.map((label,pi)=>`<div class="eg-col eg-col-nota">${fieldCellHTML(s,c,"p"+pi,e.date)}</div>`).join("")
@@ -4495,7 +4515,7 @@ function renderExamEntry(g,t,e,body){
   function tally(){
     let ok=0,bad=0;
     buildRoster().forEach(s=>{
-      const eff=isTP?getGrade(t,s.id,e.id).nota:examEffective(t,s.id,e.id);
+      const eff=isTP?getGrade(t,s.id,e.id).nota:examEffective(t,s.id,e.id,pm);
       if(typeof eff!=="number") return;
       if(eff>=pm) ok++; else bad++;
     });
