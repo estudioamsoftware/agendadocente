@@ -3999,9 +3999,10 @@ function renderClase(g,t,body){
   const compactCls=scheme.levels.length>4?"compact":"";
   rows.innerHTML=g.students.map((s,i)=>{
     if(!studentExistedOn(g,s.id,date)) return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span><span class="abschip" style="background:var(--line-soft);color:var(--faint);">– Pendiente</span></div>`;
+    // Si faltó ese día no hay nada para calificar: se marca solo, según la asistencia.
+    if(attOf(t,s.id,date,g)==="A") return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
+      <span class="abschip" style="background:var(--absent-tint);color:var(--absent-ink);">Ausente</span></div>`;
     const w=workOf(t,s.id,date);
-    // La fila es igual para presentes y ausentes: el puntito dice quién estuvo y las
-    // valoraciones quedan siempre a mano, para cargar la nota cuando el ausente entrega.
     const levelBtns=scheme.levels.map(lv=>{
       const pressed=w===lv.key;
       const sizeStyle=levelBtnSizeStyle(lv);
