@@ -1482,12 +1482,20 @@ const TP_TYPES=[
   {id:"recu",        label:"Recuperatorio",      icon:"🔁"},
 ];
 function getGrade(t,sid,eid){ return (t.grades[sid]&&t.grades[sid][eid])||{}; }
+// "nota"/"recu" guardan su ausente/motivo con el nombre viejo (ausenteNota, etc.) por
+// compatibilidad con datos ya guardados; un campo de "parte" (p0, p1…) usa un nombre
+// genérico armado con su propio id.
+function ausenteKey(field){ return field==="recu"?"ausenteRecu":field==="nota"?"ausenteNota":"ausente_"+field; }
+function motivoKey(field){ return field==="recu"?"motivoRecu":field==="nota"?"motivoNota":"motivo_"+field; }
 function setGradeField(t,sid,eid,field,val){
   t.grades[sid]=t.grades[sid]||{}; t.grades[sid][eid]=t.grades[sid][eid]||{};
   if(val==null) delete t.grades[sid][eid][field]; else t.grades[sid][eid][field]=val;
-  delete t.grades[sid][eid][field==="recu"?"ausenteRecu":"ausenteNota"];
+  delete t.grades[sid][eid][ausenteKey(field)];
   const c=t.grades[sid][eid];
-  if(c.nota==null&&c.recu==null&&!c.se&&c.ausenteNota==null&&c.ausenteRecu==null&&c.motivoNota==null&&c.motivoRecu==null) delete t.grades[sid][eid];
+  const empty=c.nota==null&&c.recu==null&&!c.se&&c.ausenteNota==null&&c.ausenteRecu==null&&c.motivoNota==null&&c.motivoRecu==null
+    &&!Object.keys(c).some(k=>k.startsWith("p")&&/^p\d+$/.test(k)&&c[k]!=null)
+    &&!Object.keys(c).some(k=>(k.startsWith("ausente_")||k.startsWith("motivo_"))&&c[k]!=null);
+  if(empty) delete t.grades[sid][eid];
   save();
 }
 // "Ausente" es un estado propio del casillero de nota (no una nota de 1), para que no
@@ -1497,7 +1505,7 @@ function setGradeField(t,sid,eid,field,val){
 // asistencia (ej.: faltó a la clase pero rindió el examen igual, o al revés).
 function gradeAusenteEffective(t,g,sid,eid,field,checkDate){
   const c=getGrade(t,sid,eid);
-  const key=field==="recu"?"ausenteRecu":"ausenteNota";
+  const key=ausenteKey(field);
   if(c[key]===true) return true;
   if(c[key]===false) return false;
   if(typeof c[field]==="number") return false;
@@ -1505,14 +1513,14 @@ function gradeAusenteEffective(t,g,sid,eid,field,checkDate){
 }
 function setGradeAusente(t,sid,eid,field,val){
   t.grades[sid]=t.grades[sid]||{}; t.grades[sid][eid]=t.grades[sid][eid]||{};
-  const key=field==="recu"?"ausenteRecu":"ausenteNota";
+  const key=ausenteKey(field);
   if(val){ t.grades[sid][eid][key]=true; delete t.grades[sid][eid][field]; } else t.grades[sid][eid][key]=false;
   save();
 }
-function getGradeMotivo(t,sid,eid,field){ const c=getGrade(t,sid,eid); return (field==="recu"?c.motivoRecu:c.motivoNota)||null; }
+function getGradeMotivo(t,sid,eid,field){ const c=getGrade(t,sid,eid); return c[motivoKey(field)]||null; }
 function setGradeMotivo(t,sid,eid,field,motivo){
   t.grades[sid]=t.grades[sid]||{}; t.grades[sid][eid]=t.grades[sid][eid]||{};
-  const key=field==="recu"?"motivoRecu":"motivoNota";
+  const key=motivoKey(field);
   if(motivo==null) delete t.grades[sid][eid][key]; else t.grades[sid][eid][key]=motivo;
   save();
 }
@@ -4223,15 +4231,16 @@ function renderClaseExam(g,t,body,date,ses,items){
     // Si esta evaluación tiene un recuperatorio aparte, su nota se muestra al lado de la
     // original: los que no lo rindieron quedan con "–".
     const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
+    const hasParts=field==="nota"&&Array.isArray(ex.parts)&&ex.parts.length>=2;
+    const headLabels=hasParts?ex.parts.map(l=>l.toUpperCase()):["NOTA"];
+    if(claseRecu) headLabels.push("RECUP.");
     return `<div class="examday"><span class="ed-ic" style="font-size:20px;">${kindIcon}</span><div style="min-width:0;flex:1;"><div class="ed-k">${kind}</div><div class="ed-n">${esc(ex.name)}</div></div>
         <button class="btn subtle sm" data-toexam="${ex.id}">Ver en Exámenes</button></div>
       ${contPanel}
       <div class="tally"><div class="pill tp">Con nota <span id="cN_${idx}">0</span></div><div class="pill ta">Ausentes <span id="cA_${idx}">0</span></div></div>
-      ${claseRecu?`<div class="arow" style="background:transparent;border:none;box-shadow:none;padding:0 6px 2px 10px;font-size:9px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;">
+      ${(hasParts||claseRecu)?`<div class="arow" style="background:transparent;border:none;box-shadow:none;padding:0 6px 2px 10px;font-size:9px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;">
         <span class="nm" style="visibility:hidden;">·</span>
-        <span style="width:18px;flex:none;"></span>
-        <span class="numin" style="background:transparent;border:none;box-shadow:none;">NOTA</span>
-        <span class="numin" style="background:transparent;border:none;box-shadow:none;">RECUP.</span>
+        ${headLabels.map(l=>`<span class="numin" style="background:transparent;border:none;box-shadow:none;white-space:normal;word-break:break-word;overflow-wrap:break-word;height:auto;min-height:18px;line-height:1.05;padding:2px 1px;">${esc(l)}</span>`).join("")}
       </div>`:""}
       <div class="rows" id="rows_${idx}"></div>`;
   };
@@ -4242,11 +4251,18 @@ function renderClaseExam(g,t,body,date,ses,items){
   items.forEach(({ex,field},idx)=>{
     const rows=$("#rows_"+idx);
     const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
+    const hasParts=field==="nota"&&Array.isArray(ex.parts)&&ex.parts.length>=2;
     rows.innerHTML=g.students.map((s,i)=>{
       const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
       const motivo=getGradeMotivo(t,s.id,ex.id,field);
       const approved=field==="nota"&&typeof c.nota==="number"&&c.nota>=(g.passMark||7);
       const ausente=!approved&&gradeAusenteEffective(t,g,s.id,ex.id,field,field==="recu"?ex.recuDate:ex.date);
+      const partsCells=hasParts?ex.parts.map((_,pi)=>{
+        const pf="p"+pi; const pv=c[pf];
+        const pAus=gradeAusenteEffective(t,g,s.id,ex.id,pf,ex.date);
+        const pMotivo=getGradeMotivo(t,s.id,ex.id,pf);
+        return displayGrade(pv,pMotivo,false,pAus);
+      }).join(""):"";
       let recuCell="";
       if(claseRecu){
         const rv=getGrade(t,s.id,claseRecu.id).nota;
@@ -4260,7 +4276,7 @@ function renderClaseExam(g,t,body,date,ses,items){
         }
       }
       return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>
-        ${displayGrade(val,motivo,se,ausente)}${recuCell}</div>`;}).join("");
+        ${hasParts?partsCells:displayGrade(val,motivo,se,ausente)}${recuCell}</div>`;}).join("");
     function tally(){ let n=0,au=0; g.students.forEach(s=>{ if(attOf(t,s.id,date,g)==="A")au++; if(getGrade(t,s.id,ex.id)[field]!=null)n++; }); $("#cN_"+idx).textContent=n; $("#cA_"+idx).textContent=au; }
     tally();
   });
@@ -4344,6 +4360,7 @@ function renderExamEntry(g,t,e,body){
       <span>Sin contenidos seleccionados.</span><button class="link" style="font-size:12px;" id="editTopics">+ Agregar</button></div>`;
   const isTP=e.type==="tp";
   const isCarpeta=e.type==="carpeta";
+  const hasParts=Array.isArray(e.parts)&&e.parts.length>=2;
   // parentEx: esta pantalla ES un recuperatorio atado a una evaluación.
   // myRecu: esta evaluación TIENE un recuperatorio cargado como examen aparte.
   const parentEx=e.recuOf?(t.exams.find(x=>x.id===e.recuOf)||null):null;
@@ -4365,31 +4382,37 @@ function renderExamEntry(g,t,e,body){
       <span>🔁</span><span style="flex:1;min-width:0;">Recupera <b>${esc(parentEx.name)}</b> (${fmtShort(parentEx.date)}) · sólo los que no aprobaron</span></div>`:""}
     ${contPanel}
     <div class="examgrid-wrap"><div class="examgrid">
-      <div class="eg-row eg-head"><span class="eg-nm">Alumno</span><span class="eg-col eg-col-nota">NOTA</span>${!noRecu?`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`:""}</div>
+      <div class="eg-row eg-head"><span class="eg-nm">Alumno</span>${hasParts?e.parts.map(label=>`<span class="eg-col eg-col-nota">${esc(label.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-nota">NOTA</span>`}${!noRecu?`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`:""}</div>
       <div id="rows"></div></div></div>
     <div class="tally" style="margin-top:10px;"><div class="pill" style="background:var(--present-tint);color:var(--present-ink);">Aprobados <span id="cOk">0</span></div><div class="pill" style="background:var(--absent-tint);color:var(--absent-ink);">Desaprobados <span id="cBad">0</span></div></div>
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
-    <div class="pagefoot">Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
+    <div class="pagefoot">${hasParts?`La nota final es el promedio de las partes, y se completa sola apenas están todas cargadas. `:""}Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
       :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
       :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   const rows=$("#rows");
   const dis=locked?"disabled":"";
+  // Celda genérica de nota (usada para "nota", "recu" y, si la eval se divide en
+  // partes, cada parte "p0","p1"…) — mismo look, mismo botón "A" de ausente.
+  function fieldCellHTML(s,c,field,checkDate,extraCls){
+    const val=c[field];
+    const ausente=gradeAusenteEffective(t,g,s.id,e.id,field,checkDate);
+    const motivo=getGradeMotivo(t,s.id,e.id,field);
+    const tag=motivoTagHTML(s.id,e.id,field,motivo,typeof val==="number"?val:null);
+    return `<div class="grade-cell" style="${tag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin ${extraCls||""} ${ausente?"gnum-red":gradeTierClass(typeof val==="number"?val:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="${field}" placeholder="–" value="${ausente?"A":(typeof val==="number"?fmtNum(val):"")}" ${dis||ausente?"disabled":""}><button type="button" class="ausbtn ${ausente?"on":""}" data-sid="${s.id}" data-af="${field}" title="Ausente" ${dis}>A</button></div>${tag}</div>`;
+  }
   function rowInnerHTML(s){
     const idx=g.students.indexOf(s);
     const c=getGrade(t,s.id,e.id);
     const approved=!isTP&&typeof c.nota==="number"&&c.nota>=pm;
-    const notaMotivo=c.motivoNota||null;
-    const notaTag=motivoTagHTML(s.id,e.id,"nota",notaMotivo,typeof c.nota==="number"?c.nota:null);
-    const recuMotivo=c.motivoRecu||null;
-    const recuTag=motivoTagHTML(s.id,e.id,"recu",recuMotivo,typeof c.recu==="number"?c.recu:null);
     const seMarcado=isTP&&c.se&&typeof c.nota!=="number";
-    const ausenteN=gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date);
-    const notaCell=seMarcado
-      ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
-      :`<div class="grade-cell" style="${notaTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin ${ausenteN?"gnum-red":gradeTierClass(typeof c.nota==="number"?c.nota:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="nota" placeholder="–" value="${ausenteN?"A":(typeof c.nota==="number"?fmtNum(c.nota):"")}" ${dis||ausenteN?"disabled":""}><button type="button" class="ausbtn ${ausenteN?"on":""}" data-sid="${s.id}" data-af="nota" title="Ausente" ${dis}>A</button></div>${notaTag}</div>`;
+    const notaCell=hasParts
+      ?e.parts.map((label,pi)=>`<div class="eg-col eg-col-nota">${fieldCellHTML(s,c,"p"+pi,e.date)}</div>`).join("")
+      :`<div class="eg-col eg-col-nota">${seMarcado
+        ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
+        :fieldCellHTML(s,c,"nota",e.date)}</div>`;
     // Con recuperatorio aparte, la columna sólo refleja lo cargado allá (no se edita acá):
     // nota para los que lo rindieron, "–" para el resto.
     const linkedRecuCell=()=>{
@@ -4404,17 +4427,30 @@ function renderExamEntry(g,t,e,body){
         ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;">A</span>`
         :`<span class="eg-na">–</span>`;
     };
-    const ausenteR=gradeAusenteEffective(t,g,s.id,e.id,"recu",e.recuDate);
     // "approved" manda siempre, tenga o no un recuperatorio aparte cargado: quien ya
     // aprobó no necesita rendirlo, así que nunca hace falta marcarle nada ahí.
     const recuCol=isTP
       ?`<button type="button" class="snhbtn ${c.se?"aus-on":""}" style="${typeof c.nota==="number"?"opacity:.55;":""}" data-sid="${s.id}" data-se="1">${c.se?"✕ No entregó":"Marcar S/E"}</button>`
       :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`
         :(myRecu?linkedRecuCell()
-          :`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin recu ${ausenteR?"gnum-red":gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${ausenteR?"A":(typeof c.recu==="number"?fmtNum(c.recu):"")}" ${dis||ausenteR?"disabled":""}><button type="button" class="ausbtn ${ausenteR?"on":""}" data-sid="${s.id}" data-af="recu" title="Ausente" ${dis}>A</button></div>${recuTag}</div>`));
+          :fieldCellHTML(s,c,"recu",e.recuDate,"recu")));
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}</span>
-      <div class="eg-col eg-col-nota">${notaCell}</div>
+      ${notaCell}
       ${!noRecu?`<div class="eg-col eg-col-recu">${recuCol}</div>`:""}`;
+  }
+  // Con partes (ej. Gramática/Vocabulario), "nota" no se toca a mano: es el promedio
+  // de las partes ya resueltas (con número o marcadas ausente), recién cuando están
+  // todas resueltas — así no se filtra un promedio parcial a las demás pantallas.
+  function recomputePartsNota(sid){
+    if(!hasParts) return;
+    const c=getGrade(t,sid,e.id);
+    const vals=[]; let allResolved=true;
+    e.parts.forEach((_,pi)=>{
+      const f="p"+pi; const v=c[f];
+      if(typeof v==="number") vals.push(v);
+      else if(!gradeAusenteEffective(t,g,sid,e.id,f,e.date)) allResolved=false;
+    });
+    setGradeField(t,sid,e.id,"nota",(allResolved&&vals.length)?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100:null);
   }
   function wireRow(rowEl){
     rowEl.querySelectorAll(".ausbtn").forEach(b=>b.onclick=()=>{
@@ -4422,6 +4458,7 @@ function renderExamEntry(g,t,e,body){
       const checkDate=field==="recu"?e.recuDate:e.date;
       const cur=gradeAusenteEffective(t,g,sid,e.id,field,checkDate);
       setGradeAusente(t,sid,e.id,field,!cur);
+      recomputePartsNota(sid);
       syncIntensEvalGrade(t,sid,e);
       renderRows();
     });
@@ -4430,6 +4467,7 @@ function renderExamEntry(g,t,e,body){
       const v=parseNum(inp.value); const sid=inp.dataset.sid; const field=inp.dataset.f;
       setGradeField(t,sid,e.id,field,v);
       if(v==null||v>1) setGradeMotivo(t,sid,e.id,field,null);
+      recomputePartsNota(sid);
       syncIntensEvalGrade(t,sid,e);
       renderRows();
     }));
@@ -5333,6 +5371,7 @@ function promptNewExam(t,g,type){
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Acá sólo van a aparecer los que no aprobaron esa evaluación y los que faltaron. Las notas que cargues se ven al lado de la original.</div>`
       :`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:9px 11px;">Primero cargá la evaluación: un recuperatorio siempre sale de una evaluación anterior.</div>`}
     </div>`:"";
+  const partsPanel=!isRecu?`<div class="dlg-field"><label>¿Se carga en partes? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label><input id="e_parts" placeholder="Separadas por coma" autocomplete="off"><div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio.</div></div>`:"";
   const isIntensEval=type==="intens_eval";
   const guessedPeriod=isIntensEval?guessIntensPeriodByDate(todayISO()):null;
   const periodPanel=isIntensEval?`<div class="dlg-field"><label>¿De qué período de intensificación es esta nota?</label>
@@ -5347,6 +5386,7 @@ function promptNewExam(t,g,type){
     ${parentPanel}
     ${periodPanel}
     <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="e_link" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
+    ${partsPanel}
     ${topicsPanel}
     <div class="dlg-actions"><button class="btn subtle" id="e_back">Atrás</button><button class="btn" id="e_ok">Crear</button></div>`);
   const n=$("#e_name"); setTimeout(()=>n.focus(),60);
@@ -5384,6 +5424,9 @@ function promptNewExam(t,g,type){
     if(selIds.length) e.topicIds=selIds;
     if(extra) e.extraTopics=(e.extraTopics||[]).concat(extra);
     const linkVal=($("#e_link")&&$("#e_link").value.trim())||""; if(linkVal) e.link=linkVal;
+    const partsRaw=($("#e_parts")&&$("#e_parts").value.trim())||"";
+    const partsList=partsRaw?partsRaw.split(",").map(x=>x.trim()).filter(Boolean):[];
+    if(partsList.length>=2) e.parts=partsList;
     if(isIntensEval&&selPeriod){ e.period=selPeriod; if(selPeriod==="otro") e.periodOtro=(periodOtroInp&&periodOtroInp.value.trim())||""; }
     if(isRecu&&selRecuOf){
       e.recuOf=selRecuOf;
@@ -5401,6 +5444,10 @@ function promptEditExam(t,e){
       <div class="chiprow" id="ee_period_row" style="flex-wrap:wrap;">${INTENS_PERIOD_OPTIONS.map(p=>`<button class="mchip ${e.period===p.id?"on":""}" data-period="${p.id}">${p.label}</button>`).join("")}</div>
       <input id="ee_period_otro" placeholder="Ej.: Junio, Agosto…" autocomplete="off" value="${esc(e.periodOtro||"")}" style="display:${e.period==="otro"?"block":"none"};margin-top:8px;width:100%;height:40px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;font-size:14px;">
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Así, cuando cargues acá la nota de cada alumno, se completa sola en Intensificación.</div></div>`;
+  const isRecu0=String(e.type||"").startsWith("recu_");
+  const partsRowHTML=`<div class="dlg-field" id="ee_parts_field" style="${isRecu0?"display:none;":""}"><label>¿Se carga en partes? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label>
+      <input id="ee_parts" placeholder="Separadas por coma" autocomplete="off" value="${esc((e.parts||[]).join(", "))}">
+      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio. Si ya hay notas cargadas por parte, sacarlas de acá no las borra, sólo deja de mostrarlas separadas.</div></div>`;
   openDlg("Editar",`<div class="dlg-field"><label>Tipo</label>
       <div class="chiprow" id="ee_type_row" style="flex-wrap:wrap;">${Object.keys(EXAM_TYPE_META).map(tid=>`<button class="mchip ${tid===e.type?"on":""}" data-extype="${tid}">${EXAM_TYPE_META[tid].icon} ${EXAM_TYPE_META[tid].label}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Si cambiás entre "TP/Carpeta" y "Evaluación/Recuperatorio" se pierde el estado S/E cargado, no las notas numéricas.</div>
@@ -5409,6 +5456,7 @@ function promptEditExam(t,e){
     <div class="dlg-field"><label>Nombre</label><input id="ee_name" value="${esc(e.name)}" autocomplete="off"></div>
     <div class="dlg-field"><label>Fecha</label><input id="ee_date" type="date" value="${e.date||""}"></div>
     <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="ee_link" value="${esc(e.link||"")}" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
+    ${partsRowHTML}
     <div class="dlg-actions"><button class="btn subtle" id="ee_cancel">Cancelar</button><button class="btn danger" id="ee_del">Eliminar</button><button class="btn" id="ee_ok">Guardar</button></div>`,
     "La nota aparece sola en “Clase a clase” el día que coincide con una clase.");
   setTimeout(()=>$("#ee_name").focus(),60);
@@ -5418,10 +5466,12 @@ function promptEditExam(t,e){
   const eePeriodField=$("#ee_period_field");
   const eePeriodRow=$("#ee_period_row");
   const eePeriodOtro=$("#ee_period_otro");
+  const eePartsField=$("#ee_parts_field");
   if(eeTypeRow){
     eeTypeRow.querySelectorAll("button[data-extype]").forEach(b=>b.onclick=()=>{
       selType=b.dataset.extype; eeTypeRow.querySelectorAll("button.mchip").forEach(x=>x.classList.remove("on")); b.classList.add("on");
       if(eePeriodField) eePeriodField.style.display=(selType==="intens_eval")?"":"none";
+      if(eePartsField) eePartsField.style.display=String(selType).startsWith("recu_")?"none":"";
     });
   }
   if(eePeriodRow){
@@ -5436,6 +5486,13 @@ function promptEditExam(t,e){
     e.type=selType;
     if(selType==="intens_eval"){ if(selPeriod){ e.period=selPeriod; e.periodOtro=selPeriod==="otro"?((eePeriodOtro&&eePeriodOtro.value.trim())||""):""; } }
     setExamMeta(t,e.id,$("#ee_name").value,eeDate.value,""); setExamLink(t,e.id,$("#ee_link").value.trim());
+    const eePartsInp=$("#ee_parts");
+    if(eePartsInp&&!String(selType).startsWith("recu_")){
+      const partsRaw=eePartsInp.value.trim();
+      const partsList=partsRaw?partsRaw.split(",").map(x=>x.trim()).filter(Boolean):[];
+      if(partsList.length>=2) e.parts=partsList; else delete e.parts;
+      save();
+    }
     if(e.recuOf){
       // Esto es un recuperatorio atado a otra evaluación: la fecha que se refleja ahí
       // tiene que ser siempre esta, la real, no la que quedó de cuando se creó.
