@@ -1400,6 +1400,15 @@ function hasCompleteAttendance(t,date,g){
   if(ses.attLocked) return true; // tocaste el check "Ya tomé asistencia" — ÚNICA forma de marcar el día como completo
   return false; // mientras no toques ese check, sigue pendiente aunque ya hayas marcado a algún alumno
 }
+// Un día sin ningún toque (ni un alumno marcado, ni el check final) todavía no se tocó
+// para nada: en la grilla y en las estadísticas no debe contar como "todos presentes" —
+// eso recién se asume si al menos empezaste a marcar algo ese día.
+function attendanceUntouched(t,date){
+  const ses=getSession(t,date);
+  if(!ses||ses.cancelled||ses.attLocked||isFuture(date)) return false;
+  const att=t.att||{};
+  return !Object.keys(att).some(sid=>att[sid]&&att[sid][date]!=null);
+}
 // ¿Ya pasó el horario de la clase? Sin horario cargado no hay con qué compararlo, así
 // que damos la clase por terminada y no se muestra ningún puntito.
 function classOverNow(g){
@@ -1981,7 +1990,9 @@ function promptListado(tipo,otroId){
 function stats(g,t,sid){
   const mod=g.modulos||2;
   const real=realSessions(t);
-  const past=real.filter(s=>!isFuture(s.date)&&studentExistedOn(g,sid,s.date)); const N=past.length;
+  // Un día sin ningún toque de asistencia todavía no cuenta para el %: si no, hoy
+  // aparecería como "todos presentes" antes de siquiera pasar lista.
+  const past=real.filter(s=>!isFuture(s.date)&&!attendanceUntouched(t,s.date)&&studentExistedOn(g,sid,s.date)); const N=past.length;
   let pres=0,tarde=0; past.forEach(s=>{ const av=attOf(t,sid,s.date,g); if(av==="P") pres++; else if(av==="T") tarde++; });
   const presEq=pres+tarde*0.5; // Tarde = media falta
   const faltas=N-presEq; const pct=N?Math.round(presEq/N*100):null;
@@ -2001,6 +2012,7 @@ function termYearStats(g,term,pm){
     const fin=finalOf(term,s.id,pm);
     const av=avanceOf(term,s.id,g);
     if(fin==null){ if(av==="TED") sinEvaluar++; return; }
+    if(fin<=3){ sinEvaluar++; return; } // 1, 2 y 3 son TED numérico: no cuentan como desaprobado
     if(fin>=pm) aprobados++; else desaprobados++;
   });
   return {previstas:previstas*mod,dictadas:dictadas*mod,alumnos:g.students.length,aprobados,desaprobados,sinEvaluar};
@@ -2853,15 +2865,15 @@ function docsHTML(g){
   }).join('')+`</div>`;
 }
 async function uploadDoc(g,cat,file){
-  if(!gd.tok){ toastSuccess('Conectá Drive primero desde el menú ⋯','var(--primary-press)'); return; }
-  toastSuccess('Subiendo '+file.name+'…','var(--primary-press)');
+  if(!gd.tok){ toastSuccess('Conectá Drive primero desde el menú ⋯','#8C4108'); return; }
+  toastSuccess('Subiendo '+file.name+'…','#8C4108');
   try{
     const folderId=await gdGetGroupFolder(g);
     const result=await gdUploadFile(file,file.name,folderId);
     if(!result.id) throw new Error('no se obtuvo el archivo subido');
     const docs=ensureDocs(g);
     docs[cat].push({id:result.id,name:file.name,url:result.webViewLink});
-    save(); render(); toastSuccess('✓ '+file.name+' subido','var(--primary-press)');
+    save(); render(); toastSuccess('✓ '+file.name+' subido','#8C4108');
   }catch(e){ console.error(e); toastError('Error al subir: '+(e&&e.message?e.message:'desconocido')); }
 }
 
@@ -4040,8 +4052,11 @@ function renderClase(g,t,body){
     const vsb=$("#valSchemeBtn"); if(vsb) vsb.onclick=()=>promptValScheme(g);
     return;
   }
-  const examEval=t.exams.find(e=>e.date===date); const examRecu=examEval?null:t.exams.find(e=>e.recuDate===date); const ex=examEval||examRecu;
-  if(ex){ const kindLbl=examEval?examTypeMeta(ex.type).label:"Recuperatorio"; return renderClaseExam(g,t,body,date,ses,ex,examEval?"nota":"recu",kindLbl); }
+  // Puede haber más de una evaluación el mismo día (ej. dos TP, o un TP y una eval):
+  // se reflejan todas, una debajo de la otra, no solo la primera que aparezca.
+  const examsToday=t.exams.filter(e=>e.date===date).map(e=>({ex:e,field:"nota"}))
+    .concat(t.exams.filter(e=>e.recuDate===date&&e.date!==date).map(e=>({ex:e,field:"recu"})));
+  if(examsToday.length){ return renderClaseExam(g,t,body,date,ses,examsToday); }
   body.innerHTML=`${termSeg}${dateBarHTML(t,date,locked)}${temasHTML(ses,false)}
     <div class="rows" id="rows"></div>
     <div class="tally" style="margin-top:8px;"><div class="pill tp">Calificados <span id="cCal">0</span></div><div class="pill ta">Ausentes <span id="cAu">0</span></div></div>
@@ -4062,7 +4077,7 @@ function renderClase(g,t,body){
       const pressStyle=pressed?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"";
       return `<button data-v="${esc(lv.key)}" aria-pressed="${pressed}" style="${sizeStyle}${pressStyle}">${esc(lv.symbol||lv.label)}</button>`;
     }).join("");
-    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
+    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>
       <div class="valseg ${locked?"locked":""} ${compactCls}" data-sid="${s.id}">${levelBtns}</div></div>`;}).join("");
   function tally(){ let cal=0,au=0; g.students.forEach(s=>{ if(!studentExistedOn(g,s.id,date)) return; if(attOf(t,s.id,date,g)==="A") au++; const w=effectiveWork(t,s.id,date,g); if(w&&levels.some(l=>l.key===w)) cal++; }); $("#cCal").textContent=cal; $("#cAu").textContent=au; }
   tally();
@@ -4175,52 +4190,67 @@ function wireMotivoTags(container,t,onSaved){
   });
 }
 
-function renderClaseExam(g,t,body,date,ses,ex,field,kind){
+function renderClaseExam(g,t,body,date,ses,items){
   const tk=view.term||"1"; const prog=(g.programa||{c1:[],c2:[]});
   const allTopics=tk==="c1"||tk==="1"?prog.c1:prog.c2;
   const vocab=(tk==="c1"||tk==="1"?prog.c1_vocab:prog.c2_vocab)||"";
-  const examTopicIds=ex.topicIds||[];
-  const examTopics=allTopics.filter(tp=>examTopicIds.includes(tp.id));
   const termSeg=`<div class="seg" role="group" aria-label="Cuatrimestre" style="margin-bottom:10px;justify-content:center;"><button data-term="1" aria-pressed="${tk==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${tk==="2"}">2° Cuatrimestre</button></div>`;
-  const kindIcon=field==="recu"?"🔁":examTypeMeta(ex.type).icon;
-  const contPanel=examTopics.length?`<div class="card pad" style="margin-bottom:12px;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin-bottom:6px;">Contenidos evaluados</div>
-    <div class="topicchecks">${examTopics.map(tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`).join("")}</div>
-    ${vocab?`<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic;"><b>Vocabulario:</b> ${esc(vocab)}</div>`:""}
-    </div>`:`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Elegí qué contenidos evalúa este examen desde la pestaña Exámenes.</div>`;
-  // Si esta evaluación tiene un recuperatorio aparte, su nota se muestra al lado de la
-  // original: los que no lo rindieron quedan con "–".
-  const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
-  body.innerHTML=`${termSeg}${dateBarHTML(t,date,ex.locked)}
-    <div class="examday"><span class="ed-ic" style="font-size:20px;">${kindIcon}</span><div style="min-width:0;flex:1;"><div class="ed-k">${kind}</div><div class="ed-n">${esc(ex.name)}</div></div>
-      <button class="btn subtle sm" id="toExam">Ver en Exámenes</button></div>
-    ${contPanel}
-    <div class="tally"><div class="pill tp">Con nota <span id="cN">0</span></div><div class="pill ta">Ausentes <span id="cA">0</span></div></div>
-    ${claseRecu?`<div class="arow" style="background:transparent;border:none;box-shadow:none;padding:0 6px 2px 10px;font-size:9px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;">
-      <span class="nm" style="visibility:hidden;">·</span>
-      <span style="width:18px;flex:none;"></span>
-      <span class="numin" style="background:transparent;border:none;box-shadow:none;">NOTA</span>
-      <span class="numin" style="background:transparent;border:none;box-shadow:none;">RECUP.</span>
-    </div>`:""}
-    <div class="rows" id="rows"></div>
+  const anyLocked=items.every(it=>it.ex.locked);
+  const blockHTML=(ex,field,idx)=>{
+    const kind=field==="nota"?examTypeMeta(ex.type).label:"Recuperatorio";
+    const kindIcon=field==="recu"?"🔁":examTypeMeta(ex.type).icon;
+    const examTopicIds=ex.topicIds||[];
+    const examTopics=allTopics.filter(tp=>examTopicIds.includes(tp.id));
+    const contPanel=examTopics.length?`<div class="card pad" style="margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin-bottom:6px;">Contenidos evaluados</div>
+      <div class="topicchecks">${examTopics.map(tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`).join("")}</div>
+      ${vocab?`<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic;"><b>Vocabulario:</b> ${esc(vocab)}</div>`:""}
+      </div>`:`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Elegí qué contenidos evalúa este examen desde la pestaña Exámenes.</div>`;
+    // Si esta evaluación tiene un recuperatorio aparte, su nota se muestra al lado de la
+    // original: los que no lo rindieron quedan con "–".
+    const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
+    return `<div class="examday"><span class="ed-ic" style="font-size:20px;">${kindIcon}</span><div style="min-width:0;flex:1;"><div class="ed-k">${kind}</div><div class="ed-n">${esc(ex.name)}</div></div>
+        <button class="btn subtle sm" data-toexam="${ex.id}">Ver en Exámenes</button></div>
+      ${contPanel}
+      <div class="tally"><div class="pill tp">Con nota <span id="cN_${idx}">0</span></div><div class="pill ta">Ausentes <span id="cA_${idx}">0</span></div></div>
+      ${claseRecu?`<div class="arow" style="background:transparent;border:none;box-shadow:none;padding:0 6px 2px 10px;font-size:9px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;">
+        <span class="nm" style="visibility:hidden;">·</span>
+        <span style="width:18px;flex:none;"></span>
+        <span class="numin" style="background:transparent;border:none;box-shadow:none;">NOTA</span>
+        <span class="numin" style="background:transparent;border:none;box-shadow:none;">RECUP.</span>
+      </div>`:""}
+      <div class="rows" id="rows_${idx}"></div>`;
+  };
+  body.innerHTML=`${termSeg}${dateBarHTML(t,date,anyLocked)}
+    ${items.map((it,idx)=>`<div class="card pad" style="margin-bottom:14px;">${blockHTML(it.ex,it.field,idx)}</div>`).join("")}
     <div class="pagefoot">Esta nota se carga y edita desde <b>Exámenes y recup</b> — acá solo se refleja, para llevar registro del día.</div>`;
-  const rows=$("#rows");
-  const displayGrade=(val,motivo,se)=>{ const cls=gradeTierClass(typeof val==="number"?val:null,g.passMark); const txt=se?"S/E":(val==null?"–":fmtNum(val)); return `<span class="numin ${cls}" style="display:inline-flex;align-items:center;justify-content:center;">${txt}${motivoMark(motivo)}</span>`; };
-  rows.innerHTML=g.students.map((s,i)=>{
-    const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
-    const motivo=getGradeMotivo(t,s.id,ex.id,field);
-    let recuCell="";
-    if(claseRecu){
-      const rv=getGrade(t,s.id,claseRecu.id).nota;
-      recuCell=typeof rv==="number"
-        ?`<span class="numin ${gradeTierClass(rv,g.passMark)}" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">${fmtNum(rv)}</span>`
-        :`<span class="numin" style="display:inline-flex;align-items:center;justify-content:center;background:var(--line-soft);color:var(--faint);" title="No rindió el recuperatorio">–</span>`;
-    }
-    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
-      ${displayGrade(val,motivo,se)}${recuCell}</div>`;}).join("");
-  function tally(){ let n=0,au=0; g.students.forEach(s=>{ if(attOf(t,s.id,date,g)==="A")au++; if(getGrade(t,s.id,ex.id)[field]!=null)n++; }); $("#cN").textContent=n; $("#cA").textContent=au; }
-  tally();
-  $("#toExam").onclick=()=>{ view.tab="exam"; view.examId=ex.id; render(); };
+  const displayGrade=(val,motivo,se,ausente)=>{ const cls=ausente?"gnum-red":gradeTierClass(typeof val==="number"?val:null,g.passMark); const txt=ausente?"A":(se?"S/E":(val==null?"–":fmtNum(val))); return `<span class="numin ${cls}" style="display:inline-flex;align-items:center;justify-content:center;">${txt}${motivoMark(motivo)}</span>`; };
+  items.forEach(({ex,field},idx)=>{
+    const rows=$("#rows_"+idx);
+    const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
+    rows.innerHTML=g.students.map((s,i)=>{
+      const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
+      const motivo=getGradeMotivo(t,s.id,ex.id,field);
+      const approved=field==="nota"&&typeof c.nota==="number"&&c.nota>=(g.passMark||7);
+      const ausente=!approved&&gradeAusenteEffective(t,g,s.id,ex.id,field,field==="recu"?ex.recuDate:ex.date);
+      let recuCell="";
+      if(claseRecu){
+        const rv=getGrade(t,s.id,claseRecu.id).nota;
+        if(approved){ recuCell=`<span class="numin" style="display:inline-flex;align-items:center;justify-content:center;background:var(--blue-tint);color:var(--blue-ink);" title="Ya aprobó, no rinde recuperatorio">–</span>`; }
+        else if(typeof rv==="number"){ recuCell=`<span class="numin ${gradeTierClass(rv,g.passMark)}" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">${fmtNum(rv)}</span>`; }
+        else{
+          const ausRecu=gradeAusenteEffective(t,g,s.id,claseRecu.id,"nota",claseRecu.date);
+          recuCell=ausRecu
+            ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">A</span>`
+            :`<span class="numin" style="display:inline-flex;align-items:center;justify-content:center;background:var(--line-soft);color:var(--faint);" title="No rindió el recuperatorio">–</span>`;
+        }
+      }
+      return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>
+        ${displayGrade(val,motivo,se,ausente)}${recuCell}</div>`;}).join("");
+    function tally(){ let n=0,au=0; g.students.forEach(s=>{ if(attOf(t,s.id,date,g)==="A")au++; if(getGrade(t,s.id,ex.id)[field]!=null)n++; }); $("#cN_"+idx).textContent=n; $("#cA_"+idx).textContent=au; }
+    tally();
+  });
+  body.querySelectorAll("[data-toexam]").forEach(b=>b.onclick=()=>{ view.tab="exam"; view.examId=b.dataset.toexam; render(); });
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
   wireDateNav(g,t,date);
 }
@@ -4367,9 +4397,7 @@ function renderExamEntry(g,t,e,body){
       :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`
         :(myRecu?linkedRecuCell()
           :`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><div style="display:flex;gap:3px;align-items:center;"><input class="numin recu ${ausenteR?"gnum-red":gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${ausenteR?"A":(typeof c.recu==="number"?fmtNum(c.recu):"")}" ${dis||ausenteR?"disabled":""}><button type="button" class="ausbtn ${ausenteR?"on":""}" data-sid="${s.id}" data-af="recu" title="Ausente" ${dis}>A</button></div>${recuTag}</div>`));
-    // Quién está hoy, para no tener que volver a Asistencia mientras se cargan notas.
-    const hoyBadge=attDotHTML(g,t,todayISO(),s.id);
-    return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}${hoyBadge}</span>
+    return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}</span>
       <div class="eg-col eg-col-nota">${notaCell}</div>
       ${!noRecu?`<div class="eg-col eg-col-recu">${recuCol}</div>`:""}`;
   }
@@ -4535,12 +4563,16 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       const d=tObj.deudas&&tObj.deudas[sid];
       const passedAt=intensPassedAt(tObj,sid,ipm);
       const passedIdx=passedAt?PERIODOS.findIndex(p=>p.id===passedAt):-1;
+      // Los períodos van en orden: sólo el primero sin resolver se marca "Pend.". Si
+      // sigue sin aprobar ahí, recién entonces el que sigue pasa a ser el pendiente.
+      let firstPendingMarked=false;
       return PERIODOS.map((p,i)=>{
         if(passedIdx>=0&&i>passedIdx) return `<td class="gc-tot" style="text-align:center;"><span style="color:var(--faint);">—</span></td>`;
         const pr=d&&d.periodos&&d.periodos[p.id];
         const nota=pr&&typeof pr.nota==="number"?pr.nota:null;
         if(nota!=null) return `<td class="gc-tot" style="text-align:center;"><span style="background:${finalColor(nota)};color:${finalInk(nota)};font-weight:700;padding:2px 8px;border-radius:99px;font-size:12px;">${fmtNum(nota)}</span></td>`;
-        return `<td class="gc-tot" style="text-align:center;"><span style="font-size:11px;color:var(--absent-ink);font-weight:600;">Pend.</span></td>`;
+        if(!firstPendingMarked){ firstPendingMarked=true; return `<td class="gc-tot" style="text-align:center;"><span style="font-size:11px;color:var(--absent-ink);font-weight:600;">Pend.</span></td>`; }
+        return `<td class="gc-tot" style="text-align:center;"><span style="color:var(--faint);">–</span></td>`;
       }).join("");
     };
     r+=itemCells(t1,items1);
@@ -4725,7 +4757,7 @@ function renderGrid(g,t,body){
       if(se.cancelled){ r+=`<td class="gc-canc"></td>`; return; }
       if(!studentExistedOn(g,s.id,se.date)){ r+=`<td style="color:var(--faint);">–</td>`; return; }
       if(mode==="asist"){
-        if(isFuture(se.date)){ r+=`<td></td>`; return; }
+        if(isFuture(se.date)||attendanceUntouched(term,se.date)){ r+=`<td></td>`; return; }
         const av=attOf(term,s.id,se.date,g);
         r+=av==="A"?`<td class="gc-A">A</td>`:av==="T"?`<td class="gc-T">T</td>`:`<td class="gc-P">•</td>`; return;
       }
@@ -5732,7 +5764,7 @@ function printGrilla(g,t,mode){
   head+=`</tr>`;
   const rows=g.students.map((s,i)=>{ let r=`<tr><td class="n">${i+1}</td><td class="al">${nameHTML(s)}</td>`;
     ses.forEach(se=>{ if(se.cancelled){ r+=`<td class="c cx"></td>`; return; }
-      if(mode==="asist"){ const av=attOf(t,s.id,se.date,g); r+=av==="A"?`<td class="c ab">A</td>`:av==null?`<td class="c"></td>`:`<td class="c">${av==="U"?"":"•"}</td>`; return; }
+      if(mode==="asist"){ if(isFuture(se.date)||attendanceUntouched(t,se.date)){ r+=`<td class="c"></td>`; return; } const av=attOf(t,s.id,se.date,g); r+=av==="A"?`<td class="c ab">A</td>`:av==null?`<td class="c"></td>`:`<td class="c">${av==="U"?"":"•"}</td>`; return; }
       const ev=t.exams.find(e=>e.date===se.date); const re=ev?null:t.exams.find(e=>e.recuDate===se.date);
       if(ev||re){ const ex=ev||re; const fld=ev?"nota":"recu"; const gr=getGrade(t,s.id,ex.id); const v=gr[fld];
         const ausente=gradeAusenteEffective(t,g,s.id,ex.id,fld,fld==="recu"?ex.recuDate:ex.date);
@@ -6092,15 +6124,15 @@ function gdInit(){
   if(cached){ gd.tok=cached.tok; gd.exp=cached.exp; const savedEmail=localStorage.getItem('gd_email'); if(savedEmail) gd.email=savedEmail; gdAfterAuth(); } else { gdUI(); }
 }
 
-function gdConnect(){ gd.tc?gd.tc.requestAccessToken({prompt:'consent'}):toastSuccess('Cargando Google…','var(--primary-press)'); }
-function gdReconnect(){ gd.tc?gd.tc.requestAccessToken({prompt:''}):toastSuccess('Cargando Google…','var(--primary-press)'); }
+function gdConnect(){ gd.tc?gd.tc.requestAccessToken({prompt:'consent'}):toastSuccess('Cargando Google…','#8C4108'); }
+function gdReconnect(){ gd.tc?gd.tc.requestAccessToken({prompt:''}):toastSuccess('Cargando Google…','#8C4108'); }
 function gdDisconnect(){
   if(gd.tok){ try{ google.accounts.oauth2.revoke(gd.tok,()=>{}); }catch(e){} }
   gd={tok:null,exp:0,fid:null,st:'idle',tc:gd.tc,email:null,_pendingResolve:null};
   localStorage.removeItem('gd_was_connected');
   localStorage.removeItem('gd_email');
   gdClearToken();
-  gdUI(); closeMenu(); toastSuccess('Drive desconectado','var(--primary-press)');
+  gdUI(); closeMenu(); toastSuccess('Drive desconectado','#8C4108');
 }
 
 async function gdGetUserEmail(){
@@ -6113,7 +6145,7 @@ async function gdGetUserEmail(){
     console.warn('No se pudo obtener el email:',e);
   }
 }
-async function gdAfterAuth(){ gd.st='syncing'; await gdGetUserEmail(); gd.st='ok'; gdUI(); toastSuccess('Conectando con Drive…','var(--primary-press)'); await gdPull(); maybeAutoBackupToDrive(); }
+async function gdAfterAuth(){ gd.st='syncing'; await gdGetUserEmail(); gd.st='ok'; gdUI(); toastSuccess('Conectando con Drive…','#8C4108'); await gdPull(); maybeAutoBackupToDrive(); }
 
 async function gdPull(){
   if(!gd.tok) return;
@@ -6130,7 +6162,7 @@ async function gdPull(){
       if(files.length>1) files.sort((a,b)=>new Date(b.modifiedTime||0)-new Date(a.modifiedTime||0)); // si hay duplicados, preferir el más reciente
       gd.fid=files[0]?files[0].id:null;
     }
-    if(!gd.fid){ await gdPushNow(); gd.st='ok'; gdUI(); toastSuccess('✓ Datos guardados en Drive','var(--primary-press)'); return; }
+    if(!gd.fid){ await gdPushNow(); gd.st='ok'; gdUI(); toastSuccess('✓ Datos guardados en Drive','#8C4108'); return; }
     const r=await fetch(`https://www.googleapis.com/drive/v3/files/${gd.fid}?alt=media`,
       {headers:{Authorization:'Bearer '+gd.tok}});
     if(!r.ok) throw new Error('No se pudo leer el archivo (HTTP '+r.status+')');
@@ -6157,14 +6189,14 @@ async function gdPull(){
       } else if(remote.lastModified&&(!state.lastModified||remote.lastModified>=state.lastModified)){
         if(remotePierdeDatos){ gd.st='ok'; gdUI(); showSyncConflictDialog(remote); return; }
         state=migrate(remote); state.lastSyncedAt=remote.lastModified; localStorage.setItem(KEY,JSON.stringify(state)); render();
-        toastSuccess('✓ Datos cargados desde Drive','var(--primary-press)');
+        toastSuccess('✓ Datos cargados desde Drive','#8C4108');
       } else {
         if(localPierdeDatos){ gd.st='ok'; gdUI(); showSyncConflictDialog(remote); return; }
         await gdPushNow();
         state.lastSyncedAt=state.lastModified; localStorage.setItem(KEY,JSON.stringify(state));
-        toastSuccess('✓ Tus cambios locales eran más nuevos, se subieron a Drive','var(--primary-press)');
+        toastSuccess('✓ Tus cambios locales eran más nuevos, se subieron a Drive','#8C4108');
       }
-    } else { toastSuccess('✓ Drive conectado','var(--primary-press)'); }
+    } else { toastSuccess('✓ Drive conectado','#8C4108'); }
     gd.st='ok';
   }catch(e){ gd.st='error'; console.error('gdPull',e); toastError('Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
@@ -6233,14 +6265,14 @@ function showSyncConflictDialog(remote){
     closeDlg();
     state=migrate(remote); state.lastSyncedAt=remote.lastModified;
     localStorage.setItem(KEY,JSON.stringify(state)); render();
-    toastSuccess('✓ Datos cargados desde Drive','var(--primary-press)');
+    toastSuccess('✓ Datos cargados desde Drive','#8C4108');
   };
   $("#sc_local").onclick=async()=>{
     closeDlg();
     // Antes de pisar lo que hay en Drive, se guarda ESO como backup fechado:
     // si la elección fue equivocada, se puede recuperar desde "Restaurar backup".
     try{ await backupSnapshotToDrive(remote,'Drive-antes-de-pisar'); }catch(e){}
-    try{ await gdPushNow(); toastSuccess('✓ Subido a Drive','var(--primary-press)'); }
+    try{ await gdPushNow(); toastSuccess('✓ Subido a Drive','#8C4108'); }
     catch(e){ toastError('No se pudo subir: '+(e&&e.message?e.message:'')); }
   };
   $("#sc_cancel").onclick=closeDlg;
@@ -6293,8 +6325,8 @@ function gdUI(){
   if(on){
     label=syncing?'Sincronizando con Drive…':(err?'Error en Drive · Reintentar':'✓ Drive conectado');
     sub=err?'Tocá para reintentar':(gd.email||'Tocá para desconectar');
-    bg=err?'var(--absent-tint)':'var(--primary)'; ink=err?'var(--absent-ink)':'#fff';
-    rowBg=err?'var(--absent-tint)':'var(--primary-tint)';
+    bg=err?'var(--absent-tint)':'#A9500A'; ink=err?'var(--absent-ink)':'#fff';
+    rowBg=err?'var(--absent-tint)':'#FCEBDA';
     action=err?()=>{gd.st='idle';gdAfterAuth();}:gdDisconnect;
   } else if(needsReconnect){
     label='Reconectar con Drive'; sub='El permiso venció · un toque para volver a sincronizar';
@@ -6343,9 +6375,9 @@ function flashError(id){ const el=$(id); if(!el) return;
 function toastSuccess(msg,color){ const t=$("#toast"); if(!t) return; t.textContent=msg; t.style.background=color||"var(--present-ink)"; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); t.style.background=""; },2500); }
 function toastError(msg){ const t=$("#toast"); if(!t) return; t.textContent=msg; t.style.background="var(--absent-ink)"; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); t.style.background=""; },3000); }
 async function gdSyncNow(){
-  if(!gd.tok){ toastSuccess('Conectá Drive primero','var(--primary-press)'); return; }
-  toastSuccess('Actualizando Drive…','var(--primary-press)');
-  try{ await gdPushNow(); gd.st='ok'; flashSuccess("#actSyncNow","var(--primary-tint)"); toastSuccess('✓ Drive actualizado','var(--primary-press)'); }
+  if(!gd.tok){ toastSuccess('Conectá Drive primero','#8C4108'); return; }
+  toastSuccess('Actualizando Drive…','#8C4108');
+  try{ await gdPushNow(); gd.st='ok'; flashSuccess("#actSyncNow","#FCEBDA"); toastSuccess('✓ Drive actualizado','#8C4108'); }
   catch(e){ gd.st='error'; console.error('gdSyncNow',e); flashError("#actSyncNow"); toastError('❌ Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
 }
