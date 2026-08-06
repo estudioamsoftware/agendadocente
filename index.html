@@ -6089,6 +6089,11 @@ $("#actLocalSnaps").onclick=openLocalSnapshotsDlg;
     if(!sheet) return;
     setTimeout(()=>{ try{ e.target.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){ } },250);
   });
+  // Al tocar un campo de nota, seleccionar todo su contenido: así el primer número
+  // que se escribe reemplaza directamente, sin tener que borrar antes.
+  document.addEventListener('focusin',e=>{
+    if(e.target.matches&&e.target.matches('input.numin')) e.target.select();
+  });
 })();
 
 /* ============ Toast ============ */
