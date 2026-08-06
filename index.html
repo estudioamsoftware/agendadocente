@@ -4512,6 +4512,7 @@ function renderExamEntry(g,t,e,body){
       if(!locked) wireRow(rowEl);
     });
     tally();
+    refocusPendingNum();
   }
   renderRows();
   const etBtn=$("#editTopics"); if(etBtn) etBtn.onclick=()=>{
@@ -6095,6 +6096,27 @@ $("#actLocalSnaps").onclick=openLocalSnapshotsDlg;
     if(e.target.matches&&e.target.matches('input.numin')) e.target.select();
   });
 })();
+
+// Al tocar una celda de nota para pasar a la siguiente, las pantallas de carga
+// (ej. exámenes) reconstruyen toda la grilla apenas se guarda el valor anterior
+// (evento "change" al perder foco) — eso rompe el elemento que el dedo ya estaba
+// por tocar, y el teclado se cierra en vez de saltar a la celda siguiente. Acá
+// guardamos qué celda se tocó ANTES de que la reconstrucción la reemplace, para
+// poder re-enfocar la celda equivalente ya reconstruida.
+let __pendingNumFocus=null;
+function __trackNumFocusIntent(e){
+  const t=e.target&&e.target.closest&&e.target.closest('input.numin[data-sid][data-f]');
+  __pendingNumFocus=t?{sid:t.dataset.sid,field:t.dataset.f}:null;
+}
+document.addEventListener('mousedown',__trackNumFocusIntent,true);
+document.addEventListener('touchstart',__trackNumFocusIntent,true);
+function refocusPendingNum(){
+  if(!__pendingNumFocus) return;
+  const{sid,field}=__pendingNumFocus;
+  __pendingNumFocus=null;
+  const el=document.querySelector(`input.numin[data-sid="${CSS.escape(sid)}"][data-f="${CSS.escape(field)}"]`);
+  if(el) el.focus();
+}
 
 /* ============ Toast ============ */
 let toastT;
