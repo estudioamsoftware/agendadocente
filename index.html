@@ -4189,8 +4189,14 @@ function renderClaseExam(g,t,body,date,ses,ex,field,kind){
       <button class="btn subtle sm" id="toExam">Ver en Exámenes</button></div>
     ${contPanel}
     <div class="tally"><div class="pill tp">Con nota <span id="cN">0</span></div><div class="pill ta">Ausentes <span id="cA">0</span></div></div>
+    ${claseRecu?`<div class="arow" style="background:transparent;border:none;box-shadow:none;padding:0 6px 2px 10px;font-size:9px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;">
+      <span class="nm" style="visibility:hidden;">·</span>
+      <span style="width:18px;flex:none;"></span>
+      <span class="numin" style="background:transparent;border:none;box-shadow:none;">NOTA</span>
+      <span class="numin" style="background:transparent;border:none;box-shadow:none;">RECUP.</span>
+    </div>`:""}
     <div class="rows" id="rows"></div>
-    <div class="pagefoot">${claseRecu?`La segunda columna es el recuperatorio del ${fmtShort(claseRecu.date)}; "–" = no lo rindió. `:""}Esta nota se carga y edita desde <b>Exámenes y recup</b> — acá solo se refleja, para llevar registro del día.</div>`;
+    <div class="pagefoot">Esta nota se carga y edita desde <b>Exámenes y recup</b> — acá solo se refleja, para llevar registro del día.</div>`;
   const rows=$("#rows");
   const displayGrade=(val,motivo,se)=>{ const cls=gradeTierClass(typeof val==="number"?val:null,g.passMark); const txt=se?"S/E":(val==null?"–":fmtNum(val)); return `<span class="numin ${cls}" style="display:inline-flex;align-items:center;justify-content:center;">${txt}${motivoMark(motivo)}</span>`; };
   rows.innerHTML=g.students.map((s,i)=>{
@@ -4312,7 +4318,6 @@ function renderExamEntry(g,t,e,body){
     <div class="tally" style="margin-top:10px;"><div class="pill" style="background:var(--present-tint);color:var(--present-ink);">Aprobados <span id="cOk">0</span></div><div class="pill" style="background:var(--absent-tint);color:var(--absent-ink);">Desaprobados <span id="cBad">0</span></div></div>
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
-    <button class="btn danger sm" id="delEx" style="margin-top:10px;">${I.trash} Borrar</button>
     <div class="pagefoot">Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
       :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
@@ -4402,11 +4407,15 @@ function renderExamEntry(g,t,e,body){
     tally();
   }
   const isIntensType=e.type==="intens_eval"||e.type==="intens_modulo";
-  const rosterStudents=parentEx
+  let rosterStudents=parentEx
     ? recuRoster(g,t,parentEx.id,e.id)
     : (isIntensType
       ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
       : g.students);
+  // Los que ya tienen nota (o están ausentes) van al final, así arriba quedan siempre
+  // los que todavía faltan calificar.
+  const pendingWeight=(s)=>{ const c=getGrade(t,s.id,e.id); const done=typeof c.nota==="number"||gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date); return done?1:0; };
+  rosterStudents=rosterStudents.slice().sort((a,b)=>pendingWeight(a)-pendingWeight(b));
   rows.innerHTML=rosterStudents.map(s=>`<div class="eg-row" data-row-sid="${s.id}"></div>`).join("")
     ||(parentEx?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">Aprobaron todos ${esc(parentEx.name)}: no hay nadie para recuperar.</div>`
       :(isIntensType?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">No hay alumnos en intensificación en este cuatrimestre ahora mismo.</div>`:""));
@@ -4442,7 +4451,6 @@ function renderExamEntry(g,t,e,body){
   wireExamTermSeg(body);
   $("#backEx").onclick=()=>{ delete view.examId; render(); };
   $("#editEx").onclick=()=>promptEditExam(t,e);
-  $("#delEx").onclick=()=>{ confirmDlg("¿Mover a la papelera?",'Podés recuperar "'+e.name+'" con todas sus notas desde la papelera.',"Mover",()=>{ moveExamToTrash(t,e.id); delete view.examId; render(); toast("Examen movido a la papelera"); }); };
 }
 
 /* ---- CUATRIMESTRE ---- */
@@ -5334,7 +5342,7 @@ function promptEditExam(t,e){
     <div class="dlg-field"><label>Nombre</label><input id="ee_name" value="${esc(e.name)}" autocomplete="off"></div>
     <div class="dlg-field"><label>Fecha</label><input id="ee_date" type="date" value="${e.date||""}"></div>
     <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="ee_link" value="${esc(e.link||"")}" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
-    <div class="dlg-actions"><button class="btn subtle" id="ee_cancel">Cancelar</button><button class="btn" id="ee_ok">Guardar</button></div>`,
+    <div class="dlg-actions"><button class="btn subtle" id="ee_cancel">Cancelar</button><button class="btn danger" id="ee_del">Eliminar</button><button class="btn" id="ee_ok">Guardar</button></div>`,
     "La nota aparece sola en “Clase a clase” el día que coincide con una clase.");
   setTimeout(()=>$("#ee_name").focus(),60);
   let selType=e.type;
@@ -5365,6 +5373,7 @@ function promptEditExam(t,e){
     closeDlg(); render();
   };
   $("#ee_cancel").onclick=closeDlg;
+  $("#ee_del").onclick=()=>{ confirmDlg("¿Mover a la papelera?",'Podés recuperar "'+e.name+'" con todas sus notas desde la papelera.',"Mover",()=>{ moveExamToTrash(t,e.id); delete view.examId; render(); toast("Examen movido a la papelera"); }); };
 }
 
 /* ---- Parse raw name lines → [{apellido,nombre}] ---- */
