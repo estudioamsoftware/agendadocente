@@ -861,6 +861,23 @@ function migrate(st){
       T.comunicado=T.comunicado||{};
       T.avanceFecha=T.avanceFecha||{};
       if(Array.isArray(T.exams)) T.exams.forEach(ex=>{ if(!ex.type) ex.type="eval_escrita"; });
+      // Recuperatorios que ya estaban cargados como examen suelto: los atamos a la
+      // evaluación anterior más cercana, así filtran la lista y reflejan las notas solos.
+      if(Array.isArray(T.exams)){
+        const esRecu=ex=>String(ex.type||"").startsWith("recu_");
+        const notaDe=(sid,eid)=>(((T.grades||{})[sid]||{})[eid]||{});
+        T.exams.filter(ex=>esRecu(ex)&&!ex.recuOf).forEach(recu=>{
+          const yaAtadas=new Set(T.exams.filter(x=>x.recuOf).map(x=>x.recuOf));
+          const cand=T.exams.filter(x=>!esRecu(x)&&x.date<=recu.date&&!yaAtadas.has(x.id))
+            .sort((a,b)=>a.date<b.date?1:-1)[0];
+          if(!cand) return;
+          // Si esa evaluación ya usaba la columna "recu" vieja, la dejamos como estaba.
+          const usaRecuVieja=Object.keys(T.grades||{}).some(sid=>typeof notaDe(sid,cand.id).recu==="number");
+          if(usaRecuVieja) return;
+          recu.recuOf=cand.id;
+          if(!cand.recuDate) cand.recuDate=recu.date;
+        });
+      }
       if(Array.isArray(T.sessions)) markFeriadosAuto(T);
     });
     return ng;
@@ -1350,11 +1367,11 @@ function hasCompleteAttendance(t,date,g){
   if(ses.attLocked) return true; // tocaste el check "Ya tomé asistencia" — ÚNICA forma de marcar el día como completo
   return false; // mientras no toques ese check, sigue pendiente aunque ya hayas marcado a algún alumno
 }
-// ¿Ya pasó el horario de la clase? Si el curso no tiene horario cargado no hay forma
-// de saberlo, así que en ese caso el puntito se queda encendido el resto del día.
+// ¿Ya pasó el horario de la clase? Sin horario cargado no hay con qué compararlo, así
+// que damos la clase por terminada y no se muestra ningún puntito.
 function classOverNow(g){
   const hor=(g&&g.horario)?parseHorario(g.horario):null;
-  if(!hor) return false;
+  if(!hor) return true;
   const now=new Date();
   return (now.getHours()*60+now.getMinutes())>hor.endMin;
 }
@@ -1450,11 +1467,17 @@ function linkedRecuNota(t,sid,eid){
   const v=getGrade(t,sid,r.id).nota;
   return typeof v==="number"?v:null;
 }
-// Quiénes rinden el recuperatorio: los que no aprobaron la evaluación. Se mira la nota
-// original (no la efectiva) para que nadie desaparezca de la lista al cargarle la recu.
-function recuRoster(g,t,parentId){
+// Quiénes rinden el recuperatorio: los que no aprobaron la evaluación, más los que
+// faltaron o quedaron sin nota. Se mira la nota original (no la efectiva) para que nadie
+// desaparezca de la lista al cargarle la recu, y se respeta a cualquiera que ya tenga
+// nota cargada en este recuperatorio.
+function recuRoster(g,t,parentId,recuId){
   const pm=g.passMark||7;
-  return g.students.filter(s=>{ const v=getGrade(t,s.id,parentId).nota; return typeof v!=="number"||v<pm; });
+  return g.students.filter(s=>{
+    if(recuId&&typeof getGrade(t,s.id,recuId).nota==="number") return true;
+    const v=getGrade(t,s.id,parentId).nota;
+    return typeof v!=="number"||v<pm;
+  });
 }
 function examEffective(t,sid,eid){
   const c=getGrade(t,sid,eid);
@@ -4246,7 +4269,7 @@ function renderExamEntry(g,t,e,body){
     <button class="btn danger sm" id="delEx" style="margin-top:10px;">${I.trash} Borrar</button>
     <div class="pagefoot">${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
-      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)}. Estas notas se reflejan al lado de la nota original.`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
       :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   const rows=$("#rows");
@@ -4266,7 +4289,9 @@ function renderExamEntry(g,t,e,body){
     // Con recuperatorio aparte, la columna sólo refleja lo cargado allá (no se edita acá):
     // nota para los que lo rindieron, "–" para el resto.
     const linkedRecuCell=()=>{
-      const rv=getGrade(t,s.id,myRecu.id).nota;
+      // Si quedó una recu cargada a mano con el modo viejo, esa manda (es la que pesa
+      // en la nota efectiva), así nunca se esconde algo ya cargado.
+      const rv=typeof c.recu==="number"?c.recu:getGrade(t,s.id,myRecu.id).nota;
       return typeof rv==="number"
         ?`<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`
         :`<span class="eg-na">–</span>`;
@@ -4321,7 +4346,7 @@ function renderExamEntry(g,t,e,body){
   }
   const isIntensType=e.type==="intens_eval"||e.type==="intens_modulo";
   const rosterStudents=parentEx
-    ? recuRoster(g,t,parentEx.id)
+    ? recuRoster(g,t,parentEx.id,e.id)
     : (isIntensType
       ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
       : g.students);
@@ -5166,9 +5191,9 @@ function promptNewExam(t,g,type){
     : [];
   const guessedParent=((recuCandidates.filter(x=>x.date<=todayISO())[0])||recuCandidates[0]||{}).id||null;
   const parentPanel=isRecu?`<div class="dlg-field"><label>¿De qué evaluación es este recuperatorio?</label>
-    ${recuCandidates.length?`<div class="chiprow" id="e_recuof_row" style="flex-wrap:wrap;">${recuCandidates.map(x=>`<button class="mchip ${guessedParent===x.id?"on":""}" data-recuof="${x.id}">${examTypeMeta(x.type).icon} ${esc(x.name)} · ${fmtShort(x.date)}</button>`).join("")}<button class="mchip" data-recuof="">Ninguna (suelto)</button></div>
-      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Si lo atás, acá sólo van a aparecer los que no aprobaron esa evaluación, y las notas que cargues se ven al lado de la original.</div>`
-      :`<div style="font-size:12px;color:var(--faint);">Todavía no hay evaluaciones para atar en este cuatrimestre.</div>`}
+    ${recuCandidates.length?`<div class="chiprow" id="e_recuof_row" style="flex-wrap:wrap;">${recuCandidates.map(x=>`<button class="mchip ${guessedParent===x.id?"on":""}" data-recuof="${x.id}">${examTypeMeta(x.type).icon} ${esc(x.name)} · ${fmtShort(x.date)}</button>`).join("")}</div>
+      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Acá sólo van a aparecer los que no aprobaron esa evaluación y los que faltaron. Las notas que cargues se ven al lado de la original.</div>`
+      :`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:9px 11px;">Primero cargá la evaluación: un recuperatorio siempre sale de una evaluación anterior.</div>`}
     </div>`:"";
   const isIntensEval=type==="intens_eval";
   const guessedPeriod=isIntensEval?guessIntensPeriodByDate(todayISO()):null;
@@ -5209,6 +5234,11 @@ function promptNewExam(t,g,type){
   }
   $("#e_back").onclick=()=>{ closeDlg(); promptExamTypePicker(t,g); };
   const ok=()=>{
+    // Un recuperatorio siempre recupera una evaluación: sin eso no se crea.
+    if(isRecu&&!selRecuOf){
+      toast(recuCandidates.length?"Elegí de qué evaluación es el recuperatorio":"Primero cargá la evaluación que se recupera");
+      return;
+    }
     const v=n.value.trim()||meta.label;
     const selIds=[...$("#dlgBody").querySelectorAll(".topicchk.on")].map(b=>b.dataset.etid);
     const extra=($("#e_extra")&&$("#e_extra").value.trim())||"";
