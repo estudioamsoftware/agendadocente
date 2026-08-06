@@ -4577,10 +4577,26 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   const TEA_INK={TEA:"var(--blue-ink)",TEP:"var(--present-ink)",TED:"var(--absent-ink)"};
   const finalColor=(n)=>{ if(n==null) return "var(--line-soft)"; if(n<=3) return "var(--absent-tint)"; if(n<=6) return "var(--present-tint)"; return "var(--blue-tint)"; };
   const finalInk=(n)=>{ if(n==null) return "var(--faint)"; if(n<=3) return "var(--absent-ink)"; if(n<=6) return "var(--present-ink)"; return "var(--blue-ink)"; };
-  const typeIcon={"eval_escrita":"✏️","eval_oral":"🎤","tp":"📋","exam":"📝","carpeta":"📓"};
   const hasRecuType=(it)=>it.kind==="exam"&&it.type!=="tp"&&it.type!=="carpeta"&&!!it.recuDate;
-  const stripTrailingDate=(name)=>(name||"").replace(/\s*[\(\[]?\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?[\)\]]?\s*$/,"").trim();
-  const itemHeadHTML=(it,sub)=>{ const dt=sub==="Recup."?(it.recuDate?fmtShort(it.recuDate):"s/fecha"):fmtShort(it.date); const nm=stripTrailingDate(it.name)||it.name||""; return `<th style="white-space:nowrap;line-height:1.2;"><div>${typeIcon[it.type||it.kind]||"📝"} ${dt}</div><div style="font-size:9px;color:var(--muted);font-weight:600;white-space:normal;max-width:76px;line-height:1.2;margin:1px auto;">${esc(nm)}</div>${sub?`<div style="font-size:8px;color:var(--faint);font-weight:800;text-transform:uppercase;letter-spacing:.02em;margin-top:2px;white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:64px;margin-left:auto;margin-right:auto;">${sub}</div>`:""}</th>`; };
+  // Para que se distinga de un vistazo si la columna es de una Evaluación o de un
+  // Recuperatorio, separamos esa categoría (en negrita) de la modalidad (escrita/oral).
+  const CAT_LABEL={
+    eval_escrita:{cat:"Evaluación",detail:"Escrita"}, eval_oral:{cat:"Evaluación",detail:"Oral"},
+    recu_escrito:{cat:"Recuperatorio",detail:"Escrito"}, recu_oral:{cat:"Recuperatorio",detail:"Oral"}, recu:{cat:"Recuperatorio",detail:""},
+    tp:{cat:"TP",detail:""}, carpeta:{cat:"Carpeta",detail:""}, proyecto:{cat:"Proyecto",detail:""},
+    intens_modulo:{cat:"Intensificación",detail:"Módulo"}, intens_eval:{cat:"Evaluación",detail:"Intensificación"},
+  };
+  const itemHeadHTML=(it,sub,partLabel)=>{
+    const dt=sub==="Recup."?(it.recuDate?fmtShort(it.recuDate):"s/fecha"):fmtShort(it.date);
+    const base=CAT_LABEL[it.type]||{cat:examTypeMeta(it.type).label,detail:""};
+    const cat=sub==="Recup."?"Recuperatorio":base.cat;
+    const detail=partLabel||base.detail;
+    return `<th style="white-space:nowrap;line-height:1.2;">
+      <div style="font-size:9px;color:var(--muted);font-weight:600;">${dt}</div>
+      <div style="font-size:9.5px;font-weight:800;color:var(--ink);white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:70px;margin:2px auto 0;">${esc(cat)}</div>
+      ${detail?`<div style="font-size:8px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:64px;margin:1px auto 0;">${esc(detail)}</div>`:""}
+    </th>`;
+  };
   // "Notas de avance" es una columna más, con su propia fecha (una sola, para todo el curso — no por alumno).
   // Sin fecha puesta todavía, queda primera. Apenas le ponés fecha, se ordena sola entre los exámenes según cuándo fue.
   const avanceHeadHTML=(term)=>{
@@ -4596,8 +4612,8 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   const intensHead=()=>PERIODOS.map(p=>`<th class="gh-tot" style="font-size:9px;line-height:1.2;white-space:nowrap;">Intens.<div>${esc(p.label.slice(0,3))}</div></th>`).join("");
   const itemHead=(it)=>{ if(it.kind==="avance") return avanceHeadHTML(it.term);
     const hasParts=it.kind==="exam"&&Array.isArray(it.parts)&&it.parts.length>=2;
-    if(hasParts){ const partsHTML=it.parts.map(label=>itemHeadHTML(it,label.toUpperCase())).join(""); return hasRecuType(it)?partsHTML+itemHeadHTML(it,"Recup."):partsHTML; }
-    if(hasRecuType(it)) return itemHeadHTML(it,"Nota")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
+    if(hasParts){ const partsHTML=it.parts.map(label=>itemHeadHTML(it,"",label.toUpperCase())).join(""); return hasRecuType(it)?partsHTML+itemHeadHTML(it,"Recup."):partsHTML; }
+    if(hasRecuType(it)) return itemHeadHTML(it,"")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
   let head=`<tr><th class="stick">Alumno</th>`;
   items1.forEach(it=>{ head+=itemHead(it); });
   head+=`<th class="gh-tot">Nota C1°</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
