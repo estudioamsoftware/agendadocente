@@ -791,6 +791,10 @@ const VAL_SCHEME_PRESETS={
   ],footNote:"✓ Cumplió · ✕ No cumplió · sin marcar = S/C."}
 };
 const VAL_SCHEME_ORDER=["evgr","embbr","num10","semaforo","cruces","cumplio"];
+// Botón extra de "Ausente", siempre al final del segmento de valoraciones en Clases —
+// se marca solo según la asistencia del día, pero se puede pisar con otra valoración
+// si el alumno trae la tarea más tarde.
+const AUSENTE_LEVEL={key:"A",label:"Ausente",symbol:"A",...VTIER.red};
 // Paleta reducida para elegir color por nivel en una escala Personalizada.
 const VAL_CUSTOM_COLORS=[VTIER.blue,VTIER.green,VTIER.amber,VTIER.red,VTIER.grey,
   {bg:"#F0E9FE",ink:"#6D28D9",border:"#D9C7FB"},{bg:"#FCE5F0",ink:"#BE185D",border:"#F7C6DD"},{bg:"#DCF0F5",ink:"#0E7490",border:"#B9E3EC"}];
@@ -1401,6 +1405,8 @@ function getIncompleteAttendanceDates(t,g){
 }
 function workOf(t,sid,iso){ const v=t.work[sid]&&t.work[sid][iso]; return v||""; }
 function setWork(t,sid,iso,v){ t.work[sid]=t.work[sid]||{}; if(v==null||v==="") delete t.work[sid][iso]; else t.work[sid][iso]=v; save(); }
+// Si no se cargó una valoración a mano, y el alumno faltó ese día, se ve como "Ausente" sola.
+function effectiveWork(t,sid,iso,g){ const w=workOf(t,sid,iso); if(w) return w; return attOf(t,sid,iso,g)==="A"?"A":""; }
 
 function addExam(t,name,date,recuDate,type){ const e={id:uid(),name:name.trim(),date:date||todayISO(),type:type||"eval_escrita",topicIds:[]}; if(recuDate) e.recuDate=recuDate; t.exams.push(e); save(); return e; }
 function setExamMeta(t,eid,name,date,recuDate,topicIds){ const e=t.exams.find(x=>x.id===eid); if(e){ e.name=(name||"").trim()||e.name; e.date=date||e.date; if(recuDate) e.recuDate=recuDate; else delete e.recuDate; if(topicIds) e.topicIds=topicIds; save(); } }
@@ -3996,14 +4002,14 @@ function renderClase(g,t,body){
             :`<button class="btn" id="saveDay" style="margin-bottom:6px;">Guardar notas</button>`}
     <div class="pagefoot">${schemeFootNote(scheme)}</div>`;
   const rows=$("#rows");
-  const compactCls=scheme.levels.length>4?"compact":"";
+  const levels=scheme.levels.concat([AUSENTE_LEVEL]);
+  const compactCls=levels.length>4?"compact":"";
   rows.innerHTML=g.students.map((s,i)=>{
     if(!studentExistedOn(g,s.id,date)) return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span><span class="abschip" style="background:var(--line-soft);color:var(--faint);">– Pendiente</span></div>`;
-    // Si faltó ese día no hay nada para calificar: se marca solo, según la asistencia.
-    if(attOf(t,s.id,date,g)==="A") return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
-      <span class="abschip" style="background:var(--absent-tint);color:var(--absent-ink);">Ausente</span></div>`;
-    const w=workOf(t,s.id,date);
-    const levelBtns=scheme.levels.map(lv=>{
+    const w=effectiveWork(t,s.id,date,g);
+    // El botón "Ausente" se marca solo si faltó ese día, pero sigue siendo un botón más:
+    // si después trae la tarea, se pisa tocando otra valoración.
+    const levelBtns=levels.map(lv=>{
       const pressed=w===lv.key;
       const sizeStyle=levelBtnSizeStyle(lv);
       const pressStyle=pressed?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"";
@@ -4011,14 +4017,15 @@ function renderClase(g,t,body){
     }).join("");
     return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
       <div class="valseg ${locked?"locked":""} ${compactCls}" data-sid="${s.id}">${levelBtns}</div></div>`;}).join("");
-  function tally(){ let cal=0,au=0; g.students.forEach(s=>{ if(!studentExistedOn(g,s.id,date)) return; if(attOf(t,s.id,date,g)==="A") au++; const w=workOf(t,s.id,date); if(w&&scheme.levels.some(l=>l.key===w)) cal++; }); $("#cCal").textContent=cal; $("#cAu").textContent=au; }
+  function tally(){ let cal=0,au=0; g.students.forEach(s=>{ if(!studentExistedOn(g,s.id,date)) return; if(attOf(t,s.id,date,g)==="A") au++; const w=effectiveWork(t,s.id,date,g); if(w&&levels.some(l=>l.key===w)) cal++; }); $("#cCal").textContent=cal; $("#cAu").textContent=au; }
   tally();
   if(!locked){
-    rows.querySelectorAll(".valseg button").forEach(b=>b.onclick=()=>{ const seg=b.closest(".valseg"); const sid=seg.dataset.sid; const v=b.dataset.v; const cur=workOf(t,sid,date);
+    rows.querySelectorAll(".valseg button").forEach(b=>b.onclick=()=>{ const seg=b.closest(".valseg"); const sid=seg.dataset.sid; const v=b.dataset.v; const cur=effectiveWork(t,sid,date,g);
       const nv=cur===v?null:v; setWork(t,sid,date,nv);
+      const eff=effectiveWork(t,sid,date,g);
       seg.querySelectorAll("button").forEach(x=>{
-        const isOn=x.dataset.v===nv; x.setAttribute("aria-pressed", isOn?"true":"false");
-        const lv=scheme.levels.find(l=>l.key===x.dataset.v);
+        const isOn=x.dataset.v===eff; x.setAttribute("aria-pressed", isOn?"true":"false");
+        const lv=levels.find(l=>l.key===x.dataset.v);
         const sizeStyle=levelBtnSizeStyle(lv);
         x.style.cssText= sizeStyle+(isOn&&lv?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"");
       });
