@@ -501,7 +501,10 @@
   .swatch.on{border-color:var(--ink);}
   .swatch.on::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;}
   .swatch:active{transform:scale(.92);}
-  .scrim{position:fixed;inset:0;background:rgba(20,26,40,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+  /* --kb = alto del teclado del celular. Sin esto el cuadro queda pegado al fondo del
+     layout (que no se achica al abrirse el teclado) y los campos de abajo, junto con
+     Cancelar/Guardar, quedan tapados. */
+  .scrim{position:fixed;inset:0;bottom:var(--kb,0px);background:rgba(20,26,40,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
   .scrim.open{opacity:1;pointer-events:auto;}
   .sheet{background:var(--card);width:100%;max-width:680px;border-radius:22px 22px 0 0;padding:10px 16px calc(20px + env(safe-area-inset-bottom));box-shadow:var(--shadow-lg);transform:translateY(100%);transition:transform .24s cubic-bezier(.2,.8,.2,1);max-height:min(88vh, calc(var(--vvh, 100vh) - 24px));overflow-y:auto;}
   .scrim.open .sheet{transform:translateY(0);}
@@ -1347,11 +1350,21 @@ function hasCompleteAttendance(t,date,g){
   if(ses.attLocked) return true; // tocaste el check "Ya tomé asistencia" — ÚNICA forma de marcar el día como completo
   return false; // mientras no toques ese check, sigue pendiente aunque ya hayas marcado a algún alumno
 }
+// ¿Ya pasó el horario de la clase? Si el curso no tiene horario cargado no hay forma
+// de saberlo, así que en ese caso el puntito se queda encendido el resto del día.
+function classOverNow(g){
+  const hor=(g&&g.horario)?parseHorario(g.horario):null;
+  if(!hor) return false;
+  const now=new Date();
+  return (now.getHours()*60+now.getMinutes())>hor.endMin;
+}
 // Puntito de asistencia para las pantallas donde se trabaja con notas, así se sabe
-// quién está sin volver a Asistencia. Sólo marca algo si ESA clase existe, no está
-// anulada y ya se tomó asistencia; si no, no muestra nada (ni siquiera en blanco).
+// quién está sin volver a Asistencia. Es un indicador EN VIVO: se enciende al marcar
+// "ya tomé asistencia" y se apaga cuando termina el horario de esa clase. Fuera de la
+// clase de hoy no muestra nada (ni siquiera en blanco).
 // Verde = presente, sin importar si llegó tarde. Rojo con "A" = ausente.
 function attDotHTML(g,t,iso,sid){
+  if(iso!==todayISO()||classOverNow(g)) return "";
   const ses=getSession(t,iso);
   if(!ses||ses.cancelled||!ses.attLocked) return "";
   if(!studentExistedOn(g,sid,iso)) return "";
@@ -1381,6 +1394,8 @@ function moveExamToTrash(t,eid){
   ensureExamTrash(t).push({exam:e,grades,deletedAt:todayISO()});
   t.exams=t.exams.filter(x=>x.id!==eid);
   Object.keys(t.grades).forEach(sid=>{ if(t.grades[sid]) delete t.grades[sid][eid]; });
+  // Si era un recuperatorio atado, la evaluación deja de mostrar la columna vacía.
+  if(e.recuOf){ const parent=t.exams.find(x=>x.id===e.recuOf); if(parent) delete parent.recuDate; }
   save();
 }
 function restoreExamFromTrash(t,eid){
@@ -1427,7 +1442,27 @@ function motivoMark(motivo){
   if(motivo==="ia") return `<span style="font-size:8px;font-weight:800;color:var(--primary);margin-left:2px;vertical-align:top;">IA</span>`;
   return "";
 }
-function examEffective(t,sid,eid){ const c=getGrade(t,sid,eid); return (c.recu!=null)?c.recu:(c.nota!=null?c.nota:null); }
+/* Recuperatorio cargado como examen aparte y atado a su evaluación con recuOf.
+   Convive con el modo viejo (columna "recu" dentro del mismo examen). */
+function linkedRecuExam(t,eid){ return t.exams.find(x=>x.recuOf===eid)||null; }
+function linkedRecuNota(t,sid,eid){
+  const r=linkedRecuExam(t,eid); if(!r) return null;
+  const v=getGrade(t,sid,r.id).nota;
+  return typeof v==="number"?v:null;
+}
+// Quiénes rinden el recuperatorio: los que no aprobaron la evaluación. Se mira la nota
+// original (no la efectiva) para que nadie desaparezca de la lista al cargarle la recu.
+function recuRoster(g,t,parentId){
+  const pm=g.passMark||7;
+  return g.students.filter(s=>{ const v=getGrade(t,s.id,parentId).nota; return typeof v!=="number"||v<pm; });
+}
+function examEffective(t,sid,eid){
+  const c=getGrade(t,sid,eid);
+  if(c.recu!=null) return c.recu;
+  const lr=linkedRecuNota(t,sid,eid);
+  if(lr!=null) return lr;
+  return c.nota!=null?c.nota:null;
+}
 
 function realSessions(t){ return t.sessions.filter(s=>!s.cancelled); }
 function upcomingClassDates(t,excludeDate,limit){
@@ -4077,20 +4112,30 @@ function renderClaseExam(g,t,body,date,ses,ex,field,kind){
     <div class="topicchecks">${examTopics.map(tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`).join("")}</div>
     ${vocab?`<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic;"><b>Vocabulario:</b> ${esc(vocab)}</div>`:""}
     </div>`:`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Elegí qué contenidos evalúa este examen desde la pestaña Exámenes.</div>`;
+  // Si esta evaluación tiene un recuperatorio aparte, su nota se muestra al lado de la
+  // original: los que no lo rindieron quedan con "–".
+  const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
   body.innerHTML=`${termSeg}${dateBarHTML(t,date,ex.locked)}
     <div class="examday"><span class="ed-ic" style="font-size:20px;">${kindIcon}</span><div style="min-width:0;flex:1;"><div class="ed-k">${kind}</div><div class="ed-n">${esc(ex.name)}</div></div>
       <button class="btn subtle sm" id="toExam">Ver en Exámenes</button></div>
     ${contPanel}
     <div class="tally"><div class="pill tp">Con nota <span id="cN">0</span></div><div class="pill ta">Ausentes <span id="cA">0</span></div></div>
     <div class="rows" id="rows"></div>
-    <div class="pagefoot">Esta nota se carga y edita desde <b>Exámenes y recup</b> — acá solo se refleja, para llevar registro del día.</div>`;
+    <div class="pagefoot">${claseRecu?`La segunda columna es el recuperatorio del ${fmtShort(claseRecu.date)}; "–" = no lo rindió. `:""}Esta nota se carga y edita desde <b>Exámenes y recup</b> — acá solo se refleja, para llevar registro del día.</div>`;
   const rows=$("#rows");
   const displayGrade=(val,motivo,se)=>{ const cls=gradeTierClass(typeof val==="number"?val:null,g.passMark); const txt=se?"S/E":(val==null?"–":fmtNum(val)); return `<span class="numin ${cls}" style="display:inline-flex;align-items:center;justify-content:center;">${txt}${motivoMark(motivo)}</span>`; };
   rows.innerHTML=g.students.map((s,i)=>{
     const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
     const motivo=getGradeMotivo(t,s.id,ex.id,field);
+    let recuCell="";
+    if(claseRecu){
+      const rv=getGrade(t,s.id,claseRecu.id).nota;
+      recuCell=typeof rv==="number"
+        ?`<span class="numin ${gradeTierClass(rv,g.passMark)}" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">${fmtNum(rv)}</span>`
+        :`<span class="numin" style="display:inline-flex;align-items:center;justify-content:center;background:var(--line-soft);color:var(--faint);" title="No rindió el recuperatorio">–</span>`;
+    }
     return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>${attDotHTML(g,t,date,s.id)}
-      ${displayGrade(val,motivo,se)}</div>`;}).join("");
+      ${displayGrade(val,motivo,se)}${recuCell}</div>`;}).join("");
   function tally(){ let n=0,au=0; g.students.forEach(s=>{ if(attOf(t,s.id,date,g)==="A")au++; if(getGrade(t,s.id,ex.id)[field]!=null)n++; }); $("#cN").textContent=n; $("#cA").textContent=au; }
   tally();
   $("#toExam").onclick=()=>{ view.tab="exam"; view.examId=ex.id; render(); };
@@ -4172,7 +4217,11 @@ function renderExamEntry(g,t,e,body){
       <span>Sin contenidos seleccionados.</span><button class="link" style="font-size:12px;" id="editTopics">+ Agregar</button></div>`;
   const isTP=e.type==="tp";
   const isCarpeta=e.type==="carpeta";
-  const noRecu=isCarpeta||(!isTP&&!e.recuDate);
+  // parentEx: esta pantalla ES un recuperatorio atado a una evaluación.
+  // myRecu: esta evaluación TIENE un recuperatorio cargado como examen aparte.
+  const parentEx=e.recuOf?(t.exams.find(x=>x.id===e.recuOf)||null):null;
+  const myRecu=linkedRecuExam(t,e.id);
+  const noRecu=isCarpeta||(!isTP&&!e.recuDate&&!myRecu);
   const typeMetaHere=examTypeMeta(e.type);
   const typeLabel=`${typeMetaHere.icon} ${typeMetaHere.label}`;
   const periodLabel=e.type==="intens_eval"?(e.period==="otro"?(e.periodOtro||"Otro mes"):(e.period?(INTENS_PERIOD_OPTIONS.find(p=>p.id===e.period)||{}).label:null)):null;
@@ -4185,6 +4234,8 @@ function renderExamEntry(g,t,e,body){
       <button class="titleEdit" id="editEx" aria-label="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
       </div></div>
     ${e.link?`<a href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:10px;background:var(--primary-tint);border:1.5px solid var(--primary);border-radius:12px;padding:11px 14px;margin-bottom:14px;text-decoration:none;color:var(--primary);font-weight:600;font-size:14px;">🔗 Abrir examen online<span style="margin-left:auto;font-size:12px;font-weight:500;">↗</span></a>`:""}
+    ${parentEx?`<div style="display:flex;align-items:center;gap:8px;background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:9px 12px;margin-bottom:14px;font-size:12.5px;color:var(--primary);font-weight:600;">
+      <span>🔁</span><span style="flex:1;min-width:0;">Recupera <b>${esc(parentEx.name)}</b> (${fmtShort(parentEx.date)}) · sólo los que no aprobaron</span></div>`:""}
     ${contPanel}
     <div class="examgrid-wrap"><div class="examgrid">
       <div class="eg-row eg-head"><span class="eg-nm">Alumno</span><span class="eg-col eg-col-nota">NOTA</span>${!noRecu?`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`:""}</div>
@@ -4193,7 +4244,10 @@ function renderExamEntry(g,t,e,body){
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <button class="btn danger sm" id="delEx" style="margin-top:10px;">${I.trash} Borrar</button>
-    <div class="pagefoot">${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`:"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."}</div>`;
+    <div class="pagefoot">${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
+      :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)}. Estas notas se reflejan al lado de la nota original.`
+      :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   const rows=$("#rows");
   const dis=locked?"disabled":"";
@@ -4209,9 +4263,18 @@ function renderExamEntry(g,t,e,body){
     const notaCell=seMarcado
       ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
       :`<div class="grade-cell" style="${notaTag?"flex-direction:column;":""}"><input class="numin ${gradeTierClass(typeof c.nota==="number"?c.nota:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="nota" placeholder="–" value="${typeof c.nota==="number"?fmtNum(c.nota):""}" ${dis}>${notaTag}</div>`;
+    // Con recuperatorio aparte, la columna sólo refleja lo cargado allá (no se edita acá):
+    // nota para los que lo rindieron, "–" para el resto.
+    const linkedRecuCell=()=>{
+      const rv=getGrade(t,s.id,myRecu.id).nota;
+      return typeof rv==="number"
+        ?`<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`
+        :`<span class="eg-na">–</span>`;
+    };
     const recuCol=isTP
       ?`<button type="button" class="snhbtn ${c.se?"aus-on":""}" style="${typeof c.nota==="number"?"opacity:.55;":""}" data-sid="${s.id}" data-se="1">${c.se?"✕ No entregó":"Marcar S/E"}</button>`
-      :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`:`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><input class="numin recu ${gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${typeof c.recu==="number"?fmtNum(c.recu):""}" ${dis}>${recuTag}</div>`);
+      :(myRecu?linkedRecuCell()
+        :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`:`<div class="grade-cell" style="${recuTag?"flex-direction:column;":""}"><input class="numin recu ${gradeTierClass(typeof c.recu==="number"?c.recu:null,pm)}" inputmode="decimal" data-sid="${s.id}" data-f="recu" placeholder="–" value="${typeof c.recu==="number"?fmtNum(c.recu):""}" ${dis}>${recuTag}</div>`));
     // Quién está hoy, para no tener que volver a Asistencia mientras se cargan notas.
     const hoyBadge=attDotHTML(g,t,todayISO(),s.id);
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}${hoyBadge}</span>
@@ -4257,11 +4320,14 @@ function renderExamEntry(g,t,e,body){
     tally();
   }
   const isIntensType=e.type==="intens_eval"||e.type==="intens_modulo";
-  const rosterStudents=isIntensType
-    ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
-    : g.students;
+  const rosterStudents=parentEx
+    ? recuRoster(g,t,parentEx.id)
+    : (isIntensType
+      ? g.students.filter(s=>{ const fin=finalOf(t,s.id,pm); return fin!=null&&fin<pm&&!intensPassedAt(t,s.id,intensPM(g)); })
+      : g.students);
   rows.innerHTML=rosterStudents.map(s=>`<div class="eg-row" data-row-sid="${s.id}"></div>`).join("")
-    ||(isIntensType?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">No hay alumnos en intensificación en este cuatrimestre ahora mismo.</div>`:"");
+    ||(parentEx?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">Aprobaron todos ${esc(parentEx.name)}: no hay nadie para recuperar.</div>`
+      :(isIntensType?`<div style="font-size:13px;color:var(--faint);padding:14px 4px;">No hay alumnos en intensificación en este cuatrimestre ahora mismo.</div>`:""));
   rows.querySelectorAll("[data-row-sid]").forEach(rowEl=>{
     const s=g.students.find(x=>x.id===rowEl.dataset.rowSid);
     rowEl.innerHTML=rowInnerHTML(s);
@@ -5092,6 +5158,18 @@ function promptNewExam(t,g,type){
     <input id="e_extra" placeholder="Agregar contenido extra (opcional)" autocomplete="off" style="margin-top:8px;width:100%;height:40px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;font-size:14px;"></div>`
     :`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Cargá contenidos de Gramática o Vocabulario en Datos para elegirlos acá.</div>`;
   const quickDates=upcomingClassDates(t);
+  // Un recuperatorio se ata a la evaluación que recupera: así sólo se listan los alumnos
+  // que no aprobaron y las notas vuelven a verse al lado de la nota original.
+  const isRecu=String(type).startsWith("recu_");
+  const recuCandidates=isRecu
+    ? t.exams.filter(x=>!String(x.type||"").startsWith("recu_")&&!x.recuOf&&!linkedRecuExam(t,x.id)).sort((a,b)=>a.date<b.date?1:-1)
+    : [];
+  const guessedParent=((recuCandidates.filter(x=>x.date<=todayISO())[0])||recuCandidates[0]||{}).id||null;
+  const parentPanel=isRecu?`<div class="dlg-field"><label>¿De qué evaluación es este recuperatorio?</label>
+    ${recuCandidates.length?`<div class="chiprow" id="e_recuof_row" style="flex-wrap:wrap;">${recuCandidates.map(x=>`<button class="mchip ${guessedParent===x.id?"on":""}" data-recuof="${x.id}">${examTypeMeta(x.type).icon} ${esc(x.name)} · ${fmtShort(x.date)}</button>`).join("")}<button class="mchip" data-recuof="">Ninguna (suelto)</button></div>
+      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Si lo atás, acá sólo van a aparecer los que no aprobaron esa evaluación, y las notas que cargues se ven al lado de la original.</div>`
+      :`<div style="font-size:12px;color:var(--faint);">Todavía no hay evaluaciones para atar en este cuatrimestre.</div>`}
+    </div>`:"";
   const isIntensEval=type==="intens_eval";
   const guessedPeriod=isIntensEval?guessIntensPeriodByDate(todayISO()):null;
   const periodPanel=isIntensEval?`<div class="dlg-field"><label>¿De qué período de intensificación es esta nota?</label>
@@ -5103,6 +5181,7 @@ function promptNewExam(t,g,type){
     <div class="dlg-field"><label>Fecha</label><input id="e_date" type="date" value="${todayISO()}">
       ${quickDates.length?`<div class="chiprow" id="e_date_quick" style="margin-top:6px;flex-wrap:wrap;">${quickDates.map(d=>`<button class="mchip sm" data-qd="${d}">${fmtTop(d)}</button>`).join("")}</div><div style="font-size:11px;color:var(--faint);margin-top:4px;">↑ próximas clases de este curso</div>`:""}
     </div>
+    ${parentPanel}
     ${periodPanel}
     <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="e_link" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
     ${topicsPanel}
@@ -5120,6 +5199,14 @@ function promptNewExam(t,g,type){
       periodOtroInp.style.display=selPeriod==="otro"?"block":"none";
     });
   }
+  let selRecuOf=guessedParent;
+  const recuOfRow=$("#e_recuof_row");
+  if(recuOfRow){
+    recuOfRow.querySelectorAll("[data-recuof]").forEach(b=>b.onclick=()=>{
+      selRecuOf=b.dataset.recuof||null;
+      recuOfRow.querySelectorAll("[data-recuof]").forEach(x=>x.classList.toggle("on",x===b));
+    });
+  }
   $("#e_back").onclick=()=>{ closeDlg(); promptExamTypePicker(t,g); };
   const ok=()=>{
     const v=n.value.trim()||meta.label;
@@ -5130,6 +5217,12 @@ function promptNewExam(t,g,type){
     if(extra) e.extraTopics=(e.extraTopics||[]).concat(extra);
     const linkVal=($("#e_link")&&$("#e_link").value.trim())||""; if(linkVal) e.link=linkVal;
     if(isIntensEval&&selPeriod){ e.period=selPeriod; if(selPeriod==="otro") e.periodOtro=(periodOtroInp&&periodOtroInp.value.trim())||""; }
+    if(isRecu&&selRecuOf){
+      e.recuOf=selRecuOf;
+      // La evaluación pasa a mostrar la columna de recuperatorio con estas notas.
+      const parent=t.exams.find(x=>x.id===selRecuOf);
+      if(parent) parent.recuDate=e.date;
+    }
     save(); closeDlg(); view.examId=e.id; render();
   };
   $("#e_ok").onclick=ok; n.addEventListener("keydown",ev=>{ if(ev.key==="Enter") ok(); });
@@ -5748,10 +5841,25 @@ $("#actLocalSnaps").onclick=openLocalSnapshotsDlg;
 // (Agregar curso, etc.) no queden más grandes que el espacio libre arriba del teclado —
 // así los botones de Cancelar/Guardar quedan siempre a la vista, sin tener que desplazar.
 (function(){
-  const setVVH=()=>{ const h=(window.visualViewport?window.visualViewport.height:window.innerHeight); document.documentElement.style.setProperty('--vvh',h+'px'); };
+  const setVVH=()=>{
+    const vv=window.visualViewport;
+    const h=vv?vv.height:window.innerHeight;
+    document.documentElement.style.setProperty('--vvh',h+'px');
+    // Lo que el visor real perdió abajo = alto del teclado. Con eso subimos el cuadro
+    // para que quede entero arriba del teclado y no haya que desplazar a ciegas.
+    const kb=vv?Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop)):0;
+    document.documentElement.style.setProperty('--kb',kb+'px');
+  };
   setVVH();
   if(window.visualViewport){ window.visualViewport.addEventListener('resize',setVVH); window.visualViewport.addEventListener('scroll',setVVH); }
   window.addEventListener('resize',setVVH);
+  // Al enfocar un campo, traerlo a la vista dentro del cuadro (el navegador no siempre
+  // acierta cuando el que scrollea es la hoja y no la página).
+  document.addEventListener('focusin',e=>{
+    const sheet=e.target.closest&&e.target.closest('.scrim.open .sheet');
+    if(!sheet) return;
+    setTimeout(()=>{ try{ e.target.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){ } },250);
+  });
 })();
 
 /* ============ Toast ============ */
