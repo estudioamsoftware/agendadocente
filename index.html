@@ -325,6 +325,11 @@
   .lockbtn.unlocked .cb{color:var(--muted);}
   .lockbtn:active{opacity:.85;}
 
+  .gridlock{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;border:1.5px solid var(--canc-bd);background:var(--canc-bg);color:var(--canc-ink);margin:3px auto 0;padding:0;}
+  .gridlock svg{width:11px;height:11px;}
+  .gridlock.unlocked{background:var(--card);border-color:var(--line);color:var(--muted);}
+  .gridlock:active{opacity:.8;}
+
   .sharedchip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--muted);background:var(--line-soft);border-radius:99px;padding:3px 9px 3px 7px;white-space:nowrap;}
   .sharedchip svg{width:11px;height:11px;}
   .savedtag{color:#5F6368;font-weight:700;font-size:14px;}
@@ -4597,12 +4602,18 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       ${detail?`<div style="font-size:8px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:normal;word-break:break-word;overflow-wrap:break-word;max-width:64px;margin:1px auto 0;">${esc(detail)}</div>`:""}
     </th>`;
   };
+  // Notas de avance y el cierre de cuatrimestre (Nota C1°/C2°) sólo se cargan acá en la
+  // grilla — un candado "por las dudas" al lado del encabezado evita tocarlas sin querer.
+  // Es un bloqueo de la sesión (como el de la lista de alumnos), no un dato guardado.
+  const avLocked=(term)=>!(term==="1"?view.gridAvUnlocked1:view.gridAvUnlocked2);
+  const finLocked=(term)=>!(term==="1"?view.gridFinUnlocked1:view.gridFinUnlocked2);
+  const lockToggleHTML=(key,locked)=>`<button type="button" class="gridlock ${locked?"":"unlocked"}" data-locktoggle="${key}" title="${locked?"Bloqueado — tocá para desbloquear":"Desbloqueado — tocá para bloquear"}">${locked?I.lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'}</button>`;
   // "Notas de avance" es una columna más, con su propia fecha (una sola, para todo el curso — no por alumno).
   // Sin fecha puesta todavía, queda primera. Apenas le ponés fecha, se ordena sola entre los exámenes según cuándo fue.
   const avanceHeadHTML=(term)=>{
     const fecha=term==="1"?t1.avanceFechaCol:t2.avanceFechaCol;
     const dt=fecha?fmtShort(fecha):"";
-    return `<th class="gh-tot" data-avhead-term="${term}" style="cursor:pointer;line-height:1.2;">${dt?`<div>${dt}</div>`:`<div style="font-size:9px;color:var(--faint);">tocá y</div>`}<div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${dt?"Notas de avance":"poné fecha"}</div></th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>`;
+    return `<th class="gh-tot" data-avhead-term="${term}" style="cursor:pointer;line-height:1.2;">${dt?`<div>${dt}</div>`:`<div style="font-size:9px;color:var(--faint);">tocá y</div>`}<div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${dt?"Notas de avance":"poné fecha"}</div>${lockToggleHTML("av"+term,avLocked(term))}</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>`;
   };
   const singleCell=(v,motivo)=>{ if(v==null) return `<td class="gc-num">–</td>`; const cls=v==="A"?"gc-A":gradeTierClass(typeof v==="number"?v:null,pm); return `<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":v==="A"?"A":fmtNum(v)}${motivoMark(motivo)}</td>`; };
   // Un recu cargado como examen aparte (recuOf) ya se refleja en la columna "Recup." del
@@ -4616,9 +4627,9 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     if(hasRecuType(it)) return itemHeadHTML(it,"")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
   let head=`<tr><th class="stick">Alumno</th>`;
   items1.forEach(it=>{ head+=itemHead(it); });
-  head+=`<th class="gh-tot">Nota C1°</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
+  head+=`<th class="gh-tot">Nota C1°${lockToggleHTML("fin1",finLocked("1"))}</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
   items2.forEach(it=>{ head+=itemHead(it); });
-  head+=`<th class="gh-tot">Nota C2°</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-tot">Promedio</th></tr>`;
+  head+=`<th class="gh-tot">Nota C2°${lockToggleHTML("fin2",finLocked("2"))}</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-tot">Promedio</th></tr>`;
   function rowCellsHTML(s){
     const idx=g.students.indexOf(s);
     let r=`<td class="stick">${idx+1}. ${nameHTML(s,g)}</td>`;
@@ -4729,6 +4740,16 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     if(clearBtn) clearBtn.onclick=()=>{ delete tObj.avanceFechaCol; save(); closeDlg(); render(); };
   });
 
+  body.querySelectorAll("[data-locktoggle]").forEach(btn=>btn.onclick=(ev)=>{
+    ev.stopPropagation();
+    const key=btn.dataset.locktoggle;
+    if(key==="av1") view.gridAvUnlocked1=!view.gridAvUnlocked1;
+    else if(key==="av2") view.gridAvUnlocked2=!view.gridAvUnlocked2;
+    else if(key==="fin1") view.gridFinUnlocked1=!view.gridFinUnlocked1;
+    else if(key==="fin2") view.gridFinUnlocked2=!view.gridFinUnlocked2;
+    render();
+  });
+
   function wireRow(trEl){
     const sid=trEl.dataset.rowSid;
     trEl.querySelectorAll("[data-comu-sid]").forEach(btn=>btn.onclick=(ev)=>{
@@ -4743,6 +4764,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     trEl.querySelectorAll("[data-av-sid]").forEach(td=>td.onclick=(ev)=>{
       ev.stopPropagation();
       const tk=td.dataset.avTerm;
+      if(avLocked(tk)){ toast("Notas de avance bloqueadas — tocá el candado para editar"); return; }
       const tObj=g.terms[tk];
       const cur=tObj.avance[sid];
       const stu=g.students.find(x=>x.id===sid);
@@ -4759,6 +4781,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     trEl.querySelectorAll("[data-fin-sid]").forEach(td=>td.onclick=(ev)=>{
       ev.stopPropagation();
       const tk=td.dataset.finTerm;
+      if(finLocked(tk)){ toast("Nota C1°/C2° bloqueada — tocá el candado para editar"); return; }
       const tObj=g.terms[tk];
       const cur=tObj.final[sid]; // override puesto a mano (null si todavía es automático)
       const auto=finalAuto(tObj,sid,g.passMark||7); // promedio de las notas ya cargadas
