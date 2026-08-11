@@ -369,9 +369,6 @@
 
   .pcards{display:flex;flex-direction:column;gap:12px;}
   .pcard{padding:14px 14px 12px;}
-  .footballcard{width:34px;height:48px;border-radius:4px;border:none;flex:none;display:flex;align-items:flex-end;justify-content:center;padding:4px 2px;box-shadow:0 2px 5px rgba(0,0,0,.3);transition:transform .12s,opacity .12s;cursor:pointer;}
-  .footballcard .fc-lbl{font-size:7.5px;font-weight:800;color:#fff;text-align:center;line-height:1.15;text-shadow:0 1px 2px rgba(0,0,0,.4);}
-  .footballcard:active{transform:scale(.9) !important;}
   .pcard .ptop{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .pcard .pname{flex:1;font-weight:600;font-size:14.5px;word-break:break-word;}
   .pcard .stat{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
@@ -1602,9 +1599,17 @@ const PERIODOS=[
 ];
 const INTENS_PERIOD_OPTIONS=PERIODOS.concat([{id:'otro',label:'Otro mes'}]);
 
-function ensureDeuda(t,sid){
+// Si se llevó el cuatrimestre, por defecto se lleva TODOS los contenidos — así que la
+// primera vez que se ve a un alumno acá se le precargan todos como pendientes, y el
+// profe va sacando (×) los que ya tiene aprobados. "topicsInit" marca que ya se hizo
+// esa precarga, para no volver a pisar lo que el profe fue sacando a mano.
+function ensureDeuda(t,sid,defaultTopicIds){
   if(!t.deudas) t.deudas={};
-  if(!t.deudas[sid]) t.deudas[sid]={topics:[],periodos:{}};
+  if(!t.deudas[sid]) t.deudas[sid]={topics:defaultTopicIds?[...defaultTopicIds]:[],periodos:{},topicsInit:!!defaultTopicIds};
+  else if(defaultTopicIds&&!t.deudas[sid].topicsInit){
+    if(!t.deudas[sid].topics||!t.deudas[sid].topics.length) t.deudas[sid].topics=[...defaultTopicIds];
+    t.deudas[sid].topicsInit=true;
+  }
   PERIODOS.forEach(p=>{ if(!t.deudas[sid].periodos[p.id]) t.deudas[sid].periodos[p.id]={nota:null,cleared:[]}; });
   return t.deudas[sid];
 }
@@ -1627,8 +1632,7 @@ function intensPassedAt(t,sid,ipmMap){
   for(const p of PERIODOS){ const pr=d.periodos[p.id]; const thresh=(ipmMap&&ipmMap[p.id]!=null)?ipmMap[p.id]:7; if(pr&&typeof pr.nota==="number"&&pr.nota>=thresh) return p.id; }
   return null;
 }
-const MODULO_ESTADOS=[{id:"completo",label:"Completo",color:"#22C55E"},{id:"incompleto",label:"Incompleto",color:"#EAB308"},{id:"no_hizo",label:"No lo hizo",color:"#DC2626"}];
-function setModuloEstado(t,sid,val){ const d=ensureDeuda(t,sid); if(val) d.moduloEstado=val; else delete d.moduloEstado; save(); }
+function setModuloCompleto(t,sid,val){ const d=ensureDeuda(t,sid); if(val) d.moduloEstado="completo"; else delete d.moduloEstado; save(); }
 function setDeudasTopics(t,sid,topicIds){ const d=ensureDeuda(t,sid); d.topics=topicIds; save(); }
 function setPeriodoResult(t,sid,pid,nota,clearedIds){ const d=ensureDeuda(t,sid); d.periodos[pid]={nota,cleared:clearedIds||[]}; save(); }
 // Adivina a qué período de intensificación corresponde una fecha (para preseleccionarlo
@@ -5108,6 +5112,7 @@ function renderIntens(g,t,body){
   const tk=view.term||"1";
   const prog=(g.programa||{c1:[],c2:[]});
   const allTopics=tk==="1"?prog.c1:prog.c2;
+  const allTopicIds=allTopics.map(tp=>tp.id);
   const topicMap={}; allTopics.forEach(tp=>topicMap[tp.id]=tp.text);
   const termSeg=`<div class="seg" role="group" aria-label="Cuatrimestre" style="margin-bottom:10px;justify-content:center;"><button data-term="1" aria-pressed="${tk==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${tk==="2"}">2° Cuatrimestre</button></div>`;
   const passbar=`<div class="passbar" style="flex-wrap:wrap;height:auto;padding:8px 10px;gap:8px;">
@@ -5127,17 +5132,16 @@ function renderIntens(g,t,body){
     return;
   }
   const cards=failing.map(s=>{
-    const d=ensureDeuda(t,s.id);
+    const d=ensureDeuda(t,s.id,allTopicIds);
     const owedIds=d.topics||[];
     const debeCarpeta=!!d.debeCarpeta;
     const passedAt=intensPassedAt(t,s.id,ipm);
     const passedIdx=passedAt?PERIODOS.findIndex(p=>p.id===passedAt):-1;
     const chipsArr=owedIds.map(tid=>`<span class="topicchk on" style="cursor:default;">${esc(topicMap[tid]||tid)}<button class="pc-x" data-rm-topic-sid="${s.id}" data-rm-topic-tid="${tid}" aria-label="Quitar">×</button></span>`);
     if(debeCarpeta) chipsArr.push(`<span class="topicchk on" style="cursor:default;background:var(--blue-tint);color:var(--blue-ink);">📓 Carpeta / TP<button class="pc-x" data-carpeta-clear-sid="${s.id}" aria-label="Quitar">×</button></span>`);
-    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">Sin contenidos pendientes asignados todavía.</div>`;
-    const estadoBtns=MODULO_ESTADOS.map(me=>{ const on=d.moduloEstado===me.id;
-      return `<button class="footballcard" data-modulo-estado-sid="${s.id}" data-modulo-estado-val="${me.id}" style="background:${me.color};opacity:${on?"1":".35"};transform:scale(${on?"1.08":"1"});">
-        <span class="fc-lbl">${me.label}</span></button>`; }).join("");
+    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">Sin contenidos pendientes (${allTopics.length?"ya sacaste todos":"no cargaste contenidos en Datos → Contenidos"}).</div>`;
+    const moduloCompleto=d.moduloEstado==="completo";
+    const estadoBtns=`<div class="seg" style="margin:0;"><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="1" aria-pressed="${moduloCompleto}">Sí</button><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="0" aria-pressed="${!moduloCompleto}">No</button></div>`;
     const periodsHTML=PERIODOS.map((p,i)=>{
       const pr=d.periodos[p.id]||{nota:null};
       const locked=passedIdx>=0&&i>passedIdx;
@@ -5153,11 +5157,11 @@ function renderIntens(g,t,body){
       <div class="infield" style="margin-top:8px;"><label>Contenidos pendientes de este cuatrimestre</label>
         ${topicsChips}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-          <button class="btn subtle sm" data-choose-topics="${s.id}">+ Elegir contenidos pendientes</button>
+          <button class="btn subtle sm" data-choose-topics="${s.id}">Editar contenidos pendientes</button>
           <button class="btn ${debeCarpeta?"":"subtle"} sm" data-toggle-carpeta-sid="${s.id}">📓 ${debeCarpeta?"✓ ":""}Solo debe carpeta/TP</button>
         </div></div>
       <div class="infield" style="margin-top:10px;"><label>¿Completó el módulo? (habilita a rendir)</label>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">${estadoBtns}</div></div>
+        ${estadoBtns}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${periodsHTML}</div>
       ${aprobadoBanner}
     </div>`;
@@ -5166,10 +5170,9 @@ function renderIntens(g,t,body){
     <div class="pagefoot">Con una nota que llegue al mínimo de ese período (arriba de todo), ese alumno queda aprobado y el resto de los períodos se bloquea. Julio, Noviembre y Diciembre piden 7 por defecto; Febrero y Marzo piden 4 — ajustable si tu escuela usa otro criterio.</div>`;
   wireIntens(g,t);
   const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"datos",datosSub:"documentos"});
-  body.querySelectorAll("[data-modulo-estado-sid]").forEach(b=>b.onclick=()=>{
-    const sid=b.dataset.moduloEstadoSid, val=b.dataset.moduloEstadoVal;
-    const d=ensureDeuda(t,sid);
-    setModuloEstado(t,sid,d.moduloEstado===val?null:val);
+  body.querySelectorAll("[data-modulo-completo-sid]").forEach(b=>b.onclick=()=>{
+    const sid=b.dataset.moduloCompletoSid, val=b.dataset.moduloCompletoVal==="1";
+    setModuloCompleto(t,sid,val);
     render();
   });
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; render(); });
