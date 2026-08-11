@@ -4648,11 +4648,19 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     const hasParts=it.kind==="exam"&&Array.isArray(it.parts)&&it.parts.length>=2;
     if(hasParts){ const partsHTML=it.parts.map(label=>itemHeadHTML(it,"",label.toUpperCase())).join(""); return hasRecuType(it)?partsHTML+itemHeadHTML(it,"Recup."):partsHTML; }
     if(hasRecuType(it)) return itemHeadHTML(it,"")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
+  // "Nota C1°/C2°" también tiene su propia fecha de cierre (una sola, para todo el
+  // curso — no por alumno), igual que la columna de "Notas de avance".
+  const finalHeadHTML=(term)=>{
+    const tObj=term==="1"?t1:t2;
+    const fecha=tObj.finalFechaCol;
+    const dt=fecha?fmtShort(fecha):"";
+    return `<th class="gh-tot" data-finhead-term="${term}" style="cursor:pointer;line-height:1.2;">${dt?`<div>${dt}</div>`:""}<div style="font-size:9px;color:var(--muted);font-weight:600;${dt?"margin-top:1px;":""}">Nota C${term}°</div>${lockToggleHTML("fin"+term,finLocked(term))}</th>`;
+  };
   let head=`<tr><th class="stick">Alumno</th>`;
   items1.forEach(it=>{ head+=itemHead(it); });
-  head+=`<th class="gh-tot">Nota C1°${lockToggleHTML("fin1",finLocked("1"))}</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
+  head+=`${finalHeadHTML("1")}<th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
   items2.forEach(it=>{ head+=itemHead(it); });
-  head+=`<th class="gh-tot">Nota C2°${lockToggleHTML("fin2",finLocked("2"))}</th><th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-tot">Promedio</th></tr>`;
+  head+=`${finalHeadHTML("2")}<th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-tot">Promedio</th></tr>`;
   function rowCellsHTML(s){
     const idx=g.students.indexOf(s);
     let r=`<td class="stick">${idx+1}. ${nameHTML(s,g)}</td>`;
@@ -4741,7 +4749,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     </table>`;
   }
   body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-    <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
+    <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Nota C1°/C2°" para ponerle fecha de cierre del cuatrimestre · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
     <div class="pagefoot">Tocá una celda de Notas de avance o Nota C1°/C2° para cargar o ajustar la nota de ese alumno. Con "Notas de avance" ya con fecha puesta, se ordena sola entre los exámenes según cuándo fue.</div>
     <div class="grid-stats" id="statsFooter">${statsFooterHTML()}</div>
     <div style="height:40px;"></div>`;
@@ -4762,6 +4770,22 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     $("#avcol_save").onclick=()=>{ tObj.avanceFechaCol=$("#avcol_fecha_inp").value; save(); closeDlg(); render(); };
     const clearBtn=$("#avcol_clear");
     if(clearBtn) clearBtn.onclick=()=>{ delete tObj.avanceFechaCol; save(); closeDlg(); render(); };
+  });
+
+  body.querySelectorAll("[data-finhead-term]").forEach(th=>th.onclick=(ev)=>{
+    ev.stopPropagation();
+    const tk=th.dataset.finheadTerm;
+    const tObj=g.terms[tk];
+    const cur=tObj.finalFechaCol||todayISO();
+    openDlg(`Fecha de cierre del ${tk}° cuatrimestre`,`
+      <div class="dlg-field"><input type="date" id="fincol_fecha_inp" value="${cur}"></div>
+      <div class="dlg-actions">
+        ${tObj.finalFechaCol?`<button class="btn subtle" id="fincol_clear">Quitar fecha</button>`:""}
+        <button class="btn" id="fincol_save">✓ Poner fecha</button>
+      </div>`);
+    $("#fincol_save").onclick=()=>{ tObj.finalFechaCol=$("#fincol_fecha_inp").value; save(); closeDlg(); render(); };
+    const clearBtn=$("#fincol_clear");
+    if(clearBtn) clearBtn.onclick=()=>{ delete tObj.finalFechaCol; save(); closeDlg(); render(); };
   });
 
   body.querySelectorAll("[data-locktoggle]").forEach(btn=>btn.onclick=(ev)=>{
