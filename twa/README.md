@@ -35,7 +35,7 @@ copiarlas a mano):
 
 | Pregunta | Respuesta |
 |---|---|
-| Application ID (package name) | `ar.com.estudioam.agendadocente` |
+| Application ID (package name) | `com.estudioam.agendadocente` |
 | Application name | `Agenda Docente` |
 | Launcher name | `Agenda Docente` |
 | Display mode | `standalone` |
@@ -92,7 +92,7 @@ Contenido del archivo:
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "ar.com.estudioam.agendadocente",
+    "package_name": "com.estudioam.agendadocente",
     "sha256_cert_fingerprints": ["TU_HUELLA_SHA256_ACA"]
   }
 }]
