@@ -44,6 +44,16 @@ Todo vive en `index.html`, sección `/* ============ Licencia ============ */`.
 Ojo: el candado solo frena cursos **nuevos**. A quien ya tenga varios cargados no
 se le esconde ninguno cuando se encienda.
 
+## Ojo con esto al atar la licencia a la cuenta de Google
+
+Probando la app instalada desde Play Store se vio que **el celular ofrece
+solamente la cuenta de Google que tiene agregada el teléfono**, sin dejar elegir
+otra. Si la docente usa el celu con una cuenta y compró con otra, no va a poder
+activar la licencia.
+
+Hay que preverlo: o se explica bien que compre con la misma cuenta del celu, o se
+suma una forma alternativa de activar (por ejemplo, un código que se canjea).
+
 ## Etapa 2 — Firebase (pendiente)
 
 Hoy la lista de licencias está escrita en el código, que es público y corre en el
