@@ -6418,8 +6418,17 @@ function gdInit(){
       gdAfterAuth();
     }
   });
+  const savedEmail=localStorage.getItem('gd_email'); if(savedEmail) gd.email=savedEmail;
   const cached=gdLoadToken();
-  if(cached){ gd.tok=cached.tok; gd.exp=cached.exp; const savedEmail=localStorage.getItem('gd_email'); if(savedEmail) gd.email=savedEmail; gdAfterAuth(); } else { gdUI(); }
+  if(cached){ gd.tok=cached.tok; gd.exp=cached.exp; gdAfterAuth(); return; }
+  gdUI();
+  // El permiso de Drive se guarda en sessionStorage, así que se borra al cerrar la app.
+  // Si ya se había conectado antes, lo renovamos solos al abrir en vez de hacerle tocar
+  // "Reconectar" cada vez. Si Google no puede renovarlo en silencio (sin conexión, o
+  // permiso revocado), queda el botón como estaba: no se pierde nada.
+  if(localStorage.getItem('gd_was_connected')==='1'){
+    gdSilentRefresh().then(ok=>{ if(ok) gdAfterAuth(); });
+  }
 }
 
 function gdConnect(){ gd.tc?gd.tc.requestAccessToken({prompt:'consent'}):toastSuccess('Cargando Google…','#8C4108'); }
