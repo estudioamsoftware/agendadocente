@@ -78,6 +78,21 @@ Docente.json` que ya existe — no se borra, pero queda huérfano y la app arran
 nuevo en blanco. Le pasaría a cada docente que ya conectó su Drive. Si hace falta
 administrarlo desde otra cuenta, se dan permisos en IAM (ya hecho), no se migra.
 
+### Links directos a las dos consolas
+
+Para sumar una docente nueva a la prueba hay que anotarla en **dos listas distintas, en
+dos cuentas distintas** (fricción conocida; desaparece la segunda cuando se publique la
+app de OAuth):
+
+- **Que pueda bajar la app** — Play Console (cuenta Estudio AM):
+  https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers
+- **Que pueda conectar su Drive** — Google Cloud (cuenta English Beats):
+  https://console.cloud.google.com/auth/audience?authuser=2&project=agenda-docente-500923
+
+Si a una tester le sale **"No se encontró el elemento"** en la Play Store, es la primera
+lista: o no está anotada, o el mail anotado no es el que tiene puesto en la Play Store
+del celular (aceptar la invitación en el navegador con otra cuenta no sirve).
+
 ### Pendientes de orden (charlado el 19/8, sin hacer todavía)
 
 - **No tocar "Publicar app".** El estado de publicación es **por proyecto, no por app**,
