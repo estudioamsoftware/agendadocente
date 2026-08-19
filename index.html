@@ -1185,6 +1185,70 @@ function liveDot(s,g){
 function nameHTML(s,g){ return esc(dispName(s))+recBadge(s)+liveDot(s,g); }
 function valStr(val){ const a=["E","VG","G","R"].filter(k=>val[k]>0).map(k=>k+val[k]); return a.length?a.join(" "):"S/C"; }
 
+/* ============ Licencia ============ */
+// La versión gratis deja llevar un curso; la completa, todos los que quieras.
+// LIC_ENFORCE queda apagado mientras la app está en prueba, así las profes que la
+// están probando no se topan con el candado. Se enciende cuando salga a la venta.
+const LIC_ENFORCE=false;
+const LIC_FREE_GROUPS=1;
+// Cuentas con la versión completa de regalo. Se guardan como hash SHA-256 del mail
+// en minúsculas: el repo es público y no queremos que se lean los mails de nadie.
+// Más adelante esta lista se reemplaza por la consulta a Firebase.
+const LIC_REGALADAS=[
+  "e88602ff4db038b3d5f872a8f4a535f9da5db508c267d224c32ed87592cefb9b", // cuenta de Estudio AM
+];
+let lic={plan:"gratis",email:null};
+
+function licLoad(){ try{ const raw=localStorage.getItem("lic"); if(raw) lic=Object.assign(lic,JSON.parse(raw)); }catch(e){} }
+function licSave(){ try{ localStorage.setItem("lic",JSON.stringify(lic)); }catch(e){} }
+function licIsFull(){ return !LIC_ENFORCE||lic.plan==="completa"; }
+// Los archivados no cuentan: son cursos de años anteriores, no ocupan lugar.
+function licGroupCount(){ return state.groups.filter(g=>!g.archived).length; }
+// Ojo: esto solo frena cursos nuevos. A quien ya tenga varios cargados no se le
+// esconde ninguno si el candado se enciende después.
+function licCanAddGroup(){ return licIsFull()||licGroupCount()<LIC_FREE_GROUPS; }
+
+async function licHash(txt){
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+// Se llama al conectar con Google: mira si esa cuenta tiene la versión completa.
+// Por ahora contra la lista de regaladas; más adelante lo contesta Firebase.
+async function licRefresh(){
+  if(!gd.email) return;
+  lic.email=gd.email;
+  try{
+    const h=await licHash(gd.email.trim().toLowerCase());
+    if(LIC_REGALADAS.includes(h)) lic.plan="completa";
+  }catch(e){}
+  licSave();
+}
+
+function licPaywall(){
+  const conectada=!!gd.email;
+  openDlg("Versión completa",`<div style="font-size:14.5px;line-height:1.6;color:var(--ink);">
+      <p style="margin:0 0 12px;">La versión gratis te deja llevar <strong>un curso</strong>. Para cargar todos los tuyos necesitás la versión completa.</p>
+      <div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:12px 14px;margin-bottom:14px;">
+        <div style="font-weight:600;margin-bottom:6px;">Con la versión completa tenés:</div>
+        <div style="font-size:13.5px;color:var(--muted);line-height:1.7;">
+          · Todos los cursos que necesites<br>
+          · Asistencia, notas y cursada de cada uno<br>
+          · Respaldo en tu Google Drive<br>
+          · Las mejoras que vayan saliendo
+        </div>
+      </div>
+      ${conectada?"":`<p style="font-size:13px;color:var(--muted);margin:0 0 12px;">Para activarla vas a tener que conectar tu cuenta de Google desde el menú — es así como la app sabe que la licencia es tuya.</p>`}
+    </div>
+    <div class="dlg-actions"><button class="btn subtle" id="lic_cancel">Ahora no</button><button class="btn" id="lic_ok">Quiero la completa</button></div>`);
+  $("#lic_cancel").onclick=closeDlg;
+  $("#lic_ok").onclick=()=>{
+    const asunto=encodeURIComponent("Quiero la versión completa de Agenda Docente");
+    const cuerpo=encodeURIComponent(`Hola! Quiero la versión completa.\n\nMi cuenta de Google: ${gd.email||"(la conecto y te la paso)"}\n`);
+    location.href=`mailto:estudioam.dev@gmail.com?subject=${asunto}&body=${cuerpo}`;
+    closeDlg();
+  };
+}
+
 /* ============ Data ops ============ */
 function getGroup(id){ return state.groups.find(g=>g.id===id); }
 function term(g){ return g.terms[view.term||"1"]; }
@@ -2859,7 +2923,7 @@ function renderPapelera(){
   app.classList.remove("app-home");
   setTopBack(()=>go({screen:"home"}));
   const items=[];
-  (state.groupTrash||[]).forEach(entry=>items.push({icon:"📚",label:entry.group.name,groupName:"Curso completo",deletedAt:entry.deletedAt,key:"grp_"+entry.group.id,restore:()=>{restoreGroupFromTrash(entry.group.id);render();toast("Curso restaurado");},empty:()=>{emptyGroupTrash(entry.group.id);render();toast("Eliminado definitivamente");}}));
+  (state.groupTrash||[]).forEach(entry=>items.push({icon:"📚",label:entry.group.name,groupName:"Curso completo",deletedAt:entry.deletedAt,key:"grp_"+entry.group.id,restore:()=>{ if(!licCanAddGroup()){ licPaywall(); return; } restoreGroupFromTrash(entry.group.id);render();toast("Curso restaurado");},empty:()=>{emptyGroupTrash(entry.group.id);render();toast("Eliminado definitivamente");}}));
   state.groups.forEach(g=>{
     (g.trash||[]).forEach(entry=>items.push({icon:"👤",label:dispName(entry.student),groupName:g.name,deletedAt:entry.deletedAt,key:"al_"+g.id+"_"+entry.student.id,restore:()=>{restoreFromTrash(g,entry.student.id);render();toast("Alumno restaurado");},empty:()=>{emptyTrashStudent(g,entry.student.id);render();toast("Eliminado definitivamente");}}));
     (g.docsTrash||[]).forEach(f=>items.push({icon:"📄",label:f.name,groupName:g.name,deletedAt:f.deletedAt,key:"doc_"+g.id+"_"+f.id,restore:()=>{restoreDocFromTrash(g,f.id);render();toast("Documento restaurado");},empty:()=>{emptyDocTrash(g,f.id);render();toast("Eliminado definitivamente");}}));
@@ -5400,6 +5464,7 @@ function promptVocabulario(g,k,id){
   $("#voc_cancel").onclick=closeDlg;
 }
 function promptNewGroup(){
+  if(!licCanAddGroup()){ licPaywall(); return; }
   let selColor=state.groups.length%PAL.length;
   let selDias=[];
   const swatches=PAL.map((p,i)=>`<button class="swatch ${selColor===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
@@ -5952,7 +6017,7 @@ function promptInfoItem(g,id){
 }
 function copyText(t){ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast("Copiado"),()=>fallbackCopy(t)); } else fallbackCopy(t); }
 function fallbackCopy(t){ try{ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); ta.remove(); toast("Copiado"); }catch(e){ toast("No se pudo copiar"); } }
-function seedGroups(){ ["EEST N°05 – 2°","EES N°3 – 6°","EES N°77","FINES","Particulares"].forEach(n=>addGroup(n)); toast("Grupos creados · editalos cuando quieras"); render(); }
+function seedGroups(){ if(!licCanAddGroup()){ licPaywall(); return; } ["EEST N°05 – 2°","EES N°3 – 6°","EES N°77","FINES","Particulares"].forEach(n=>addGroup(n)); toast("Grupos creados · editalos cuando quieras"); render(); }
 
 /* ============ Export / backup ============ */
 function download(filename,text,mime){ const blob=new Blob([text],{type:mime||"text/plain;charset=utf-8"}); const url=URL.createObjectURL(blob);
@@ -6325,6 +6390,7 @@ let toastT;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200); }
 
 saveLocalSnapshot(); // copia local del día ANTES de que cualquier sincronización toque algo
+licLoad();
 render();
 initSplash();
 initClock();
@@ -6443,7 +6509,7 @@ async function gdGetUserEmail(){
     console.warn('No se pudo obtener el email:',e);
   }
 }
-async function gdAfterAuth(){ gd.st='syncing'; await gdGetUserEmail(); gd.st='ok'; gdUI(); toastSuccess('Conectando con Drive…','#8C4108'); await gdPull(); maybeAutoBackupToDrive(); }
+async function gdAfterAuth(){ gd.st='syncing'; await gdGetUserEmail(); await licRefresh(); gd.st='ok'; gdUI(); toastSuccess('Conectando con Drive…','#8C4108'); await gdPull(); maybeAutoBackupToDrive(); }
 
 async function gdPull(){
   if(!gd.tok) return;
