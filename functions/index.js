@@ -7,9 +7,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-// TODO: reemplazar por el nombre de paquete real de la app en Play Console
-// (ej: "ar.com.estudioam.agendadocente").
-const PACKAGE_NAME = "ar.com.estudioam.agendadocente";
+const PACKAGE_NAME = "com.estudioam.agendadocente";
 
 // Contenido del JSON de la cuenta de servicio con permiso "Ver datos financieros"
 // en Play Console (Configuración > Acceso a la API). Se carga como secreto:

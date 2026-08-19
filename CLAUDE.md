@@ -55,7 +55,11 @@ La dueña del proyecto quiere:
 - **Backend: Firebase** (no Supabase). La dueña ya usa Supabase pero para otro proyecto
   sin relación; se evaluó y se eligió Firebase porque las notificaciones de Google Play
   (RTDN) se integran nativamente vía Pub/Sub con Cloud Functions, sin un webhook intermedio.
-- **Play Console:** la dueña ya tiene cuenta de developer (pagada, activa).
+- **Play Console:** la dueña ya tiene cuenta de developer (pagada, activa). App creada
+  (estado "Borrador", 19/8/2026) con **nombre de paquete `com.estudioam.agendadocente`**
+  (ya actualizado en `functions/index.js`, reemplaza el placeholder anterior). Falta
+  completar la ficha de la Play Store (descripción, capturas, etc.) y subir el primer
+  build (TWA) antes de poder publicarla.
 
 ### Estado del proyecto de Firebase
 
@@ -90,7 +94,7 @@ La dueña del proyecto quiere:
   todavía**, son dos flujos de Google distintos conviviendo). Al loguearse, escucha en
   tiempo real `subscriptions/{uid}` en Firestore y guarda el estado en
   `document.documentElement.dataset.subscription`. **Todavía no gatea ninguna función
-  premium con ese estado** — falta decidir qué funciones son premium.
+  premium con ese estado** — a propósito, ver "Qué funciones van a ser premium" arriba.
 - **`firebase.json`, `firestore.rules`, `firestore.indexes.json`**: config de Firebase CLI.
   Las reglas (cada docente lee solo su propio doc de suscripción, nadie escribe salvo el
   Admin SDK) ya están **pegadas y publicadas manualmente** en la consola de Firestore
@@ -101,10 +105,9 @@ La dueña del proyecto quiere:
     contra la Google Play Developer API y guardar el estado en Firestore.
   - `playRtdn`: HTTP endpoint que recibe las notificaciones push (Pub/Sub) de Play cuando
     una suscripción se renueva/cancela, y actualiza Firestore.
-  - **Placeholders pendientes:** `PACKAGE_NAME` en `functions/index.js` (nombre de paquete
-    real de Play Console, todavía no existe porque la app no está creada ahí) y el secreto
-    `PLAY_SERVICE_ACCOUNT` (JSON de una cuenta de servicio con permiso "Ver datos
-    financieros" en Play Console → Configuración → Acceso a la API).
+  - **Placeholder pendiente:** el secreto `PLAY_SERVICE_ACCOUNT` (JSON de una cuenta de
+    servicio con permiso "Ver datos financieros" en Play Console → Configuración → Acceso
+    a la API). `PACKAGE_NAME` ya está resuelto: `com.estudioam.agendadocente`.
 - **`privacy-policy.html`**: actualizada con sección "Suscripción y pagos" y ajustes en
   "dónde se guardan tus datos" / "con quién compartimos", para reflejar que ahora hay un
   servidor propio (Firebase) que guarda el estado de suscripción por cuenta (no los datos
@@ -130,15 +133,18 @@ Store/Billing (nada de eso se pudo probar todavía, depende de Play Console).
 
 ### Pendiente / próximos pasos (en orden razonable)
 
-1. Decidir qué funciones de la app son "premium" (todavía no definido).
-2. Alta de la app en Play Console (nombre de paquete, ficha, etc.) — esto da el
-   `PACKAGE_NAME` real que falta en `functions/index.js`.
+1. ~~Decidir qué funciones de la app son "premium"~~ ✅ ver arriba.
+2. ~~Alta de la app en Play Console~~ ✅ hecha (19/8/2026), estado "Borrador",
+   `PACKAGE_NAME=com.estudioam.agendadocente`. Falta completar la ficha de la Play Store
+   (descripción, capturas de pantalla, clasificación de contenido, etc.) antes de poder
+   publicar — se puede ir completando en paralelo con los pasos siguientes.
 3. Armar el TWA con Bubblewrap apuntando a `agendadocente.pages.dev` (o el dominio final),
-   configurar Digital Asset Links (`assetlinks.json`).
+   configurar Digital Asset Links (`assetlinks.json`), usando el `PACKAGE_NAME` de arriba.
 4. Crear el producto de suscripción en Play Console (Monetización).
-5. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
-   `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
-   apuntando a la URL de `playRtdn`.
+5. Pasar Firebase a plan Blaze (la dueña ya tiene el crédito gratis de USD 300 de Google
+   Cloud, así que no debería salirle nada), crear el secreto `PLAY_SERVICE_ACCOUNT`,
+   desplegar `functions/` (`firebase deploy --only functions`), configurar RTDN en Play
+   Console apuntando a la URL de `playRtdn`.
 6. Implementar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`) y llamar a `verifyPurchase`
    tras la compra.
