@@ -65,6 +65,19 @@ Google Auth Platform → Público → pasar a "En producción". No debería requ
 verificación de Google: el único permiso que pide la app es `drive.file`, que no es
 sensible (solo ve los archivos que ella misma creó).
 
+- **`estudioam.dev@gmail.com` es Propietaria del proyecto** (agregada en IAM el
+  19/8/2026), así que todo esto se administra desde la cuenta nueva sin haber movido
+  nada.
+
+### No cambiar el cliente de OAuth por prolijidad
+
+Tentación a evitar: crear un cliente nuevo en la cuenta de Estudio AM para "ordenar".
+El permiso que usa la app es `drive.file`, que da acceso **solo a los archivos que creó
+ese cliente**. Si se cambia el `GD_CID`, la app deja de ver el `Datos de Agenda
+Docente.json` que ya existe — no se borra, pero queda huérfano y la app arranca uno
+nuevo en blanco. Le pasaría a cada docente que ya conectó su Drive. Si hace falta
+administrarlo desde otra cuenta, se dan permisos en IAM (ya hecho), no se migra.
+
 ### Ojo con las dos cuentas
 
 El login de Drive vive en la cuenta de English Beats; Firebase (proyecto
