@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Cada docente solo puede leer su propio estado de suscripción.
+    // Solo las Cloud Functions (Admin SDK) pueden escribirlo.
+    match /subscriptions/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Mapa interno purchaseToken -> uid, usado por el webhook de Play (RTDN).
+    // No es de lectura/escritura pública.
+    match /purchaseTokens/{token} {
+      allow read, write: if false;
+    }
+  }
+}
