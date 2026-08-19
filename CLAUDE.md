@@ -88,25 +88,40 @@ La dueña del proyecto quiere:
   servidor propio (Firebase) que guarda el estado de suscripción por cuenta (no los datos
   de cursada/alumnos, que siguen solo locales + backup opcional a Drive del propio usuario).
 
+### Validado en producción (preview de Cloudflare Pages)
+
+Probado a mano el 19/8/2026 en `https://1a488a49.agendadocente.pages.dev` (preview del commit
+`c1b73be`, rama `claude/subscription-by-device-jzdkkp`):
+- `await window.fbSignIn()` abre el popup de Google y devuelve el usuario logueado
+  (uid de prueba: `vczZgA8PIxNOoACG6j4zxpJTav23`, cuenta `estudioam.dev@gmail.com`).
+- La escucha en tiempo real de `subscriptions/{uid}` funciona: al crear a mano el doc
+  `subscriptions/vczZgA8PIxNOoACG6j4zxpJTav23` con `status: "active"` en la consola de
+  Firestore, `document.documentElement.dataset.subscription` pasó de `'inactive'` a
+  `'active'` **sin recargar la página**.
+- Hay warnings benignos de "Cross-Origin-Opener-Policy... window.closed" en consola durante
+  el popup de login — no impiden que el login se complete, se pueden ignorar.
+- Ese documento de prueba se dejó en Firestore (sirve para seguir probando con esa cuenta
+  como si tuviera suscripción activa).
+
+Con esto: **Auth + Firestore end-to-end confirmado funcionando.** Falta todo lo de Play
+Store/Billing (nada de eso se pudo probar todavía, depende de Play Console).
+
 ### Pendiente / próximos pasos (en orden razonable)
 
-1. Confirmar si Cloudflare Pages genera preview deploy para esta rama y probar el login de
-   Google ahí (en el sandbox de esta sesión no se pudo probar: bloquea salida a
-   `google.com`/`gstatic.com` por política de red, no es un bug del código).
-2. Decidir qué funciones de la app son "premium" (todavía no definido).
-3. Alta de la app en Play Console (nombre de paquete, ficha, etc.) — esto da el
+1. Decidir qué funciones de la app son "premium" (todavía no definido).
+2. Alta de la app en Play Console (nombre de paquete, ficha, etc.) — esto da el
    `PACKAGE_NAME` real que falta en `functions/index.js`.
-4. Armar el TWA con Bubblewrap apuntando a `agendadocente.pages.dev` (o el dominio final),
+3. Armar el TWA con Bubblewrap apuntando a `agendadocente.pages.dev` (o el dominio final),
    configurar Digital Asset Links (`assetlinks.json`).
-5. Crear el producto de suscripción en Play Console (Monetización).
-6. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
+4. Crear el producto de suscripción en Play Console (Monetización).
+5. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
    `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
    apuntando a la URL de `playRtdn`.
-7. Implementar en `index.html` el flujo de compra con la Digital Goods API
+6. Implementar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`) y llamar a `verifyPurchase`
    tras la compra.
-8. Gatear las funciones premium según `document.documentElement.dataset.subscription`.
-9. Mergear `claude/subscription-by-device-jzdkkp` a producción cuando todo esté probado.
+7. Gatear las funciones premium según `document.documentElement.dataset.subscription`.
+8. Mergear `claude/subscription-by-device-jzdkkp` a producción cuando todo esté probado.
 
 ### Perfil de la dueña del proyecto
 
