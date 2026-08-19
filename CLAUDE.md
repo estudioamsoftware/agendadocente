@@ -15,10 +15,32 @@ es JS plano cargado por `<script>` tags.
 
 La dueña del proyecto quiere:
 1. Publicar la app en **Google Play Store**.
-2. Cobrar una **suscripción paga** que desbloquee funciones premium (todavía no se definió
-   cuáles funciones específicamente).
+2. Cobrar una **suscripción paga** que desbloquee funciones premium.
 3. Que la suscripción sea **por cuenta** (Google), no por dispositivo — si el docente usa la
    app en el celu y en la compu, paga una sola vez.
+
+### Qué funciones van a ser premium (decidido, no implementado todavía)
+
+- **Gratis:** cursos y alumnos ilimitados, carga de asistencia y notas sin restricción — el
+  uso diario core de la app no se toca.
+- **Premium:**
+  - Plan gratis limitado a **1 o 2 cursos**; cursos ilimitados es premium.
+  - Carga de **licencias, paros y demás eventos administrativos** (todo lo que hoy permite
+    llevar registro/conteo anual — ver `LICENCIA_TIPOS`, `LICENCIA_INFO`,
+    `licenciaTallyThisYear()` etc. en `index.html`, línea ~1758 en adelante).
+  - **Alertas automáticas** (ej. `listadosProximosAVencer()`, línea ~2345).
+  - Ver la **ayuda de licencias sacada del Estatuto Docente** (`LICENCIA_INFO`): la idea es
+    que sepan que existe (visible pero bloqueada), no que esté oculta del todo — "que sepan
+    que están, pero que paguen".
+- **Web (`agendadocente.pages.dev`) también queda bloqueada, no solo la app de Play Store**
+  (decisión explícita de la dueña, revirtiendo la idea inicial de dejar la web libre). Como
+  Google Play Billing solo se puede usar dentro de la TWA, en la web hay que mostrar un cartel
+  tipo "Descargá la app de Play Store para suscribirte" en vez de un flujo de pago in-situ.
+- **Importante — no implementar el bloqueo todavía.** Se decidió esperar a tener Play Billing
+  funcionando antes de programar las restricciones, para no dejar a nadie (incluida la propia
+  dueña, que usa la app a diario) sin forma de pagar y sin acceso a algo que ya usaba. Cuando
+  se implemente, la cuenta de Google de la dueña debe tener su doc en `subscriptions/{uid}`
+  marcado `active` para no verse afectada.
 
 ### Decisiones ya tomadas (no volver a proponer alternativas sin motivo)
 
