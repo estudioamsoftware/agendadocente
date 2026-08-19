@@ -6431,7 +6431,9 @@ function gdInit(){
   }
 }
 
-function gdConnect(){ gd.tc?gd.tc.requestAccessToken({prompt:'consent'}):toastSuccess('Cargando Google…','#8C4108'); }
+// select_account: sin esto Google usa la cuenta con la que ya esta abierto el navegador
+// y no deja elegir otra. Con esto siempre muestra el selector de cuentas.
+function gdConnect(){ gd.tc?gd.tc.requestAccessToken({prompt:'select_account consent'}):toastSuccess('Cargando Google…','#8C4108'); }
 function gdReconnect(){ gd.tc?gd.tc.requestAccessToken({prompt:''}):toastSuccess('Cargando Google…','#8C4108'); }
 function gdDisconnect(){
   if(gd.tok){ try{ google.accounts.oauth2.revoke(gd.tok,()=>{}); }catch(e){} }
