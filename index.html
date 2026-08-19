@@ -2561,6 +2561,7 @@ function renderEventos(){
       ${view.showLegalInfo?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
           ${LICENCIA_TIPOS.filter(lt=>LICENCIA_INFO[lt.id]).map(lt=>`<div style="margin-bottom:9px;"><b style="font-size:12.5px;">${lt.label}</b><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:1px;">${LICENCIA_INFO[lt.id]}</div></div>`).join("")}
           <div style="font-size:10.5px;color:var(--faint);margin-top:6px;line-height:1.4;">Según Ley 10.579 (Estatuto del Docente) y Decreto 688/93, Provincia de Buenos Aires. Los plazos exactos varían según tu situación de revista (titular, provisional o suplente) en cada cargo. Esto es una guía general, no asesoramiento legal — para tu caso puntual consultá con tu gremio o la Secretaría de Asuntos Docentes.</div>
+          <div style="font-size:10.5px;color:var(--faint);margin-top:6px;line-height:1.4;">¿Trabajás en otra provincia o país? <a href="mailto:${FB_MAIL}?subject=${encodeURIComponent("Agenda Docente — Ajustar a mi ciudad/país")}" style="color:var(--primary);font-weight:600;">Escribinos</a> y vemos de sumar tu normativa.</div>
         </div>`:""}
       </div>`;
   const derivedNoteHTML=derivedRows.length?`<div style="font-size:11px;color:var(--faint);margin:-6px 0 14px;line-height:1.4;">ℹ️ Las que dicen "N cursos" las anulaste directo en cada curso (no con "+ Agregar" acá) — por eso ahora también aparecen listadas y sumadas.</div>`:"";
@@ -2591,6 +2592,7 @@ function renderEventos(){
   app.innerHTML=`<div class="ghead" style="align-items:center;"><div style="flex:1;min-width:0;"><h1 style="margin:0;">📅 Calendario académico</h1>
       <span class="count" style="margin:0;">Licencias, paros, suspensiones y vacaciones</span></div>
       <button class="btn" id="addGlobalEvent2" style="flex:none;width:auto;">+ Agregar</button></div>
+    <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin:-6px 0 16px;">📍 Feriados y licencias configurados para <b>Argentina</b> (Provincia de Buenos Aires). Si sos de otra provincia o país, <a href="mailto:${FB_MAIL}?subject=${encodeURIComponent("Agenda Docente — Ajustar a mi ciudad/país")}" style="color:var(--primary);font-weight:600;">escribinos</a> y vemos de ajustarlo.</div>
     ${listadosHTML}
     ${tallyHTML}
     ${derivedNoteHTML}
