@@ -78,6 +78,26 @@ Docente.json` que ya existe — no se borra, pero queda huérfano y la app arran
 nuevo en blanco. Le pasaría a cada docente que ya conectó su Drive. Si hace falta
 administrarlo desde otra cuenta, se dan permisos en IAM (ya hecho), no se migra.
 
+### Pendientes de orden (charlado el 19/8, sin hacer todavía)
+
+- **No tocar "Publicar app".** El estado de publicación es **por proyecto, no por app**,
+  y ese proyecto lo comparten seis apps personales de la dueña — entre ellas `yuyitos`,
+  que le hizo a una amiga y usa solo ella. Publicar las destraba a todas. Mientras las
+  docentes que prueban sean pocas, sumarlas a mano en Google Auth Platform → Público →
+  "+ Add users".
+- **Antes de vender: mudar Agenda Docente a su propio proyecto**, en la cuenta de Estudio
+  AM. Hoy comparte proyecto con dos productos vendibles y cinco cosas personales; ya se
+  quedó sin cupo de dominios una vez y las decisiones de una condicionan a las otras.
+  **Conviene hacerlo cuanto antes:** implica cambiar el `GD_CID`, y eso deja huérfano el
+  archivo de Drive de cada docente que ya lo conectó (ver arriba). Con cinco personas es
+  barato; con cien pagando, es un lío. Se hace sin perder datos usando "Crear backup" y
+  "Restaurar backup" que la app ya tiene: bajar, cambiar el cliente, restaurar.
+- **Limpiar dominios muertos** para recuperar lugares de los 10: `plantillacomercios.pages.dev`
+  ya no se usa (se convirtió en "Kiosko don jose"), y `comercios.pages.dev` también quedó
+  viejo. Orden obligado: primero sacarle el origen al cliente que lo tenga cargado (o
+  borrar ese cliente si es un sobrante), recién después borrar el dominio en "Información
+  de la marca". Si no, Google no deja.
+
 ### Ojo con las dos cuentas
 
 El login de Drive vive en la cuenta de English Beats; Firebase (proyecto
