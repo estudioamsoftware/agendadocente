@@ -896,7 +896,9 @@ function migrate(st){
       ng={id:g.id,name:g.name,students:g.students,passMark:7,terms:{"1":t1,"2":emptyTerm()}};
     }
     ng.terms["1"]=ng.terms["1"]||emptyTerm(); ng.terms["2"]=ng.terms["2"]||emptyTerm();
-    if(ng.passMark==null||ng.passMark===6) ng.passMark=7;
+    // Antes acá se pisaba con 7 cualquier passMark que valiera 6. Ahora el mínimo se
+    // puede elegir por curso, así que sólo se completa cuando falta.
+    if(ng.passMark==null) ng.passMark=7;
     if(ng.intensPM==null) ng.intensPM=4;
     if(ng.modulos==null) ng.modulos=2;
     if(!ng.programa) ng.programa={c1:[],c2:[]};
@@ -2316,17 +2318,26 @@ function termYearStats(g,term,pm){
 }
 // Cuenta alumnos (no tildes) a los que les falta pasar alguna nota ya cargada
 // (avance o final, en cualquiera de los dos cuatrimestres) al cuaderno de comunicaciones.
-function faltaComuCount(g,t1,t2,pm){
-  const pending=new Set();
-  [t1,t2].forEach(tObj=>{
+/* Qué está listo para pasar al cuaderno. Antes se contaba cualquier nota final, y como
+   ésa se calcula sola desde la primera evaluación, en mayo ya avisaba que faltaban los
+   20 alumnos — cuando todavía no había nada que comunicar. Ahora se mira si la columna
+   está realmente cerrada: la de avance cuando le pusiste fecha, y la nota de cierre
+   cuando le pusiste fecha o la escribiste vos a mano. */
+function comuPendientes(g,t1,t2,pm){
+  const out=[];
+  [["1",t1],["2",t2]].forEach(([k,tObj])=>{
+    const avCerrado=!!tObj.avanceFechaCol;
+    const finCerrado=!!tObj.finalFechaCol;
     g.students.forEach(s=>{
-      const av=avanceOf(tObj,s.id,g);
-      if(av!=null&&!comunicadoOf(tObj,s.id,"avance")) pending.add(s.id);
-      const fin=finalOf(tObj,s.id,pm);
-      if(fin!=null&&!comunicadoOf(tObj,s.id,"final")) pending.add(s.id);
+      if(avCerrado&&avanceOf(tObj,s.id,g)!=null&&!comunicadoOf(tObj,s.id,"avance")) out.push({term:k,tObj,sid:s.id,field:"avance"});
+      const finManual=tObj.final[s.id]!=null;
+      if((finCerrado||finManual)&&finalOf(tObj,s.id,pm)!=null&&!comunicadoOf(tObj,s.id,"final")) out.push({term:k,tObj,sid:s.id,field:"final"});
     });
   });
-  return pending.size;
+  return out;
+}
+function faltaComuCount(g,t1,t2,pm){
+  return new Set(comuPendientes(g,t1,t2,pm).map(x=>x.sid)).size;
 }
 function estado(g,t,sid){
   const pm=g.passMark||7; const f=finalOf(t,sid,pm); const ipm=intensPM(g);
@@ -3351,6 +3362,7 @@ function infoSectionHTML(g){
   const vacinStart=`${dummyYr}-${vc.ini}`;
   const vacinEnd=`${dummyYr}-${vc.fin}`;
   const showRecesoView=!view.editReceso;
+  const showPassView=!view.editPass;
   const recesStr=vc.activa?`${vacIni} al ${vacFin}`:"Desactivado";
   // Situación de revista: titular / provisional / suplente, con fechas y prórrogas
   const rv=ensureRevista(g);
@@ -3413,6 +3425,13 @@ function infoSectionHTML(g){
           </div>
           <button class="btn" id="receso_save" style="width:100%;margin-top:10px;">✓ Guardar</button>
           <button class="btn subtle sm" id="receso_cancel" style="width:100%;margin-top:8px;">Cancelar</button>
+        </div>
+        ${showPassView?`<div class="kvrow"><span class="kv-ic">${I.star}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Nota para aprobar</div><div class="kv-val">${g.passMark||7} o más</div></div><button class="iconbtn" id="pass_edit" aria-label="Editar nota para aprobar">${I.pencil}</button></div>`:``}
+        <div id="passForm" style="${showPassView?"display:none;":"padding:12px 0 14px;"}">
+          <div class="sched-row"><label>Nota mínima</label><input id="passIn" class="sched-inp" type="number" min="1" max="10" step="1" value="${g.passMark||7}" style="max-width:110px;"></div>
+          <div style="font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.45;">Con esto se decide quién aprueba, quién va a intensificación y de qué color sale cada nota. En la secundaria de Provincia es 7.</div>
+          <button class="btn" id="pass_save" style="width:100%;margin-top:10px;">✓ Guardar</button>
+          <button class="btn subtle sm" id="pass_cancel" style="width:100%;margin-top:8px;">Cancelar</button>
         </div>
       </div>
     </div>`;
@@ -3601,6 +3620,30 @@ function wireInfoSection(g,body){
     save();
     delete view.editReceso;
     render(); flashSuccess("#resoForm","#FCEBDA");
+  };
+
+  // Nota para aprobar. Cambiarla recalcula quién aprueba, quién intensifica y de qué
+  // color sale cada nota, así que antes de guardar se muestran los números de los dos.
+  const passEdit=$("#pass_edit"); if(passEdit) passEdit.onclick=()=>{ view.editPass=true; render(); };
+  const passCancel=$("#pass_cancel"); if(passCancel) passCancel.onclick=()=>{ delete view.editPass; render(); };
+  const passSave=$("#pass_save"); if(passSave) passSave.onclick=()=>{
+    let v=parseInt($("#passIn").value,10);
+    if(isNaN(v)){ toast("Poné un número del 1 al 10"); return; }
+    v=Math.max(1,Math.min(10,v));
+    const actual=g.passMark||7;
+    const aplicar=()=>{ g.passMark=v; save(); delete view.editPass; render(); flashSuccess("#passForm","#FCEBDA"); };
+    if(v===actual){ delete view.editPass; render(); return; }
+    // Cuántos alumnos quedan de cada lado con un mínimo y con el otro.
+    const contar=(pmX)=>{
+      let ap=0,des=0;
+      ["1","2"].forEach(k=>{ const tObj=g.terms[k];
+        g.students.forEach(st=>{ const f=finalOf(tObj,st.id,pmX); if(f==null) return; if(f>=pmX) ap++; else des++; }); });
+      return {ap,des};
+    };
+    const a=contar(actual), b=contar(v);
+    confirmDlg("¿Cambiar la nota para aprobar a "+v+"?",
+      "Con "+actual+": "+a.ap+" aprobadas y "+a.des+" desaprobadas.\nCon "+v+": "+b.ap+" aprobadas y "+b.des+" desaprobadas.\n(contando los dos cuatrimestres)\n\nNo se toca ninguna nota cargada: sólo cambia el corte con el que se decide quién aprueba, quién va a intensificación y de qué color se ve cada nota.",
+      "Cambiar a "+v,aplicar);
   };
 
   // Classroom - Código
@@ -4501,7 +4544,17 @@ function renderClase(g,t,body){
   const examsToday=t.exams.filter(e=>e.date===date).map(e=>({ex:e,field:"nota"}))
     .concat(t.exams.filter(e=>e.recuDate===date&&e.date!==date).map(e=>({ex:e,field:"recu"})));
   if(examsToday.length){ return renderClaseExam(g,t,body,date,ses,examsToday); }
+  // Cargar la valoración de la clase son 20 toques, y casi siempre la mayoría lleva la
+  // misma. Con esto se pone una a todos de una vez y después se corrigen las excepciones,
+  // igual que ya se hace con la asistencia.
+  const scheme0=getValScheme(g);
+  const todosHTML=locked?"":`<div id="valTodos" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:var(--line-soft);border-radius:10px;padding:8px 10px;margin-bottom:10px;">
+      <span style="font-size:12.5px;font-weight:600;color:var(--muted);flex:none;">Poner a todos:</span>
+      <div class="valseg ${scheme0.levels.length>4?"compact":""}" style="justify-content:flex-start;flex:1;">
+        ${scheme0.levels.map(lv=>`<button type="button" data-todos="${esc(lv.key)}" style="${levelBtnSizeStyle(lv)}" title="Poner ${esc(lv.label)} a todo el curso">${esc(lv.symbol||lv.label)}</button>`).join("")}
+      </div></div>`;
   body.innerHTML=`${termSeg}${dateBarHTML(t,date,locked)}${temasHTML(ses,false)}
+    ${todosHTML}
     <div class="rows" id="rows"></div>
     <div class="tally" style="margin-top:8px;"><div class="pill tp">Calificados <span id="cCal">0</span></div><div class="pill ta">Ausentes <span id="cAu">0</span></div></div>
     ${locked?`<div class="savedbar"><span class="savedtag">🔒 Ya cargada</span><button class="btn subtle sm" id="editDay">Editar</button></div>`
@@ -4538,6 +4591,24 @@ function renderClase(g,t,body){
         x.style.cssText= sizeStyle+(isOn&&lv?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"");
       });
       tally(); });
+    // "Poner a todos": si ya hay algo cargado, primero pregunta.
+    body.querySelectorAll("[data-todos]").forEach(b=>b.onclick=()=>{
+      const v=b.dataset.todos;
+      const lv=scheme0.levels.find(x=>x.key===v)||{label:v};
+      const alcanzados=g.students.filter(s=>studentExistedOn(g,s.id,date));
+      const yaCargados=alcanzados.filter(s=>workOf(t,s.id,date)).length;
+      const aplicar=()=>{
+        alcanzados.forEach(s=>setWork(t,s.id,date,v));
+        render();
+        toastSuccess("✓ "+(lv.symbol||lv.label)+" para "+alcanzados.length+" alumnos · corregí las excepciones","#A9500A");
+      };
+      if(!alcanzados.length){ toast("No hay alumnos para esta fecha"); return; }
+      if(yaCargados){
+        confirmDlg("¿Poner "+(lv.label||v)+" a todo el curso?",
+          "Ya tenés "+yaCargados+(yaCargados===1?" valoración cargada":" valoraciones cargadas")+" en esta clase. Si seguís, se reemplaza"+(yaCargados===1?"":"n")+" por "+(lv.label||v)+" y después corregís las excepciones.",
+          "Poner a todos",aplicar);
+      } else aplicar();
+    });
     $("#saveDay").onclick=()=>{ setWorkLocked(t,date,true); render(); toast("✓ Clase cargada · tocá Editar si querés cambiar algo"); };
   } else { $("#editDay").onclick=()=>{ setWorkLocked(t,date,false); render(); }; }
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
@@ -4985,6 +5056,98 @@ function avTriseg(t,sid){
   return `<div class="triseg" data-sid="${sid}">${["TEA","TEP","TED"].map(code=>`<button data-av="${code}" aria-pressed="${eff===code}">${code}${(auto&&code==="TED")?'<span class="auto">auto</span>':''}</button>`).join("")}</div>`;
 }
 /* ---- GRILLA (panorama) ---- */
+/* Ficha de un alumno: lo mismo que la grilla pero en vertical, que es como se lee en
+   el celular y como se muestra en una reunión. Las notas de las evaluaciones se ven
+   pero no se editan: eso se hace en Exámenes y recup. Acá sí se cargan la trayectoria
+   y la nota de cierre, igual que en la grilla. */
+function renderPorAlumno(g,body,segHTML){
+  const pm=g.passMark||7, ipm=intensPM(g);
+  const sid=(g.students.find(x=>x.id===view.fichaSid)||g.students[0]).id;
+  const s=g.students.find(x=>x.id===sid);
+  const idx=g.students.indexOf(s);
+  const TEAc={TEA:"var(--blue-tint)",TEP:"var(--present-tint)",TED:"var(--absent-tint)"};
+  const TEAi={TEA:"var(--blue-ink)",TEP:"var(--present-ink)",TED:"var(--absent-ink)"};
+  const notaChip=(v)=>v==null?`<span style="color:var(--faint);">–</span>`
+    :`<span class="numin ${gradeTierClass(v,pm)}" style="display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:34px;">${fmtNum(v)}</span>`;
+
+  const bloque=(k)=>{
+    const t=g.terms[k];
+    const st=stats(g,t,sid);
+    const es=estado(g,t,sid);
+    const av=avanceOf(t,sid,g);
+    const fin=finalOf(t,sid,pm);
+    const finManual=t.final[sid]!=null;
+    const items=t.exams.filter(e=>!e.recuOf).slice().sort((a,b)=>a.date<b.date?-1:1);
+    const filas=items.length?items.map(e=>{
+      const v=examEffective(t,sid,e.id,pm);
+      const recu=linkedRecuExam(t,e.id);
+      const rindioRecu=recu&&typeof getGrade(t,sid,recu.id).nota==="number";
+      const marcas=[e.parts&&e.parts.length>=2?e.parts.length+" notas":"",rindioRecu?"con recu":"",!cuentaEnPromedio(e)?"no promedia":""].filter(Boolean).join(" · ");
+      return `<div class="arow"><span class="nm" style="text-transform:none;">${examTypeMeta(e.type).icon} ${esc(e.name)}
+        <span style="display:block;font-weight:500;font-size:11px;color:var(--faint);margin-top:2px;">${fmtShort(e.date)}${marcas?" · "+esc(marcas):""}</span></span>
+        ${notaChip(v)}</div>`;
+    }).join(""):`<div style="font-size:13px;color:var(--faint);padding:8px 2px;">Todavía no hay evaluaciones en este cuatrimestre.</div>`;
+    const periodos=(fin!=null&&fin<pm)?`<div style="margin-top:12px;">
+      <div class="kv-lbl" style="margin-bottom:6px;">Intensificación</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${PERIODOS.map(pr=>{
+        const d=t.deudas&&t.deudas[sid], r=d&&d.periodos&&d.periodos[pr.id];
+        const nota=r&&typeof r.nota==="number"?r.nota:null;
+        return `<span style="font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:99px;background:${nota==null?"var(--line-soft)":(nota>=(ipm[pr.id]||4)?"var(--present-tint)":"var(--absent-tint)")};color:${nota==null?"var(--faint)":(nota>=(ipm[pr.id]||4)?"var(--present-ink)":"var(--absent-ink)")};">${esc(pr.label.slice(0,3))} ${nota==null?"–":fmtNum(nota)}</span>`;
+      }).join("")}</div></div>`:"";
+    return `<div class="card pad" style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="font-weight:700;font-size:15px;flex:1;min-width:0;">${k}° Cuatrimestre</div>
+        <span class="chip ${es.cls}"><span class="cd"></span>${es.label}</span></div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">Asistencia: <b>${st.pct!=null?st.pct+"%":"–"}</b> · ${fmtNum(st.faltas)} falta${st.faltas===1?"":"s"} sobre ${st.N} clase${st.N===1?"":"s"}</div>
+      <div class="kv-lbl" style="margin-bottom:6px;">Trayectoria</div>
+      <div class="triseg-sm" data-fa-term="${k}" style="margin-bottom:14px;">${["TEA","TEP","TED"].map(code=>`<button data-fa-av="${code}" aria-pressed="${av===code}" style="${av===code?`background:${TEAc[code]};color:${TEAi[code]};`:""}">${code}</button>`).join("")}</div>
+      <div class="kv-lbl" style="margin-bottom:6px;">Evaluaciones</div>
+      <div class="rows">${filas}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);">
+        <div style="flex:1;min-width:0;"><div class="kv-lbl">Nota C${k}°</div>
+          <div style="font-size:11px;color:var(--faint);">${finManual?"puesta a mano":"promedio automático"}</div></div>
+        <button type="button" class="numin ${gradeTierClass(fin,pm)}" data-fa-fin="${k}" style="min-width:56px;height:44px;font-size:19px;font-weight:800;cursor:pointer;">${fin!=null?fmtNum(fin):"–"}</button>
+      </div>${periodos}</div>`;
+  };
+
+  const f1=finalOf(g.terms["1"],sid,pm), f2=finalOf(g.terms["2"],sid,pm);
+  const prom=(typeof f1==="number"&&typeof f2==="number")?Math.round((f1+f2)/2*10)/10:null;
+  body.innerHTML=`${segHTML}
+    <div class="seg" style="margin-bottom:12px;overflow-x:auto;flex-wrap:nowrap;">
+      ${g.students.map(st=>`<button data-fa-sid="${st.id}" aria-pressed="${st.id===sid}" style="white-space:nowrap;">${esc(dispName(st))}</button>`).join("")}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <button class="btn subtle sm" id="faPrev" ${idx<=0?"disabled":""} style="flex:none;">${I.left}</button>
+      <div style="flex:1;min-width:0;text-align:center;font-weight:700;font-size:16px;text-transform:uppercase;">${nameHTML(s,g)}</div>
+      <button class="btn subtle sm" id="faNext" ${idx>=g.students.length-1?"disabled":""} style="flex:none;">${I.right}</button>
+    </div>
+    ${bloque("1")}${bloque("2")}
+    <div class="card pad" style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;font-weight:700;font-size:15px;">Promedio del año</div>
+      ${notaChip(prom)}</div>
+    <div class="pagefoot">Las notas de las evaluaciones se ven acá pero se cargan en <b>Exámenes y recup</b>. Acá se cargan la trayectoria y la nota de cierre de cada cuatrimestre, igual que en la grilla.</div>`;
+
+  body.querySelectorAll("[data-fa-sid]").forEach(b=>b.onclick=()=>{ view.fichaSid=b.dataset.faSid; render(); });
+  const prev=$("#faPrev"); if(prev) prev.onclick=()=>{ if(idx>0){ view.fichaSid=g.students[idx-1].id; render(); } };
+  const next=$("#faNext"); if(next) next.onclick=()=>{ if(idx<g.students.length-1){ view.fichaSid=g.students[idx+1].id; render(); } };
+  body.querySelectorAll("[data-fa-av]").forEach(b=>b.onclick=()=>{
+    const k=b.closest("[data-fa-term]").dataset.faTerm, tObj=g.terms[k], code=b.dataset.faAv;
+    setAvance(tObj,sid,tObj.avance[sid]===code?null:code); render();
+  });
+  body.querySelectorAll("[data-fa-fin]").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.faFin, tObj=g.terms[k];
+    const cur=tObj.final[sid], auto=finalAuto(tObj,sid,pm);
+    openDlg(dispName(s)+" · Nota C"+k+"°",`
+      <div class="dlg-field"><label>Nota</label><input class="numin" inputmode="decimal" id="fa_inp" placeholder="–" value="${(cur!=null?cur:auto)!=null?fmtNum(cur!=null?cur:auto):""}" style="width:100%;height:56px;font-size:22px;text-align:center;"></div>
+      <div style="font-size:11.5px;color:var(--faint);margin:-10px 2px 14px;">${auto!=null?"Promedio de las notas cargadas: "+fmtNum(auto)+". ":"Todavía no hay notas para promediar. "}${cur!=null?"Ahora está puesta a mano.":"Se está usando el promedio automático."}</div>
+      <div class="dlg-actions">${cur!=null?`<button class="btn subtle" id="fa_clear">Usar promedio</button>`:""}<button class="btn" id="fa_save">✓ Guardar</button></div>`);
+    const inp=$("#fa_inp"); setTimeout(()=>{ inp.focus(); inp.select(); },30);
+    inp.addEventListener("input",()=>clampNumInputLive(inp));
+    const doSave=()=>{ setFinal(tObj,sid,parseNum(inp.value)); closeDlg(); render(); };
+    $("#fa_save").onclick=doSave;
+    inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") doSave(); });
+    const cl=$("#fa_clear"); if(cl) cl.onclick=()=>{ setFinal(tObj,sid,null); closeDlg(); render(); };
+  });
+}
 function renderNotasFinalesGrid(g,body,modeSeg){
   const t1=g.terms["1"]; const t2=g.terms["2"];
   const pm=g.passMark||7; const ipm=intensPM(g);
@@ -5133,7 +5296,8 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   function statsFooterHTML(){
     const a=termYearStats(g,t1,pm), b=termYearStats(g,t2,pm); const mismo=a.alumnos===b.alumnos;
     const n=faltaComuCount(g,t1,t2,pm);
-    return `${n?`<div class="listado-alert-row" style="margin-bottom:10px;">⚠ ${n} alumno${n===1?"":"s"} con notas sin pasar al cuaderno de comunicaciones</div>`:""}
+    const pend=comuPendientes(g,t1,t2,pm);
+    return `${n?`<button type="button" id="comuTodos" class="listado-alert-row" style="margin-bottom:10px;display:block;width:100%;text-align:left;border:none;cursor:pointer;font:inherit;">⚠ ${n} alumno${n===1?"":"s"} con notas sin pasar al cuaderno de comunicaciones<span style="display:block;font-weight:700;margin-top:3px;text-decoration:underline;">Marcar las ${pend.length} como pasadas →</span></button>`:""}
     <div class="gs-title">Resumen del año</div>
     <div style="font-size:11px;color:var(--faint);margin:-6px 0 10px;">Aprobados/Desaprobados según la Nota C1°/C2° cargada · Previstas y dictadas en módulos (${g.modulos||2} por día de clase) · Previstas = todo el cuatrimestre salvo feriados/suspensiones (incluye lo que falta dar) · Dictadas = solo lo efectivamente dado hasta hoy (${fmtShort(todayISO())})</div>
     <table class="gs-table">
@@ -5169,7 +5333,24 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     <div class="grid-stats" id="statsFooter">${statsFooterHTML()}</div>
     <div style="height:40px;"></div>`;
   wireDragScroll(body.querySelector(".gridwrap"));
-  function refreshStats(){ $("#statsFooter").innerHTML=statsFooterHTML(); }
+  function refreshStats(){ $("#statsFooter").innerHTML=statsFooterHTML(); wireComuTodos(); }
+  // Tildar de una vez todo lo que quedó pendiente de pasar al cuaderno.
+  function wireComuTodos(){
+    const b=$("#comuTodos"); if(!b) return;
+    b.onclick=()=>{
+      const pend=comuPendientes(g,t1,t2,pm);
+      if(!pend.length){ refreshStats(); return; }
+      const alumnos=new Set(pend.map(x=>x.sid)).size;
+      confirmDlg("¿Marcar todo como pasado al cuaderno?",
+        "Se tildan "+pend.length+" nota"+(pend.length===1?"":"s")+" de "+alumnos+" alumno"+(alumnos===1?"":"s")+".\n\nEl tilde es sólo para marcarte a vos que ya las pasaste: no cambia ninguna nota ni ningún cálculo. Podés destildar de a una cuando quieras.",
+        "Marcar todas",()=>{
+          pend.forEach(x=>setComunicado(x.tObj,x.sid,x.field,true));
+          render();
+          toastSuccess("✓ "+pend.length+" nota"+(pend.length===1?"":"s")+" marcada"+(pend.length===1?"":"s")+" como pasada"+(pend.length===1?"":"s"),"#A9500A");
+        });
+    };
+  }
+  wireComuTodos();
 
   body.querySelectorAll("[data-avhead-term]").forEach(th=>th.onclick=(ev)=>{
     ev.stopPropagation();
@@ -5297,9 +5478,16 @@ function renderGrid(g,t,body){
   function wireModeBtns(){ body.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ view.gridMode=b.dataset.gm; render(); }); }
 
   if(mode==="final"){
-    // Notas finales inline — no delegation
-    renderNotasFinalesGrid(g,body,modeSeg);
+    // Dos maneras de ver lo mismo: la grilla de todo el curso, o la ficha de un alumno
+    // (que es la que sirve para una reunión con la familia o para armarle un informe).
+    const vista=view.finalVista==="alumno"?"alumno":"grilla";
+    const vistaSeg=`<div class="seg" style="margin-bottom:14px;">
+      <button data-fv="grilla" aria-pressed="${vista==="grilla"}">Grilla</button>
+      <button data-fv="alumno" aria-pressed="${vista==="alumno"}">Por alumno</button></div>`;
+    if(vista==="alumno") renderPorAlumno(g,body,modeSeg+vistaSeg);
+    else renderNotasFinalesGrid(g,body,modeSeg+vistaSeg);
     wireModeBtns();
+    body.querySelectorAll("[data-fv]").forEach(b=>b.onclick=()=>{ view.finalVista=b.dataset.fv; render(); });
     return;
   }
 
@@ -5394,124 +5582,6 @@ function renderGrid(g,t,body){
   body.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ view.gridMode=b.dataset.gm; render(); });
 }
 
-function renderCuatri(g,t,body,fromGrid){
-  if(g.students.length===0){ body.innerHTML=emptyInline(I.star,"Agregá alumnos para ver Notas finales."); return; }
-  ensureTps(t);
-  const pm=g.passMark||7;
-  const tk=view.term||"1";
-  const mode=view.cuatriMode||"grilla";
-  const allExams=t.exams; const allTps=t.tps||[];
-  const allItems=[
-    ...allExams.map(e=>({id:e.id,name:e.name,date:e.date,kind:"exam",type:e.type})),
-    ...allTps.map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type}))
-  ].sort((a,b)=>a.date<b.date?-1:1);
-
-  const TEA_COLORS={TEA:"var(--blue-tint)",TEP:"var(--present-tint)",TED:"var(--absent-tint)"};
-  const TEA_INK={TEA:"var(--blue-ink)",TEP:"var(--present-ink)",TED:"var(--absent-ink)"};
-  const finalColor=(n)=>{ if(n==null) return "var(--line-soft)"; if(n<=3) return "var(--absent-tint)"; if(n<=6) return "var(--present-tint)"; return "var(--blue-tint)"; };
-  const finalInk=(n)=>{ if(n==null) return "var(--faint)"; if(n<=3) return "var(--absent-ink)"; if(n<=6) return "var(--present-ink)"; return "var(--blue-ink)"; };
-
-  const gridModeSeg=fromGrid?`<div class="seg" style="margin-bottom:14px;">
-    <button data-gm="asist" aria-pressed="false">Asistencia</button>
-    <button data-gm="calif" aria-pressed="false">Calificaciones</button>
-    <button data-gm="final" aria-pressed="true">Notas finales</button></div>`:"";
-  const modeSeg=`${gridModeSeg}<div class="seg" style="margin-bottom:14px;">
-    <button data-cm="grilla" aria-pressed="${mode==="grilla"}">Grilla</button>
-    <button data-cm="alumno" aria-pressed="${mode==="alumno"}">Por alumno</button></div>`;
-
-  if(mode==="grilla"){
-    const t1=g.terms["1"]; const t2=g.terms["2"];
-    const typeIcon={"eval_escrita":"✏️","eval_oral":"🎤","tp":"📋","exam":"📝","carpeta":"📓"};
-    const items1=[...t1.exams.map(e=>({id:e.id,name:e.name,date:e.date,kind:"exam",type:e.type,term:"1"})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type,term:"1"}))].sort((a,b)=>a.date<b.date?-1:1);
-    const items2=[...t2.exams.map(e=>({id:e.id,name:e.name,date:e.date,kind:"exam",type:e.type,term:"2"})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type,term:"2"}))].sort((a,b)=>a.date<b.date?-1:1);
-    let head=`<tr><th class="stick">Alumno</th>`;
-    head+=`<th class="gh-tot">Notas de avance</th>`;
-    items1.forEach(it=>head+=`<th style="white-space:nowrap;"><div>${typeIcon[it.type||it.kind]||"📝"} ${fmtShort(it.date)}</div><div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${esc(abbrev(it.name))}</div></th>`);
-    head+=`<th class="gh-tot">Nota 1°</th><th class="gh-sep">·</th>`;
-    head+=`<th class="gh-tot">Notas de avance</th>`;
-    items2.forEach(it=>head+=`<th style="white-space:nowrap;"><div>${typeIcon[it.type||it.kind]||"📝"} ${fmtShort(it.date)}</div><div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${esc(abbrev(it.name))}</div></th>`);
-    head+=`<th class="gh-tot">Nota 2°</th><th class="gh-tot">Promedio</th><th class="gh-tot">Intens.</th></tr>`;
-
-    const rows=g.students.map(s=>{
-      let r=`<tr><td class="stick">${nameHTML(s)}</td>`;
-      const itemVal=(tObj,it)=>{ if(it.kind==="exam"){ const c=getGrade(tObj,s.id,it.id); return c.recu!=null?c.recu:(c.nota!=null?c.nota:null); } return getTpGrade(tObj,s.id,it.id); };
-      const cellHtml=(v)=>{ const cls=gradeTierClass(typeof v==="number"?v:null,pm); return v!=null?`<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":fmtNum(v)}</td>`:`<td class="gc-num">–</td>`; };
-      // TEA 1° first
-      const av1=avanceOf(t1,s.id,g);
-      r+=`<td class="gc-tot" style="text-align:center;">${av1?`<span style="background:${TEA_COLORS[av1]};color:${TEA_INK[av1]};font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;">${av1}</span>`:`<span style="color:var(--faint);">–</span>`}</td>`;
-      items1.forEach(it=>r+=cellHtml(itemVal(t1,it)));
-      const fin1=finalOf(t1,s.id,pm);
-      r+=`<td class="gc-tot" style="text-align:center;"><span style="background:${finalColor(fin1)};color:${finalInk(fin1)};font-weight:700;padding:2px 8px;border-radius:99px;font-size:12px;">${fin1!=null?fmtNum(fin1):"–"}</span></td>`;
-      r+=`<td class="gc-sep"></td>`;
-      // TEA 2° first
-      const av2=avanceOf(t2,s.id,g);
-      r+=`<td class="gc-tot" style="text-align:center;">${av2?`<span style="background:${TEA_COLORS[av2]};color:${TEA_INK[av2]};font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;">${av2}</span>`:`<span style="color:var(--faint);">–</span>`}</td>`;
-      items2.forEach(it=>r+=cellHtml(itemVal(t2,it)));
-      const fin2=finalOf(t2,s.id,pm);
-      r+=`<td class="gc-tot" style="text-align:center;"><span style="background:${finalColor(fin2)};color:${finalInk(fin2)};font-weight:700;padding:2px 8px;border-radius:99px;font-size:12px;">${fin2!=null?fmtNum(fin2):"–"}</span></td>`;
-      const prom=(typeof fin1==="number"&&typeof fin2==="number")?Math.round((fin1+fin2)/2*10)/10:null;
-      r+=`<td class="gc-tot" style="text-align:center;"><span style="background:${finalColor(prom)};color:${finalInk(prom)};font-weight:700;padding:2px 8px;border-radius:99px;font-size:12px;">${prom!=null?fmtNum(prom):"–"}</span></td>`;
-      const needsIntens=(typeof fin1==="number"&&fin1<pm)||(typeof fin2==="number"&&fin2<pm);
-      const intensNota1=(t1.intens[s.id]||{}).nota; const intensNota2=(t2.intens[s.id]||{}).nota;
-      const iVal=intensNota1!=null?intensNota1:(intensNota2!=null?intensNota2:null);
-      r+=`<td class="gc-tot" style="text-align:center;">${needsIntens?(iVal!=null?`<span style="background:${finalColor(iVal)};color:${finalInk(iVal)};font-weight:700;padding:2px 8px;border-radius:99px;font-size:12px;">${fmtNum(iVal)}</span>`:`<span style="font-size:11px;color:var(--absent-ink);font-weight:600;">Pend.</span>`):`<span style="color:var(--faint);">–</span>`}</td></tr>`;
-      return r;
-    }).join("");
-
-    body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-      <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · Nota C1°/C2° se calcula sola como promedio de las notas cargadas; se puede ajustar a mano desde "Por alumno" o desde Notas finales</div>
-      <div class="pagefoot">Tocá "Por alumno" para cargar notas.</div>`;
-
-  } else {
-    // Vista por alumno
-    const sid=view.cuatriSid||g.students[0].id;
-    const s=g.students.find(x=>x.id===sid)||g.students[0];
-    const av=avanceOf(t,s.id,g); const finRaw=t.final[s.id]; const fin=finalOf(t,s.id,pm); const finIsAuto=finRaw==null&&fin!=null;
-    const studentSel=`<div class="seg" style="margin-bottom:14px;overflow-x:auto;flex-wrap:nowrap;">
-      ${g.students.map(st=>`<button data-cs="${st.id}" aria-pressed="${st.id===s.id}" style="white-space:nowrap;">${nameHTML(st)}</button>`).join("")}</div>`;
-
-    // Items list
-    const itemRows=allItems.map(it=>{
-      const icon=(TP_TYPES.find(x=>x.id===it.type)||{icon:"📝"}).icon;
-      let val,note="";
-      if(it.kind==="exam"){ const c=getGrade(t,s.id,it.id); val=c.recu!=null?c.recu:(c.nota!=null?c.nota:null); if(c.recu!=null) note=" (recu)"; }
-      else val=getTpGrade(t,s.id,it.id);
-      const cls=gradeTierClass(typeof val==="number"?val:null,pm);
-      return `<div class="arow"><span class="nm">${icon} ${esc(it.name)} <span style="font-size:11px;color:var(--faint);">${fmtShort(it.date)}${note}</span></span>
-        ${it.kind==="tp"?`<input class="numin ${cls}" inputmode="decimal" data-tpg="${it.id}" placeholder="–" value="${val!=null?fmtNum(val):""}">`:
-        `<span class="numin ${cls}" style="display:grid;place-items:center;background:var(--line-soft);">${val!=null?fmtNum(val):"–"}</span>`}</div>`;
-    }).join("")||`<div style="font-size:13px;color:var(--faint);padding:10px 0;">Sin evaluaciones registradas.</div>`;
-
-    const intensNota=(t.intens[s.id]||{}).nota;
-    body.innerHTML=`${modeSeg}${studentSel}
-      <div class="card pad" style="margin-bottom:14px;">
-        <div style="font-weight:700;font-size:16px;margin-bottom:10px;">${nameHTML(s)}</div>
-        <div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">Trayectoria educativa</label>
-          <div class="triseg-sm" data-sid="${s.id}">${["TEA","TEP","TED"].map(code=>`<button data-av="${code}" aria-pressed="${av===code}" style="background:${av===code?TEA_COLORS[code]:"#fff"};color:${av===code?TEA_INK[code]:"var(--muted)"};">${code}</button>`).join("")}</div>
-        </div>
-        <label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px;">Evaluaciones y TPs</label>
-        ${itemRows}
-        <div style="margin-top:14px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-          <div><label style="font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;">Nota final ${finIsAuto?'<span style="font-weight:700;color:var(--faint);text-transform:none;">(promedio)</span>':""}</label>
-            <input class="numin" inputmode="decimal" id="fin_inp" placeholder="–" value="${fin!=null?fmtNum(fin):""}" style="width:80px;height:46px;font-size:20px;background:${finalColor(fin)};color:${finalInk(fin)};border-color:${fin!=null?finalInk(fin):"var(--line)"};">
-          </div>
-          ${fin!=null&&fin<pm?`<div>
-            <label style="font-size:12px;font-weight:600;color:var(--absent-ink);display:block;margin-bottom:4px;">Intensificación</label>
-            <input class="numin" inputmode="decimal" id="intens_inp" placeholder="–" value="${intensNota!=null?fmtNum(intensNota):""}" style="width:80px;height:46px;font-size:20px;background:${finalColor(intensNota)};color:${finalInk(intensNota)};border-color:${intensNota!=null?finalInk(intensNota):"var(--line)"};">
-          </div><div class="intbadge" style="align-self:flex-end;margin-bottom:6px;">Intensifica</div>`:""}
-        </div>
-      </div>
-      <div class="pagefoot">TEA = Trayectoria Educativa Avanzada · TEP = En Proceso · TED = Discontinua · Nota para aprobar: ${pm}.</div>`;
-  }
-
-  body.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{ view.cuatriMode=b.dataset.cm; render(); });
-  body.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ view.gridMode=b.dataset.gm; view.cuatriMode="grilla"; render(); });
-  body.querySelectorAll("[data-cs]").forEach(b=>b.onclick=()=>{ view.cuatriSid=b.dataset.cs; render(); });
-  body.querySelectorAll(".triseg-sm button").forEach(b=>b.onclick=()=>{ const sid=b.closest(".triseg-sm").dataset.sid; const code=b.dataset.av; const cur=t.avance[sid]; if(cur===code) setAvance(t,sid,null); else setAvance(t,sid,code); render(); });
-  const finInp=$("#fin_inp"); if(finInp) finInp.addEventListener("change",()=>{ const v=parseNum(finInp.value); setFinal(t,view.cuatriSid||g.students[0].id,v); render(); });
-  const intensInp=$("#intens_inp"); if(intensInp) intensInp.addEventListener("change",()=>{ const v=parseNum(intensInp.value); setIntensNota(t,view.cuatriSid||g.students[0].id,v); render(); });
-  body.querySelectorAll("[data-tpg]").forEach(inp=>inp.addEventListener("change",()=>{ const v=parseNum(inp.value); setTpGrade(t,view.cuatriSid||g.students[0].id,inp.dataset.tpg,v); inp.value=v!=null?fmtNum(v):""; const cls=gradeTierClass(v,pm); inp.className="numin "+(cls||""); }));
-}
 function avTrisegSmall(t,sid){
   const eff=avanceOf(t,sid); const stored=t.avance[sid]; const auto=(stored==null&&eff==="TED");
   return `<div class="triseg-sm" data-sid="${sid}">${["TEA","TEP","TED"].map(code=>`<button data-av="${code}" aria-pressed="${eff===code}">${code}${(auto&&code==="TED")?'<span class="auto">auto</span>':''}</button>`).join("")}</div>`;
@@ -5627,8 +5697,9 @@ function promptChooseTopics(g,t,sid,allTopics){
   $("#ct_ok").onclick=()=>{ const ids=[...$("#dlgBody").querySelectorAll(".topicchk.on")].map(b=>b.dataset.tid); setDeudasTopics(t,sid,ids); closeDlg(); render(); };
   $("#ct_cancel").onclick=closeDlg;
 }
-function wireIntens(g,t){ wirePass(g); }
-function wirePass(g){ const p=$("#passIn"); if(p) p.addEventListener("change",()=>{ let v=parseInt(p.value,10); if(isNaN(v)) v=7; v=Math.max(1,Math.min(10,v)); g.passMark=v; save(); render(); });
+// La nota para aprobar el cuatrimestre se edita en Datos → Info. Acá se cablean los
+// mínimos de cada período de intensificación, que sí viven en esta pantalla.
+function wireIntens(g,t){
   document.querySelectorAll("[data-ipm-period]").forEach(inp=>inp.addEventListener("change",()=>{ let v=parseInt(inp.value,10); if(isNaN(v)) v=7; v=Math.max(1,Math.min(10,v)); setIntensPMFor(g,inp.dataset.ipmPeriod,v); render(); }));
 }
 
