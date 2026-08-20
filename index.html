@@ -1697,12 +1697,21 @@ function recuRoster(g,t,parentId,recuId){
     return typeof v!=="number"||v<pm;
   });
 }
+/* Vale la MEJOR de las dos: si el recuperatorio supera a la nota del examen, la
+   reemplaza; si no, queda la del examen. Las dos notas se siguen guardando y se ven
+   por separado en la hoja del examen — nunca se pisan ni se borran, así queda
+   constancia de lo que hizo el alumno si un padre viene a preguntar.
+   (Antes la recu reemplazaba siempre, mejorara o empeorara: alguien que sacaba 6,67
+   y después 4 en la recu se quedaba con el 4.) */
 function examEffective(t,sid,eid,pm){
   pm=pm||((getGroup(view.groupId)||{}).passMark)||7;
   const c=getGrade(t,sid,eid);
-  if(c.recu!=null) return c.recu;
-  const lr=linkedRecuNota(t,sid,eid);
-  if(lr!=null) return lr;
+  const recu=(c.recu!=null)?c.recu:linkedRecuNota(t,sid,eid);
+  if(recu!=null){
+    // Si faltó al examen y sólo tiene la recu, vale la recu.
+    if(typeof c.nota!=="number") return recu;
+    return Math.max(c.nota,recu);
+  }
   if(c.nota==null) return null;
   const e=t.exams.find(x=>x.id===eid);
   const hasParts=e&&Array.isArray(e.parts)&&e.parts.length>=2;
@@ -1803,10 +1812,12 @@ function getOwed(t,sid,pid){
 function hasAnyDeuda(t,sid){ return !!(t.deudas&&t.deudas[sid]&&t.deudas[sid].topics&&t.deudas[sid].topics.length); }
 function setFinal(t,sid,v){ if(v==null) delete t.final[sid]; else t.final[sid]=v; save(); }
 function finalAuto(t,sid,pm){
-  // Promedio de todas las notas que ya tiene el alumno en el cuatrimestre (exámenes, recup., TP, etc.)
+  // Promedio de todas las notas que ya tiene el alumno en el cuatrimestre (exámenes, TP, etc.)
   pm=pm||7;
   const vals=[];
-  t.exams.forEach(e=>{ const v=examEffective(t,sid,e.id,pm); if(typeof v==="number") vals.push(v); });
+  // Los recuperatorios NO entran como una nota más: ya están reflejados en la nota
+  // del examen que recuperan. Contarlos aparte hacía que esa nota pesara el doble.
+  t.exams.forEach(e=>{ if(e.recuOf) return; const v=examEffective(t,sid,e.id,pm); if(typeof v==="number") vals.push(v); });
   (t.tps||[]).forEach(tp=>{ const v=getTpGrade(t,sid,tp.id); if(typeof v==="number") vals.push(v); });
   if(!vals.length) return null;
   const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -2169,7 +2180,7 @@ function stats(g,t,sid){
   const faltas=N-presEq; const pct=N?Math.round(presEq/N*100):null;
   let presN=0; const scheme=getValScheme(g); const val={SC:0}; scheme.levels.forEach(lv=>{ val[lv.key]=0; });
   past.forEach(s=>{ const av=attOf(t,sid,s.date,g); if(av==="P"||av==="T"){ presN++; const w=workOf(t,sid,s.date); if(w&&val[w]!=null){ val[w]++; } else val.SC++; } });
-  const eff=t.exams.map(e=>examEffective(t,sid,e.id,g.passMark||7)).filter(v=>v!=null&&typeof v==="number");
+  const eff=t.exams.filter(e=>!e.recuOf).map(e=>examEffective(t,sid,e.id,g.passMark||7)).filter(v=>v!=null&&typeof v==="number");
   const prom=eff.length?eff.reduce((a,b)=>a+b,0)/eff.length:null;
   return { N, Nmod:N*mod, pres:presEq, faltas, faltasMod:faltas*mod, pct, presN, val, prom, final:finalOf(t,sid,g.passMark||7), mod, tarde };
 }
@@ -4686,9 +4697,9 @@ function renderExamEntry(g,t,e,body){
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Ya cargadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Listo, ya cargué estas notas</button>`}
     <div class="pagefoot">${hasParts?`Deslizá la tabla hacia los costados para ver todas las columnas — el nombre queda fijo a la izquierda. La nota final es el promedio de las partes, y se completa sola apenas están todas cargadas. `:""}Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
-      :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
-      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
-      :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
+      :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. Vale la mejor de las dos, y las dos quedan a la vista. El recuperatorio no suma como una nota más en el promedio del cuatrimestre: ya está contado acá.`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original: vale la mejor de las dos, y las dos quedan guardadas. No suman como una nota más en el promedio.`
+      :"Vale la mejor de las dos: si el recuperatorio supera a la nota del examen, la reemplaza; si no, queda la del examen. Las dos quedan guardadas. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   const rows=$("#rows");
   const dis=locked?"disabled":"";
@@ -6645,7 +6656,7 @@ function promptAyuda(startTab){
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
           <div>• Todo lo que evaluás se crea en <b>Exámenes y recup</b> con su fecha</div>
           <div>• Las notas que cargás ahí aparecen automáticamente en <b>Clases</b> si coincide la fecha</div>
-          <div>• Si alguien rinde recuperatorio, se carga como una entrada aparte ("+ Agregar → Recuperatorio")</div>
+          <div>• Si alguien rinde recuperatorio, se carga como una entrada aparte ("+ Agregar → Recuperatorio"). Vale la mejor de las dos notas: si la recu supera a la del examen, la reemplaza; si no, queda la del examen. Las dos se guardan, para que quede constancia. El recuperatorio no cuenta como una nota más en el promedio</div>
           <div>• Todas se ven en <b>Resumen → Calificaciones</b> y <b>Notas finales</b> como columnas</div>
           <div>• <b>Carpeta</b> = nota aparte para trabajo de clase/carpeta independiente de exámenes</div>
           <div>• <b>Nota final C1°/C2°</b> = se calcula sola, como promedio de todo lo que cargaste ese cuatrimestre. Si no coincide con tu criterio, tocá la celda y escribí la que va: esa manda</div>
