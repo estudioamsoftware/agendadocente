@@ -810,8 +810,9 @@ const VAL_SCHEME_PRESETS={
     {key:"BU",label:"Bueno",symbol:"B",...VTIER.blue},
     {key:"RE",label:"Regular",symbol:"R",...VTIER.green}
   ],footNote:"E = Excelente · MB = Muy Bueno · B = Bueno · R = Regular · sin marcar = S/C."},
+  // Mismos colores que las notas: 7 a 10 azul, 6 a 4 verde, 3 a 1 rojo.
   num10:{id:"num10",name:"Numérica (1 a 10)",short:"1-10",levels:Array.from({length:10},(_,i)=>{
-    const n=i+1; const tier=n>=8?VTIER.green:n>=5?VTIER.grey:VTIER.red;
+    const n=i+1; const tier=n>=7?VTIER.blue:(n>=4?VTIER.green:VTIER.red);
     return {key:String(n),label:String(n),symbol:String(n),...tier};
   }),footNote:"Nota numérica de 1 (más bajo) a 10 (más alto) · sin marcar = S/C."},
   semaforo:{id:"semaforo",name:"Semáforo 🟢🟡🔴",short:"🟢🟡🔴",levels:[
@@ -1182,7 +1183,12 @@ function fmtTop(iso){ const d=parseISO(iso); const w=DOW[d.getDay()]; return w.c
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function autoLink(s){ return esc(s).replace(/((https?:\/\/|www\.)[^\s<]+)/gi,(m)=>{ const href=m.startsWith("http")?m:"https://"+m; return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;word-break:break-all;">${m}</a>`; }); }
 function fmtNum(n){ if(n==null||isNaN(n)) return "–"; const r=Math.round(n*100)/100; return Number.isInteger(r)?String(r):String(r).replace(".",","); }
-function gradeTierClass(v,pm){ pm=pm||7; if(v==null||typeof v!=="number"||isNaN(v)) return ""; return v>=pm?"gnum-blue":"gnum-green"; }
+/* Colores de nota según lo que piden las escuelas: 7 a 10 azul (aprobado),
+   6 a 4 verde, 3 a 1 rojo. Es la misma regla que ya usaban la nota de cierre y la
+   impresión; a las notas de examen les faltaba la banda roja, así que un 1, un 2 o
+   un 3 salían verdes en pantalla y rojos en el papel. */
+const NOTA_ROJA_HASTA=3; // 1, 2 y 3 van en rojo
+function gradeTierClass(v,pm){ pm=pm||7; if(v==null||typeof v!=="number"||isNaN(v)) return ""; if(v>=pm) return "gnum-blue"; return v<=NOTA_ROJA_HASTA?"gnum-red":"gnum-green"; }
 function parseNum(raw){ raw=String(raw).trim().replace(",","."); if(raw==="") return null; const v=parseFloat(raw); if(isNaN(v)) return null; return Math.max(0,Math.min(10,v)); }
 // Corta el valor mientras se escribe si ya se pasó de 10, para que nunca se llegue a ver
 // (ni quede cargado) un "76" — no hace falta esperar a que se vaya del campo.
@@ -6291,7 +6297,7 @@ function printGrilla(g,t,mode){
         const ausente=gradeAusenteEffective(t,g,s.id,ex.id,fld,fld==="recu"?ex.recuDate:ex.date);
         if(ausente){ r+=`<td class="c num numR">A</td>`; }
         else if(v==null){ r+=`<td class="c num"></td>`; }
-        else if(typeof v==="number"){ const pc=v>=7?"numB":v>=4?"numV":"numR"; r+=`<td class="c num ${pc}">${fmtNum(v)}</td>`; }
+        else if(typeof v==="number"){ const pmG=g.passMark||7; const pc=v>=pmG?"numB":(v<=NOTA_ROJA_HASTA?"numR":"numV"); r+=`<td class="c num ${pc}">${fmtNum(v)}</td>`; }
         else { r+=`<td class="c num numR">${esc(v)}</td>`; }
         return; }
       if(attOf(t,s.id,se.date,g)==="A"){ r+=`<td class="c am">A</td>`; return; }
