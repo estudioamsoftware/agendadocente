@@ -942,6 +942,37 @@ function migrate(st){
           if(parent&&parent.recuDate!==recu.date) parent.recuDate=recu.date;
         });
       }
+      /* Recuperatorios viejos de una evaluación por partes: antes tenían una sola
+         casilla, así que la nota que se cargaba ahí era en realidad la de la parte que
+         el alumno se llevaba (no había otro lugar donde ponerla). Acá se pasa a la
+         columna que corresponde, con la regla que dio la docente: la nota va a cada
+         parte que ese alumno debía, y si figuraba ausente, queda ausente en todas.
+         Como el promedio del recu es el de esas mismas partes, su valor no cambia.
+         Corre una sola vez por recuperatorio (queda marcado con partesMigradas). */
+      if(Array.isArray(T.exams)){
+        const pmG=ng.passMark||7;
+        T.exams.filter(r=>r.recuOf&&!r.partesMigradas&&(!Array.isArray(r.parts)||r.parts.length<2)).forEach(r=>{
+          const parent=T.exams.find(x=>x.id===r.recuOf);
+          if(!parent||!Array.isArray(parent.parts)||parent.parts.length<2) return;
+          r.parts=parent.parts.slice();
+          Object.keys(T.grades||{}).forEach(sid=>{
+            const cR=(T.grades[sid]||{})[r.id]; if(!cR) return;
+            const cP=(T.grades[sid]||{})[parent.id]||{};
+            const debe=[];
+            parent.parts.forEach((_,pi)=>{ const v=cP["p"+pi]; if(!(typeof v==="number"&&v>=pmG)) debe.push(pi); });
+            if(!debe.length) return;
+            const tieneNota=typeof cR.nota==="number";
+            const estabaAusente=cR.ausenteNota===true;
+            if(!tieneNota&&!estabaAusente) return;
+            debe.forEach(pi=>{
+              if(cR["p"+pi]!==undefined) return; // ya cargada a mano: no se pisa
+              if(tieneNota) cR["p"+pi]=cR.nota;
+              else cR["ausente_p"+pi]=true;
+            });
+          });
+          r.partesMigradas=true;
+        });
+      }
       if(Array.isArray(T.sessions)) markFeriadosAuto(T);
     });
     return ng;
@@ -1703,9 +1734,66 @@ function recuRoster(g,t,parentId,recuId){
    constancia de lo que hizo el alumno si un padre viene a preguntar.
    (Antes la recu reemplazaba siempre, mejorara o empeorara: alguien que sacaba 6,67
    y después 4 en la recu se quedaba con el 4.) */
+/* Qué partes de una evaluación se lleva un alumno: las que no llegaron al mínimo,
+   las que quedaron sin nota y las que faltó. Son exactamente las que rinde en el
+   recuperatorio; las que ya aprobó no se vuelven a rendir. */
+function partesQueDebe(t,parent,sid,pm){
+  pm=pm||7;
+  const c=getGrade(t,sid,parent.id);
+  const out=[];
+  (parent.parts||[]).forEach((_,pi)=>{
+    const v=c["p"+pi];
+    if(!(typeof v==="number"&&v>=pm)) out.push(pi);
+  });
+  return out;
+}
+/* ¿El recuperatorio está armado con las mismas columnas que la evaluación? */
+function recuPorPartes(t,e){
+  if(!e||!Array.isArray(e.parts)||e.parts.length<2) return null;
+  const r=linkedRecuExam(t,e.id);
+  if(!r||!Array.isArray(r.parts)||r.parts.length!==e.parts.length) return null;
+  return r;
+}
+/* Nota efectiva de cada parte: la mejor entre la evaluación y el recuperatorio.
+   Devuelve null en las partes que todavía no tienen nota en ninguna de las dos. */
+function partesEfectivas(t,e,sid){
+  const c=getGrade(t,sid,e.id);
+  const r=recuPorPartes(t,e);
+  const cR=r?getGrade(t,sid,r.id):null;
+  return e.parts.map((_,pi)=>{
+    const f="p"+pi;
+    const a=(typeof c[f]==="number")?c[f]:null;
+    const b=(cR&&typeof cR[f]==="number")?cR[f]:null;
+    if(a!=null&&b!=null) return Math.max(a,b);
+    return b!=null?b:a;
+  });
+}
+/* Promedio de la evaluación contando el recuperatorio parte por parte. Una parte
+   marcada ausente en las dos hojas queda afuera del promedio (igual que ya hacía la
+   evaluación sola); si falta resolver alguna, todavía no hay nota. */
+function promedioConRecuPorPartes(t,e,sid){
+  const r=recuPorPartes(t,e); if(!r) return undefined;
+  const ef=partesEfectivas(t,e,sid);
+  const c=getGrade(t,sid,e.id), cR=getGrade(t,sid,r.id);
+  const vals=[];
+  for(let pi=0;pi<e.parts.length;pi++){
+    if(typeof ef[pi]==="number"){ vals.push(ef[pi]); continue; }
+    const k="ausente_p"+pi;
+    if(c[k]===true||cR[k]===true) continue;   // ausente: no promedia, pero está resuelta
+    return null;                               // falta cargarla
+  }
+  if(!vals.length) return null;
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100;
+}
 function examEffective(t,sid,eid,pm){
   pm=pm||((getGroup(view.groupId)||{}).passMark)||7;
   const c=getGrade(t,sid,eid);
+  const eObj=t.exams.find(x=>x.id===eid);
+  // Recuperatorio armado con las mismas columnas: vale la mejor parte por parte.
+  if(eObj&&recuPorPartes(t,eObj)){
+    const v=promedioConRecuPorPartes(t,eObj,sid);
+    return (v===undefined)?null:v;
+  }
   const recu=(c.recu!=null)?c.recu:linkedRecuNota(t,sid,eid);
   if(recu!=null){
     // Si faltó al examen y sólo tiene la recu, vale la recu.
@@ -4731,8 +4819,13 @@ function renderExamEntry(g,t,e,body){
     // mínimo en todas, no sólo en el promedio.
     const approved=!isTP&&(hasParts?examPartsAllPassed(t,s.id,e,pm):(typeof c.nota==="number"&&c.nota>=pm));
     const seMarcado=isTP&&c.se&&typeof c.nota!=="number";
+    // En un recuperatorio por partes, lo que el alumno ya aprobó no se vuelve a rendir:
+    // esa columna va con una rayita y sin casillero. Sólo se completa lo que se llevó.
+    const debe=(parentEx&&hasParts)?partesQueDebe(t,parentEx,s.id,pm):null;
     const notaCell=hasParts
-      ?e.parts.map((label,pi)=>`<div class="eg-col eg-col-nota">${fieldCellHTML(s,c,"p"+pi,e.date)}</div>`).join("")
+      ?e.parts.map((label,pi)=>`<div class="eg-col eg-col-nota">${(debe&&!debe.includes(pi))
+          ?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);" title="Ya aprobó esta parte">–</span>`
+          :fieldCellHTML(s,c,"p"+pi,e.date)}</div>`).join("")
       :`<div class="eg-col eg-col-nota">${seMarcado
         ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
         :fieldCellHTML(s,c,"nota",e.date)}</div>`;
@@ -4767,8 +4860,12 @@ function renderExamEntry(g,t,e,body){
   function recomputePartsNota(sid){
     if(!hasParts) return;
     const c=getGrade(t,sid,e.id);
+    // En un recuperatorio por partes sólo cuentan las que ese alumno se llevó: las que
+    // ya tenía aprobadas no se rinden y no deben dejar la nota "sin completar".
+    const debeIdx=parentEx?partesQueDebe(t,parentEx,sid,pm):null;
     const vals=[]; let allResolved=true;
     e.parts.forEach((_,pi)=>{
+      if(debeIdx&&!debeIdx.includes(pi)) return;
       const f="p"+pi; const v=c[f];
       if(typeof v==="number") vals.push(v);
       else if(!gradeAusenteEffective(t,g,sid,e.id,f,e.date)) allResolved=false;
@@ -4917,12 +5014,18 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   const singleCell=(v,motivo)=>{ if(v==null) return `<td class="gc-num">–</td>`; const cls=v==="A"?"gc-A":gradeTierClass(typeof v==="number"?v:null,pm); return `<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":v==="A"?"A":fmtNum(v)}${motivoMark(motivo)}</td>`; };
   // Un recu cargado como examen aparte (recuOf) ya se refleja en la columna "Recup." del
   // examen original — si además se lista como item propio, la nota del recu aparece 2 veces.
-  const items1=[...t1.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
-  const items2=[...t2.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
+  const items1=[...t1.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts,recuParts:((linkedRecuExam(t1,e.id)||{}).parts)||null})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
+  const items2=[...t2.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts,recuParts:((linkedRecuExam(t2,e.id)||{}).parts)||null})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
   const intensHead=()=>PERIODOS.map(p=>`<th class="gh-tot" style="font-size:9px;line-height:1.2;white-space:nowrap;">Intens.<div>${esc(p.label.slice(0,3))}</div></th>`).join("");
   const itemHead=(it)=>{ if(it.kind==="avance") return avanceHeadHTML(it.term);
     const hasParts=it.kind==="exam"&&Array.isArray(it.parts)&&it.parts.length>=2;
-    if(hasParts){ const partsHTML=it.parts.map(label=>itemHeadHTML(it,"",label.toUpperCase())).join(""); return hasRecuType(it)?partsHTML+itemHeadHTML(it,"Recup."):partsHTML; }
+    if(hasParts){
+      const partsHTML=it.parts.map(label=>itemHeadHTML(it,"",label.toUpperCase())).join("");
+      if(!hasRecuType(it)) return partsHTML;
+      // Si el recuperatorio se rindió por partes, cada parte tiene su columna acá también.
+      const rp=Array.isArray(it.recuParts)&&it.recuParts.length===it.parts.length?it.recuParts:null;
+      return partsHTML+(rp?rp.map(label=>itemHeadHTML(it,"Recup.",label.toUpperCase())).join(""):itemHeadHTML(it,"Recup."));
+    }
     if(hasRecuType(it)) return itemHeadHTML(it,"")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
   // "Nota C1°/C2°" también tiene su propia fecha de cierre (una sola, para todo el
   // curso — no por alumno), igual que la columna de "Notas de avance".
@@ -4963,6 +5066,21 @@ function renderNotasFinalesGrid(g,body,modeSeg){
           // Si la recu se cargó como examen aparte (recuOf), la nota y el "A" de
           // ausente viven en ESA hoja, no en el campo "recu" viejo de este item.
           const linked=linkedRecuExam(tObj,it.id);
+          const rp=(hasParts&&linked&&Array.isArray(linked.parts)&&linked.parts.length===it.parts.length)?linked.parts:null;
+          if(rp){
+            // Una columna por parte: rayita azul en lo que ya había aprobado (no lo
+            // rindió), y la nota nueva en lo que se llevaba.
+            const parentEx0=tObj.exams.find(x=>x.id===it.id);
+            const debe=partesQueDebe(tObj,parentEx0,s.id,pm);
+            const cRec=getGrade(tObj,s.id,linked.id);
+            rp.forEach((_,pi)=>{
+              if(!debe.includes(pi)){ out+=`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`; return; }
+              const f="p"+pi;
+              const ausP=gradeAusenteEffective(tObj,g,s.id,linked.id,f,linked.date);
+              out+=singleCell(ausP?"A":(cRec[f]!=null?cRec[f]:null),getGradeMotivo(tObj,s.id,linked.id,f)||null);
+            });
+            return;
+          }
           const recuVal=linked?getGrade(tObj,s.id,linked.id).nota:c.recu;
           const recuMotivo=linked?getGrade(tObj,s.id,linked.id).motivoNota:c.motivoRecu;
           const yaAprobo=recuVal==null&&(hasParts?examPartsAllPassed(tObj,s.id,it,pm):(typeof c.nota==="number"&&c.nota>=pm));
@@ -5873,6 +5991,10 @@ function promptNewExam(t,g,type){
       // La evaluación pasa a mostrar la columna de recuperatorio con estas notas.
       const parent=tDest.exams.find(x=>x.id===selRecuOf);
       if(parent) parent.recuDate=e.date;
+      // El recuperatorio se arma con las MISMAS columnas que la evaluación: si la
+      // evaluación tenía Grammar y Vocabulary, acá también hay Grammar y Vocabulary,
+      // y cada alumno completa sólo la que se llevó.
+      if(parent&&Array.isArray(parent.parts)&&parent.parts.length>=2) e.parts=parent.parts.slice();
     }
     save(); closeDlg(); view.examId=e.id; render();
   };
