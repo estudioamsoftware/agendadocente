@@ -308,6 +308,14 @@
   .gs-table td:not(:first-child){text-align:center;font-weight:600;}
   .gs-apr td{color:var(--present-ink)!important;} .gs-des td{color:#C47A00!important;} .gs-ne td{color:var(--absent-ink)!important;}
   .gridkey{font-size:11.5px;color:var(--muted);margin:10px 2px 0;line-height:1.5;}
+  .gridkey ul{list-style:none;margin:0;padding:0;}
+  /* El punto va posicionado y el texto queda como un párrafo normal: si la fila fuera
+     flex, cada palabra en negrita se convertiría en una columna aparte. */
+  .gridkey li{position:relative;padding-left:16px;margin-bottom:7px;font-size:12.5px;line-height:1.5;}
+  .gridkey li:last-child{margin-bottom:0;}
+  .gridkey li::before{content:"•";position:absolute;left:2px;top:0;color:var(--primary);font-weight:800;}
+  .gridkey b{color:var(--ink);font-weight:700;}
+  .gridkey .gk-t{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:0 0 8px;}
   .gridblk{margin-top:16px;} .gridblk-t{font-family:"Fraunces",serif;font-weight:600;font-size:15px;margin:0 2px 8px;}
   .gridblk .tl{font-size:13px;color:var(--muted);margin-bottom:4px;word-break:break-word;line-height:1.4;} .gridblk .tl b{color:var(--ink);}
 
@@ -1911,8 +1919,15 @@ function cuentaEnPromedio(e){
   if(!e) return false;
   if(e.recuOf) return false;
   if(e.type==="intens_eval"||e.type==="intens_modulo") return false;
+  if(e.noPromedia) return false; // la docente la destildó: se registra pero no promedia
   return true;
 }
+/* Los recuperatorios y la intensificación nunca promedian por lo que son, así que
+   ahí el tilde no se ofrece: sería una opción que no hace nada. */
+function admitePromedioOpcional(type){
+  return !(String(type||"").startsWith("recu_")||type==="intens_eval"||type==="intens_modulo");
+}
+const PROMEDIA_HELP="Destildala para llevar una nota de seguimiento que quede registrada y se vea en la grilla, pero que no pese en el promedio del cuatrimestre.";
 function finalAuto(t,sid,pm){
   // Promedio de las notas del cuatrimestre (exámenes, TP, carpeta, proyecto).
   pm=pm||7;
@@ -4734,7 +4749,7 @@ function renderExam(g,t,body){
   const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id,g.passMark||7)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
     const icon=examTypeMeta(e.type).icon;
     return `<button class="erow" data-eval="${e.id}"><span class="einfo"><span class="ename">${icon} ${esc(e.name)}</span>
-      <span class="edate">${fmtLong(e.date)} · ${c}/${g.students.length} cargadas${recu?" · con recu":""}</span></span><span class="echev">${I.chev}</span></button>`;}).join("")+`</div>`:emptyInline(I.book,"Todavía no hay evaluaciones en este cuatrimestre.");
+      <span class="edate">${fmtLong(e.date)} · ${c}/${g.students.length} cargadas${recu?" · con recu":""}${e.noPromedia?` <span style="color:var(--absent-ink);font-weight:700;">· no promedia</span>`:""}</span></span><span class="echev">${I.chev}</span></button>`;}).join("")+`</div>`:emptyInline(I.book,"Todavía no hay evaluaciones en este cuatrimestre.");
   const examTrash=t.examTrash||[];
   const trashHTML=examTrash.length?`<div style="margin-top:16px;padding-top:10px;border-top:1px solid var(--line);">
     <div style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:6px;">🗑 Papelera (${examTrash.length})</div>
@@ -4783,7 +4798,7 @@ function renderExamEntry(g,t,e,body){
   body.innerHTML=`${examTermSegHTML()}<button class="link" id="backEx" style="margin:-4px 0 8px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">${I.left} Exámenes y recup</button>
     <div class="card pad" style="margin-bottom:14px;"><div style="display:flex;align-items:flex-start;gap:10px;">
       <div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;">${typeLabel}${periodBadge}</div>
-      <div style="font-weight:600;font-size:17px;word-break:break-word;">${esc(e.name)}</div>
+      <div style="font-weight:600;font-size:17px;word-break:break-word;">${esc(e.name)}${e.noPromedia?` <span style="font-size:10.5px;font-weight:700;color:var(--absent-ink);background:var(--absent-tint);padding:2px 8px;border-radius:99px;vertical-align:middle;white-space:nowrap;">no promedia</span>`:""}</div>
       <div class="muted" style="font-size:13px;margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span>${fmtLong(e.date)}${!isTP&&e.recuDate?` · Recuperatorio: ${fmtLong(e.recuDate)}`:""}</span>${e.link?`<a href="${esc(e.link)}" target="_blank" rel="noopener noreferrer" style="font-weight:600;color:var(--primary);text-decoration:none;">🔗 Abrir examen ↗</a>`:""}</div></div>
       <button class="titleEdit" id="editEx" aria-label="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
       </div></div>
@@ -5014,19 +5029,22 @@ function renderNotasFinalesGrid(g,body,modeSeg){
   const singleCell=(v,motivo)=>{ if(v==null) return `<td class="gc-num">–</td>`; const cls=v==="A"?"gc-A":gradeTierClass(typeof v==="number"?v:null,pm); return `<td class="gc-num ${cls}">${v==="SE"?"S/E":v==="SNH"?"SNH":v==="A"?"A":fmtNum(v)}${motivoMark(motivo)}</td>`; };
   // Un recu cargado como examen aparte (recuOf) ya se refleja en la columna "Recup." del
   // examen original — si además se lista como item propio, la nota del recu aparece 2 veces.
-  const items1=[...t1.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts,recuParts:((linkedRecuExam(t1,e.id)||{}).parts)||null})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
-  const items2=[...t2.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts,recuParts:((linkedRecuExam(t2,e.id)||{}).parts)||null})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
+  const items1=[...t1.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts,noPromedia:!!e.noPromedia})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"1",date:t1.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
+  const items2=[...t2.exams.filter(e=>!e.recuOf).map(e=>({id:e.id,name:e.name,date:e.date,recuDate:e.recuDate,kind:"exam",type:e.type,parts:e.parts,noPromedia:!!e.noPromedia})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type})),{kind:"avance",term:"2",date:t2.avanceFechaCol||""}].sort((a,b)=>a.date<b.date?-1:1);
   const intensHead=()=>PERIODOS.map(p=>`<th class="gh-tot" style="font-size:9px;line-height:1.2;white-space:nowrap;">Intens.<div>${esc(p.label.slice(0,3))}</div></th>`).join("");
   const itemHead=(it)=>{ if(it.kind==="avance") return avanceHeadHTML(it.term);
     const hasParts=it.kind==="exam"&&Array.isArray(it.parts)&&it.parts.length>=2;
+    // Una evaluación dividida en partes sigue siendo UNA evaluación: en la grilla va
+    // una sola columna con su nota, que es el promedio de las partes (ya con el
+    // recuperatorio aplicado en las que haya recuperado). El desglose parte por parte
+    // vive en la hoja de la evaluación, que es donde se carga y se corrige.
     if(hasParts){
-      const partsHTML=it.parts.map(label=>itemHeadHTML(it,"",label.toUpperCase())).join("");
-      if(!hasRecuType(it)) return partsHTML;
-      // Si el recuperatorio se rindió por partes, cada parte tiene su columna acá también.
-      const rp=Array.isArray(it.recuParts)&&it.recuParts.length===it.parts.length?it.recuParts:null;
-      return partsHTML+(rp?rp.map(label=>itemHeadHTML(it,"Recup.",label.toUpperCase())).join(""):itemHeadHTML(it,"Recup."));
+      const base0=CAT_LABEL[it.type]||{detail:""};
+      return itemHeadHTML(it,"",[base0.detail,it.parts.length+" notas",it.noPromedia?"no promedia":""].filter(Boolean).join(" · "));
     }
-    if(hasRecuType(it)) return itemHeadHTML(it,"")+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,""); };
+    const base1=CAT_LABEL[it.type]||{detail:""};
+    const det1=[base1.detail,it.noPromedia?"no promedia":""].filter(Boolean).join(" · ");
+    if(hasRecuType(it)) return itemHeadHTML(it,"",det1)+itemHeadHTML(it,"Recup."); return itemHeadHTML(it,"",det1); };
   // "Nota C1°/C2°" también tiene su propia fecha de cierre (una sola, para todo el
   // curso — no por alumno), igual que la columna de "Notas de avance".
   const finalHeadHTML=(term)=>{
@@ -5053,11 +5071,12 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       else if(it.kind==="exam"){ const c=getGrade(tObj,s.id,it.id);
         const hasParts=Array.isArray(it.parts)&&it.parts.length>=2;
         if(hasParts){
-          it.parts.forEach((_,pi)=>{
-            const field="p"+pi; const val=c[field];
-            const ausP=gradeAusenteEffective(tObj,g,s.id,it.id,field,it.date);
-            out+=singleCell(ausP?"A":(val!=null?val:null),getGradeMotivo(tObj,s.id,it.id,field)||null);
-          });
+          // Una sola nota: el promedio de las partes, con el recuperatorio ya aplicado
+          // en las que haya recuperado.
+          const ef=examEffective(tObj,s.id,it.id,pm);
+          const todasAusentes=it.parts.every((_,pi)=>gradeAusenteEffective(tObj,g,s.id,it.id,"p"+pi,it.date));
+          out+=singleCell(ef!=null?ef:(todasAusentes?"A":null),null);
+          return;
         } else {
           const ausN=gradeAusenteEffective(tObj,g,s.id,it.id,"nota",it.date);
           out+=singleCell(ausN?"A":(c.nota!=null?c.nota:(c.se?"SE":null)),c.motivoNota||null);
@@ -5066,21 +5085,6 @@ function renderNotasFinalesGrid(g,body,modeSeg){
           // Si la recu se cargó como examen aparte (recuOf), la nota y el "A" de
           // ausente viven en ESA hoja, no en el campo "recu" viejo de este item.
           const linked=linkedRecuExam(tObj,it.id);
-          const rp=(hasParts&&linked&&Array.isArray(linked.parts)&&linked.parts.length===it.parts.length)?linked.parts:null;
-          if(rp){
-            // Una columna por parte: rayita azul en lo que ya había aprobado (no lo
-            // rindió), y la nota nueva en lo que se llevaba.
-            const parentEx0=tObj.exams.find(x=>x.id===it.id);
-            const debe=partesQueDebe(tObj,parentEx0,s.id,pm);
-            const cRec=getGrade(tObj,s.id,linked.id);
-            rp.forEach((_,pi)=>{
-              if(!debe.includes(pi)){ out+=`<td class="gc-num" style="background:var(--blue-tint);color:var(--blue-ink);">–</td>`; return; }
-              const f="p"+pi;
-              const ausP=gradeAusenteEffective(tObj,g,s.id,linked.id,f,linked.date);
-              out+=singleCell(ausP?"A":(cRec[f]!=null?cRec[f]:null),getGradeMotivo(tObj,s.id,linked.id,f)||null);
-            });
-            return;
-          }
           const recuVal=linked?getGrade(tObj,s.id,linked.id).nota:c.recu;
           const recuMotivo=linked?getGrade(tObj,s.id,linked.id).motivoNota:c.motivoRecu;
           const yaAprobo=recuVal==null&&(hasParts?examPartsAllPassed(tObj,s.id,it,pm):(typeof c.nota==="number"&&c.nota>=pm));
@@ -5143,8 +5147,25 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     </table>`;
   }
   body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-    <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Nota C1°/C2°" para ponerle fecha de cierre del cuatrimestre · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
-    <div class="pagefoot">Tocá una celda de Notas de avance o Nota C1°/C2° para cargar o ajustar la nota de ese alumno. Con "Notas de avance" ya con fecha puesta, se ordena sola entre los exámenes según cuándo fue.</div>
+    <div class="gridkey">
+      <div class="gk-t">Qué se toca acá</div>
+      <ul>
+        <li><b>Notas de avance:</b> tocá el encabezado para ponerle la fecha, y una celda para cargarle el TEA, TEP o TED a ese alumno. Con la fecha puesta, la columna se ordena sola entre las evaluaciones.</li>
+        <li><b>Nota C1° / C2°:</b> tocá el encabezado para la fecha de cierre del cuatrimestre, y una celda para subir o bajar la nota de un alumno a mano.</li>
+        <li><b>El tilde ✓</b> es para marcarte que ya pasaste esa nota al cuaderno de comunicaciones. No afecta ningún cálculo.</li>
+        <li>Las <b>notas de las evaluaciones</b> se ven acá pero no se editan: se cargan en <b>Exámenes y recup</b>.</li>
+      </ul>
+      <div class="gk-t" style="margin-top:14px;">Cómo salen los números</div>
+      <ul>
+        <li>La <b>Nota C1°/C2°</b> se calcula sola: es el promedio de todas las notas cargadas en ese cuatrimestre. Si la ajustás a mano, manda la tuya.</li>
+        <li>El <b>Promedio</b> del final es (Nota C1° + Nota C2°) ÷ 2.</li>
+        <li>Una evaluación <b>con varias notas</b> ocupa una sola columna: la nota es el promedio de sus partes. Para aprobarla hay que llegar al mínimo en todas. El detalle parte por parte está en la hoja de la evaluación.</li>
+        <li>Del <b>recuperatorio</b> vale la mejor de las dos: si supera a la del examen la reemplaza, si no queda la del examen. No suma como una nota más.</li>
+        <li><b>No promedian</b> los recuperatorios, la intensificación, ni las evaluaciones que hayas destildado en "Esta nota promedia".</li>
+        <li><b>Intensificación:</b> se habilita cuando la nota final queda por debajo de ${pm}. Esa nota no entra nunca al promedio del cuatrimestre.</li>
+        <li>La columna <b>·</b> del medio sólo separa un cuatrimestre del otro.</li>
+      </ul>
+    </div>
     <div class="grid-stats" id="statsFooter">${statsFooterHTML()}</div>
     <div style="height:40px;"></div>`;
   wireDragScroll(body.querySelector(".gridwrap"));
@@ -5914,7 +5935,10 @@ function promptNewExam(t,g,type){
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Acá sólo van a aparecer los que no aprobaron esa evaluación y los que faltaron. Las notas que cargues se ven al lado de la original.</div>`
       :`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:9px 11px;">Primero cargá la evaluación: un recuperatorio siempre sale de una evaluación anterior.</div>`}
     </div>`:"";
-  const partsPanel=!isRecu?`<div class="dlg-field"><label>¿Necesitás poner varias notas en este examen? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Teoría, Práctica)</span></label><input id="e_parts" placeholder="Separadas por coma" autocomplete="off"><div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio.</div></div>`:"";
+  const partsPanel=!isRecu?`<div class="dlg-field"><label>¿Necesitás poner varias notas en este examen? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Teoría, Práctica)</span></label><input id="e_parts" placeholder="Separadas por coma" autocomplete="off"><div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio. Para aprobar hay que llegar al mínimo en todas.</div></div>`:"";
+  const promediaPanel=admitePromedioOpcional(type)?`<div class="dlg-field"><label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-weight:600;">
+      <input type="checkbox" id="e_promedia" checked style="width:19px;height:19px;margin-top:1px;flex:none;cursor:pointer;">
+      <span>Esta nota promedia<div style="font-weight:500;font-size:11.5px;color:var(--faint);margin-top:3px;">${PROMEDIA_HELP}</div></span></label></div>`:"";
   const isIntensEval=type==="intens_eval";
   const guessedPeriod=isIntensEval?guessIntensPeriodByDate(todayISO()):null;
   const periodPanel=isIntensEval?`<div class="dlg-field"><label>¿De qué período de intensificación es esta nota?</label>
@@ -5931,6 +5955,7 @@ function promptNewExam(t,g,type){
     ${periodPanel}
     <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="e_link" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
     ${partsPanel}
+    ${promediaPanel}
     ${topicsPanel}
     <div class="dlg-actions"><button class="btn subtle" id="e_back">Atrás</button><button class="btn" id="e_ok">Crear</button></div>`);
   const n=$("#e_name"); setTimeout(()=>n.focus(),60);
@@ -5977,6 +6002,7 @@ function promptNewExam(t,g,type){
     extra:($("#e_extra")&&$("#e_extra").value.trim())||"",
     link:($("#e_link")&&$("#e_link").value.trim())||"",
     parts:(($("#e_parts")&&$("#e_parts").value.trim())||"").split(",").map(x=>x.trim()).filter(Boolean),
+    noPromedia:!!($("#e_promedia")&&!$("#e_promedia").checked),
     periodOtro:(periodOtroInp&&periodOtroInp.value.trim())||""
   });
   const crear=(tDest,d)=>{
@@ -5985,6 +6011,7 @@ function promptNewExam(t,g,type){
     if(d.extra) e.extraTopics=(e.extraTopics||[]).concat(d.extra);
     if(d.link) e.link=d.link;
     if(d.parts.length>=2) e.parts=d.parts;
+    if(d.noPromedia) e.noPromedia=true;
     if(isIntensEval&&selPeriod){ e.period=selPeriod; if(selPeriod==="otro") e.periodOtro=d.periodOtro; }
     if(isRecu&&selRecuOf){
       e.recuOf=selRecuOf;
@@ -6036,7 +6063,10 @@ function promptEditExam(t,e){
   const isRecu0=String(e.type||"").startsWith("recu_");
   const partsRowHTML=`<div class="dlg-field" id="ee_parts_field" style="${isRecu0?"display:none;":""}"><label>¿Necesitás poner varias notas en este examen? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Teoría, Práctica)</span></label>
       <input id="ee_parts" placeholder="Separadas por coma" autocomplete="off" value="${esc((e.parts||[]).join(", "))}">
-      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio. Si ya hay notas cargadas por parte, sacarlas de acá no las borra, sólo deja de mostrarlas separadas.</div></div>`;
+      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio. Para aprobar hay que llegar al mínimo en todas. Si ya hay notas cargadas por parte, sacarlas de acá no las borra, sólo deja de mostrarlas separadas.</div></div>`;
+  const eePromediaHTML=`<div class="dlg-field" id="ee_promedia_field" style="${admitePromedioOpcional(e.type)?"":"display:none;"}"><label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-weight:600;">
+      <input type="checkbox" id="ee_promedia" ${e.noPromedia?"":"checked"} style="width:19px;height:19px;margin-top:1px;flex:none;cursor:pointer;">
+      <span>Esta nota promedia<div style="font-weight:500;font-size:11.5px;color:var(--faint);margin-top:3px;">${PROMEDIA_HELP}</div></span></label></div>`;
   openDlg("Editar",`<div class="dlg-field"><label>Tipo</label>
       <div class="chiprow" id="ee_type_row" style="flex-wrap:wrap;">${Object.keys(EXAM_TYPE_META).map(tid=>`<button class="mchip ${tid===e.type?"on":""}" data-extype="${tid}">${EXAM_TYPE_META[tid].icon} ${EXAM_TYPE_META[tid].label}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-top:4px;">Si cambiás entre "TP/Carpeta" y "Evaluación/Recuperatorio" se pierde el estado S/E cargado, no las notas numéricas.</div>
@@ -6046,6 +6076,7 @@ function promptEditExam(t,e){
     <div class="dlg-field"><label>Fecha</label><input id="ee_date" type="date" value="${e.date||""}"></div>
     <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="ee_link" value="${esc(e.link||"")}" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
     ${partsRowHTML}
+    ${eePromediaHTML}
     <div class="dlg-actions"><button class="btn subtle" id="ee_cancel">Cancelar</button><button class="btn danger" id="ee_del">Eliminar</button><button class="btn" id="ee_ok">Guardar</button></div>`,
     "La nota aparece sola en “Clase a clase” el día que coincide con una clase.");
   setTimeout(()=>$("#ee_name").focus(),60);
@@ -6060,6 +6091,7 @@ function promptEditExam(t,e){
     eeTypeRow.querySelectorAll("button[data-extype]").forEach(b=>b.onclick=()=>{
       selType=b.dataset.extype; eeTypeRow.querySelectorAll("button.mchip").forEach(x=>x.classList.remove("on")); b.classList.add("on");
       if(eePeriodField) eePeriodField.style.display=(selType==="intens_eval")?"":"none";
+      const pf=$("#ee_promedia_field"); if(pf) pf.style.display=admitePromedioOpcional(selType)?"":"none";
       if(eePartsField) eePartsField.style.display=String(selType).startsWith("recu_")?"none":"";
     });
   }
@@ -6088,6 +6120,10 @@ function promptEditExam(t,e){
       const parent=t.exams.find(x=>x.id===e.recuOf);
       if(parent){ parent.recuDate=e.date; save(); }
     }
+    const eePromInp=$("#ee_promedia");
+    if(eePromInp&&admitePromedioOpcional(selType)){ if(eePromInp.checked) delete e.noPromedia; else e.noPromedia=true; }
+    else delete e.noPromedia; // recu e intensificación nunca promedian: no hace falta la marca
+    save();
     if(selType==="intens_eval") syncAllIntensEvalGrades(t,e);
     closeDlg(); render();
   };
