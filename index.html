@@ -1432,6 +1432,58 @@ function parseHorario(horario){
   if(startH>23||endH>23||startM>59||endM>59) return null;
   return { startMin:startH*60+startM, endMin:endH*60+endM };
 }
+/* ===== Superposición de horarios =====
+   Un docente no puede estar en dos aulas a la vez. Hasta ahora nadie avisaba: el
+   curso se guardaba igual y en la tabla de Inicio uno de los dos desaparecía, así
+   que el error de carga quedaba invisible. */
+const DOW_NOMBRE=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+function seSolapan(hA,hB){ return hA.startMin<hB.endMin&&hB.startMin<hA.endMin; }
+function diasEnTexto(dias){
+  const ds=dias.slice().sort().map(d=>DOW_NOMBRE[d]);
+  if(ds.length===1) return "el "+ds[0];
+  return "los "+ds.slice(0,-1).join(", ")+" y "+ds[ds.length-1];
+}
+// Con qué cursos se pisa este horario. gId puede ser null (curso que todavía no existe).
+function superposicionesDe(gId,dias,horarioStr){
+  const hor=parseHorario(horarioStr);
+  if(!hor||!dias||!dias.length) return [];
+  const out=[];
+  state.groups.forEach(o=>{
+    if(o.archived||(gId&&o.id===gId)) return;
+    const ho=parseHorario(o.horario); if(!ho) return;
+    const comunes=(o.diasClase||[]).filter(d=>dias.includes(d));
+    if(comunes.length&&seSolapan(hor,ho)) out.push({curso:o,dias:comunes});
+  });
+  return out;
+}
+// Todas las que ya están cargadas, para avisarlas en Inicio.
+function todasLasSuperposiciones(){
+  const act=state.groups.filter(g=>!g.archived&&parseHorario(g.horario)&&(g.diasClase||[]).length);
+  const out=[];
+  for(let i=0;i<act.length;i++) for(let j=i+1;j<act.length;j++){
+    const a=act[i],b=act[j];
+    const comunes=(a.diasClase||[]).filter(d=>(b.diasClase||[]).includes(d));
+    if(comunes.length&&seSolapan(parseHorario(a.horario),parseHorario(b.horario))) out.push({a,b,dias:comunes});
+  }
+  return out;
+}
+/* Avisa, pero deja seguir: a veces la superposición es real y ya la estás manejando
+   (dos escuelas, o un curso que arranca cuando el otro termina en el papel). */
+function confirmarSuperposicion(gId,dias,horarioStr,seguir){
+  const list=superposicionesDe(gId,dias,horarioStr);
+  if(!list.length){ seguir(); return; }
+  const filas=list.map(x=>`<div style="margin-bottom:6px;"><b>${esc(x.curso.name)}</b> · ${esc(x.curso.horario)} · ${diasEnTexto(x.dias)}</div>`).join("");
+  openDlg("Se superpone con otro curso",`
+    <p style="font-size:13.5px;color:var(--ink);margin:0 0 10px;line-height:1.55;">Ese día y horario se pisa con:</p>
+    <div style="font-size:13.5px;color:var(--absent-ink);background:var(--absent-tint);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">${filas}</div>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;">No podés estar en dos aulas a la vez: fijate si te equivocaste de día o de hora. Si igual va así, guardalo.</p>
+    <div class="stack">
+      <button class="btn" id="sup_volver">Volver a corregirlo</button>
+      <button class="btn subtle" id="sup_igual">Guardar igual</button>
+    </div>`);
+  $("#sup_volver").onclick=closeDlg;
+  $("#sup_igual").onclick=()=>{ closeDlg(); seguir(); };
+}
 function studentExistedOn(g,sid,iso){
   const s=g.students.find(x=>x.id===sid);
   if(!s||!s.joinDate) return true; // alumnos sin fecha de alta = siempre existieron
@@ -2499,9 +2551,18 @@ function renderHome(){
 
   const viewToggle=""; // Sacamos el toggle
   const hintHTML=coursesWithSchedule.length>0?`<div style="font-size:14px;color:var(--muted);margin-bottom:16px;text-align:center;padding:12px;background:var(--line-soft);border-radius:10px;"><em>💡 Toca un bloque para entrar al curso</em></div>`:"";
+  // Superposiciones ya cargadas: en la tabla se ven los dos bloques finitos, pero eso
+  // sólo se nota si mirás con atención. Acá se dice con todas las letras.
+  const solapes=todasLasSuperposiciones();
+  const solapeHTML=solapes.length?`<div style="font-size:12.5px;color:var(--absent-ink);background:var(--absent-tint);border:1px solid var(--absent-tint);border-radius:10px;padding:9px 12px;margin-bottom:12px;line-height:1.5;">
+    <div style="font-weight:700;margin-bottom:3px;">⚠ ${solapes.length===1?"Tenés dos cursos superpuestos":"Tenés cursos superpuestos"}</div>
+    ${solapes.map(x=>`<div><b>${esc(x.a.name)}</b> y <b>${esc(x.b.name)}</b> se pisan ${diasEnTexto(x.dias)}, de ${esc(x.a.horario)} y de ${esc(x.b.horario)}.</div>`).join("")}
+    <div style="color:var(--muted);margin-top:4px;">Si es un error de carga, corregilo en Datos → Info del curso.</div>
+  </div>`:"";
   app.innerHTML=`<div style="height:12px;"></div>
     ${listadosAlertHTML}
     ${hoyHTML}
+    ${solapeHTML}
     ${hintHTML}
     ${onboardHTML}
     ${horarioHTML}
@@ -3318,10 +3379,14 @@ function wireInfoSection(g,body){
   const horarioInpEl=$("#horarioInp"); const horarioWarnEl=$("#horarioInp_warn");
   if(horarioInpEl) horarioInpEl.addEventListener("input",()=>{ const v=horarioInpEl.value.trim(); horarioWarnEl.style.display=(v&&!parseHorario(v))?"block":"none"; });
   $("#dias_save").onclick=()=>{
-    setDiasClase(g,dias.slice().sort());
-    setHorario(g,$("#horarioInp").value.trim());
-    delete view.editDias;
-    render(); flashSuccess("#diasForm","#FCEBDA");
+    const nuevosDias=dias.slice().sort();
+    const nuevoHor=$("#horarioInp").value.trim();
+    confirmarSuperposicion(g.id,nuevosDias,nuevoHor,()=>{
+      setDiasClase(g,nuevosDias);
+      setHorario(g,nuevoHor);
+      delete view.editDias;
+      render(); flashSuccess("#diasForm","#FCEBDA");
+    });
   };
 
   // Ciclo Lectivo
@@ -3362,9 +3427,13 @@ function wireInfoSection(g,body){
       delete view.editCiclo;
       render(); flashSuccess("#cicloForm","#FCEBDA");
     };
-    if(anyExisting){
-      confirmDlg("¿Volver a generar clases?","Esto va a borrar todas las fechas actuales (1° y 2° cuatrimestre) y crearlas de nuevo.\n\nLas asistencias ya guardadas se conservan si la fecha sigue existiendo.","Generar clases",doGenerar);
-    } else { doGenerar(); }
+    const seguir=()=>{
+      if(anyExisting){
+        confirmDlg("¿Volver a generar clases?","Esto va a borrar todas las fechas actuales (1° y 2° cuatrimestre) y crearlas de nuevo.\n\nLas asistencias ya guardadas se conservan si la fecha sigue existiendo.","Generar clases",doGenerar);
+      } else { doGenerar(); }
+    };
+    // "Generar clases" también guarda días y horario: acá también hay que avisar.
+    confirmarSuperposicion(g.id,diasFinal.slice().sort(),$("#horarioInp").value.trim()||g.horario||"",seguir);
   };
 
   // Receso Invernal
@@ -5551,16 +5620,25 @@ function promptNewGroup(){
   $("#f_dayPicker").querySelectorAll("[data-dow]").forEach(b=>b.onclick=()=>{ const d=parseInt(b.dataset.dow,10); if(selDias.includes(d)) selDias=selDias.filter(x=>x!==d); else selDias.push(d); b.classList.toggle("on"); });
   const horInp=$("#f_horario"); const horWarn=$("#f_horario_warn");
   horInp.addEventListener("input",()=>{ const v=horInp.value.trim(); horWarn.style.display=(v&&!parseHorario(v))?"block":"none"; });
-  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} const g=addGroup(v); g.color=selColor; if(selDias.length) g.diasClase=selDias; const hv=$("#f_horario").value.trim(); if(hv) g.horario=hv;
+  const ok=()=>{
+    // Todo se lee ACÁ: si aparece el aviso de superposición, se reemplaza el cuerpo
+    // del cuadro y estos campos dejan de existir.
+    const v=inp.value.trim(); if(!v){inp.focus();return;}
+    const hv=$("#f_horario").value.trim();
     const escVal=escInp.value.trim();
-    if(escVal){
-      const match=state.escuelas.find(s=>s.nombre&&s.nombre.trim().toLowerCase()===escVal.toLowerCase());
-      if(match){ g.escuelaId=match.id; }
-      else{ const nueva={id:uid(),nombre:escVal,direccion:"",tel:"",director:"",vice:"",secretario:""}; state.escuelas.push(nueva); g.escuelaId=nueva.id; }
-    }
-    save(); closeDlg();
-    if(selDias.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
-    else { go({screen:"group",groupId:g.id,term:"1",tab:"datos"}); }
+    const diasSel=selDias.slice();
+    const crear=()=>{
+      const g=addGroup(v); g.color=selColor; if(diasSel.length) g.diasClase=diasSel; if(hv) g.horario=hv;
+      if(escVal){
+        const match=state.escuelas.find(s=>s.nombre&&s.nombre.trim().toLowerCase()===escVal.toLowerCase());
+        if(match){ g.escuelaId=match.id; }
+        else{ const nueva={id:uid(),nombre:escVal,direccion:"",tel:"",director:"",vice:"",secretario:""}; state.escuelas.push(nueva); g.escuelaId=nueva.id; }
+      }
+      save(); closeDlg();
+      if(diasSel.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
+      else { go({screen:"group",groupId:g.id,term:"1",tab:"datos"}); }
+    };
+    confirmarSuperposicion(null,diasSel,hv,crear);
   };
   $("#f_ok").onclick=ok;
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); });
