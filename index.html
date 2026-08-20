@@ -1432,19 +1432,24 @@ function parseHorario(horario){
   if(startH>23||endH>23||startM>59||endM>59) return null;
   return { startMin:startH*60+startM, endMin:endH*60+endM };
 }
-/* ===== Superposición de horarios =====
-   Un docente no puede estar en dos aulas a la vez. Hasta ahora nadie avisaba: el
-   curso se guardaba igual y en la tabla de Inicio uno de los dos desaparecía, así
-   que el error de carga quedaba invisible. */
+/* ===== Choques de horario =====
+   Un docente no puede estar en dos aulas a la vez, y por reglamento eso le puede
+   costar una sanción: no es un aviso, es un impedimento. Además hace falta un
+   margen para llegar de un curso al otro — 10 minutos como mínimo, aunque sea en
+   la misma escuela. Por eso esto NO se puede guardar: hay que corregirlo. */
+const MIN_MINUTOS_ENTRE_CURSOS=10;
 const DOW_NOMBRE=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
-function seSolapan(hA,hB){ return hA.startMin<hB.endMin&&hB.startMin<hA.endMin; }
 function diasEnTexto(dias){
   const ds=dias.slice().sort().map(d=>DOW_NOMBRE[d]);
   if(ds.length===1) return "el "+ds[0];
   return "los "+ds.slice(0,-1).join(", ")+" y "+ds[ds.length-1];
 }
-// Con qué cursos se pisa este horario. gId puede ser null (curso que todavía no existe).
-function superposicionesDe(gId,dias,horarioStr){
+function minutosEnTexto(n){ return n===1?"1 minuto":n+" minutos"; }
+/* Minutos libres entre dos horarios del mismo día. Negativo o cero = se pisan. */
+function huecoEntre(hA,hB){ return Math.max(hB.startMin-hA.endMin, hA.startMin-hB.endMin); }
+/* Choques de este horario contra los demás cursos activos.
+   gId puede ser null: el curso todavía no existe. */
+function choquesDe(gId,dias,horarioStr){
   const hor=parseHorario(horarioStr);
   if(!hor||!dias||!dias.length) return [];
   const out=[];
@@ -1452,37 +1457,50 @@ function superposicionesDe(gId,dias,horarioStr){
     if(o.archived||(gId&&o.id===gId)) return;
     const ho=parseHorario(o.horario); if(!ho) return;
     const comunes=(o.diasClase||[]).filter(d=>dias.includes(d));
-    if(comunes.length&&seSolapan(hor,ho)) out.push({curso:o,dias:comunes});
+    if(!comunes.length) return;
+    const hueco=huecoEntre(hor,ho);
+    if(hueco<MIN_MINUTOS_ENTRE_CURSOS) out.push({curso:o,dias:comunes,hueco});
   });
   return out;
 }
-// Todas las que ya están cargadas, para avisarlas en Inicio.
-function todasLasSuperposiciones(){
+/* Los que ya están cargados, para marcarlos en Inicio. */
+function todosLosChoques(){
   const act=state.groups.filter(g=>!g.archived&&parseHorario(g.horario)&&(g.diasClase||[]).length);
   const out=[];
   for(let i=0;i<act.length;i++) for(let j=i+1;j<act.length;j++){
     const a=act[i],b=act[j];
     const comunes=(a.diasClase||[]).filter(d=>(b.diasClase||[]).includes(d));
-    if(comunes.length&&seSolapan(parseHorario(a.horario),parseHorario(b.horario))) out.push({a,b,dias:comunes});
+    if(!comunes.length) continue;
+    const hueco=huecoEntre(parseHorario(a.horario),parseHorario(b.horario));
+    if(hueco<MIN_MINUTOS_ENTRE_CURSOS) out.push({a,b,dias:comunes,hueco});
   }
   return out;
 }
-/* Avisa, pero deja seguir: a veces la superposición es real y ya la estás manejando
-   (dos escuelas, o un curso que arranca cuando el otro termina en el papel). */
-function confirmarSuperposicion(gId,dias,horarioStr,seguir){
-  const list=superposicionesDe(gId,dias,horarioStr);
+function motivoChoque(hueco){
+  if(hueco<0) return "se superponen";
+  if(hueco===0) return "uno termina justo cuando el otro empieza, sin un minuto para llegar";
+  return "quedan sólo "+minutosEnTexto(hueco)+" entre uno y otro";
+}
+/* El mismo texto en los dos lugares donde se avisa. */
+function choquePanelHTML(list){
+  const filas=list.map(x=>`<div style="margin-bottom:7px;"><b>${esc(x.curso.name)}</b> · ${esc(x.curso.horario)} · ${diasEnTexto(x.dias)}<br><span style="font-weight:600;">${x.hueco<0?"Se superponen.":(x.hueco===0?"Uno termina justo cuando el otro empieza.":"Quedan sólo "+minutosEnTexto(x.hueco)+" para llegar.")}</span></div>`).join("");
+  const soloPisan=list.every(x=>x.hueco<0);
+  const explic=soloPisan
+    ?"No podés estar en dos aulas a la vez, y tener el horario superpuesto te puede costar una sanción."
+    :"Entre un curso y el otro tienen que quedar al menos "+MIN_MINUTOS_ENTRE_CURSOS+" minutos para llegar.";
+  return `<div style="font-size:13px;color:var(--absent-ink);background:var(--absent-tint);border-radius:10px;padding:11px 12px;line-height:1.5;">
+    <div style="font-weight:700;margin-bottom:6px;">Ese horario choca con:</div>${filas}
+    <div style="color:var(--absent-ink);opacity:.85;margin-top:6px;">${explic} Cambiá el día o el horario.</div></div>`;
+}
+/* Corta la operación: no hay "guardar igual". Se usa donde el formulario vive en la
+   pantalla y sobrevive al cuadro (Datos → Info, Generar clases). */
+function bloquearSiChoca(gId,dias,horarioStr,seguir){
+  const list=choquesDe(gId,dias,horarioStr);
   if(!list.length){ seguir(); return; }
-  const filas=list.map(x=>`<div style="margin-bottom:6px;"><b>${esc(x.curso.name)}</b> · ${esc(x.curso.horario)} · ${diasEnTexto(x.dias)}</div>`).join("");
-  openDlg("Se superpone con otro curso",`
-    <p style="font-size:13.5px;color:var(--ink);margin:0 0 10px;line-height:1.55;">Ese día y horario se pisa con:</p>
-    <div style="font-size:13.5px;color:var(--absent-ink);background:var(--absent-tint);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">${filas}</div>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;">No podés estar en dos aulas a la vez: fijate si te equivocaste de día o de hora. Si igual va así, guardalo.</p>
-    <div class="stack">
-      <button class="btn" id="sup_volver">Volver a corregirlo</button>
-      <button class="btn subtle" id="sup_igual">Guardar igual</button>
-    </div>`);
+  openDlg("Ese horario no se puede guardar",`
+    ${choquePanelHTML(list)}
+    <div class="dlg-actions" style="margin-top:16px;"><button class="btn" id="sup_volver">Corregirlo</button></div>`);
   $("#sup_volver").onclick=closeDlg;
-  $("#sup_igual").onclick=()=>{ closeDlg(); seguir(); };
 }
 function studentExistedOn(g,sid,iso){
   const s=g.students.find(x=>x.id===sid);
@@ -2553,11 +2571,11 @@ function renderHome(){
   const hintHTML=coursesWithSchedule.length>0?`<div style="font-size:14px;color:var(--muted);margin-bottom:16px;text-align:center;padding:12px;background:var(--line-soft);border-radius:10px;"><em>💡 Toca un bloque para entrar al curso</em></div>`:"";
   // Superposiciones ya cargadas: en la tabla se ven los dos bloques finitos, pero eso
   // sólo se nota si mirás con atención. Acá se dice con todas las letras.
-  const solapes=todasLasSuperposiciones();
+  const solapes=todosLosChoques();
   const solapeHTML=solapes.length?`<div style="font-size:12.5px;color:var(--absent-ink);background:var(--absent-tint);border:1px solid var(--absent-tint);border-radius:10px;padding:9px 12px;margin-bottom:12px;line-height:1.5;">
-    <div style="font-weight:700;margin-bottom:3px;">⚠ ${solapes.length===1?"Tenés dos cursos superpuestos":"Tenés cursos superpuestos"}</div>
-    ${solapes.map(x=>`<div><b>${esc(x.a.name)}</b> y <b>${esc(x.b.name)}</b> se pisan ${diasEnTexto(x.dias)}, de ${esc(x.a.horario)} y de ${esc(x.b.horario)}.</div>`).join("")}
-    <div style="color:var(--muted);margin-top:4px;">Si es un error de carga, corregilo en Datos → Info del curso.</div>
+    <div style="font-weight:700;margin-bottom:3px;">⚠ ${solapes.length===1?"Hay un choque de horario":"Hay choques de horario"}</div>
+    ${solapes.map(x=>`<div><b>${esc(x.a.name)}</b> (${esc(x.a.horario)}) y <b>${esc(x.b.name)}</b> (${esc(x.b.horario)}) ${motivoChoque(x.hueco)} ${diasEnTexto(x.dias)}.</div>`).join("")}
+    <div style="color:var(--muted);margin-top:4px;">Corregilo en Datos → Info del curso.</div>
   </div>`:"";
   app.innerHTML=`<div style="height:12px;"></div>
     ${listadosAlertHTML}
@@ -3381,7 +3399,7 @@ function wireInfoSection(g,body){
   $("#dias_save").onclick=()=>{
     const nuevosDias=dias.slice().sort();
     const nuevoHor=$("#horarioInp").value.trim();
-    confirmarSuperposicion(g.id,nuevosDias,nuevoHor,()=>{
+    bloquearSiChoca(g.id,nuevosDias,nuevoHor,()=>{
       setDiasClase(g,nuevosDias);
       setHorario(g,nuevoHor);
       delete view.editDias;
@@ -3432,8 +3450,8 @@ function wireInfoSection(g,body){
         confirmDlg("¿Volver a generar clases?","Esto va a borrar todas las fechas actuales (1° y 2° cuatrimestre) y crearlas de nuevo.\n\nLas asistencias ya guardadas se conservan si la fecha sigue existiendo.","Generar clases",doGenerar);
       } else { doGenerar(); }
     };
-    // "Generar clases" también guarda días y horario: acá también hay que avisar.
-    confirmarSuperposicion(g.id,diasFinal.slice().sort(),$("#horarioInp").value.trim()||g.horario||"",seguir);
+    // "Generar clases" también guarda días y horario: acá también se controla.
+    bloquearSiChoca(g.id,diasFinal.slice().sort(),$("#horarioInp").value.trim()||g.horario||"",seguir);
   };
 
   // Receso Invernal
@@ -5604,7 +5622,8 @@ function promptNewGroup(){
     <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Datos → Info)</span></label>
       <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
       <input id="f_horario" class="sched-inp" placeholder="Ej: 8:00 a 9:30" style="margin-top:8px;" autocomplete="off">
-      <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div></div>
+      <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div>
+      <div id="f_choque" style="display:none;margin-top:8px;"></div></div>
     <div class="dlg-actions"><button class="btn subtle" id="f_cancel">Cancelar</button><button class="btn" id="f_ok">Crear curso</button></div>`);
   const escInp=$("#f_escuela"); const inp=$("#f_name");
   // Si hay chips de escuelas, no abrimos el teclado de entrada (taparía los chips en el celular).
@@ -5617,9 +5636,10 @@ function promptNewGroup(){
   // Si escribe a mano, el chip solo queda marcado cuando el texto coincide con esa escuela.
   escInp.addEventListener("input",()=>{ const v=escInp.value.trim().toLowerCase(); escChipBtns.forEach(x=>x.classList.toggle("on",x.dataset.escName.trim().toLowerCase()===v&&v!=="")); });
   $("#f_swatches").querySelectorAll("[data-color]").forEach(b=>b.onclick=()=>{ selColor=parseInt(b.dataset.color,10); $("#f_swatches").querySelectorAll(".swatch").forEach(x=>x.classList.remove("on")); b.classList.add("on"); });
-  $("#f_dayPicker").querySelectorAll("[data-dow]").forEach(b=>b.onclick=()=>{ const d=parseInt(b.dataset.dow,10); if(selDias.includes(d)) selDias=selDias.filter(x=>x!==d); else selDias.push(d); b.classList.toggle("on"); });
+  $("#f_dayPicker").querySelectorAll("[data-dow]").forEach(b=>b.onclick=()=>{ const d=parseInt(b.dataset.dow,10); if(selDias.includes(d)) selDias=selDias.filter(x=>x!==d); else selDias.push(d); b.classList.toggle("on"); const c=$("#f_choque"); if(c){ c.style.display="none"; c.innerHTML=""; } });
   const horInp=$("#f_horario"); const horWarn=$("#f_horario_warn");
-  horInp.addEventListener("input",()=>{ const v=horInp.value.trim(); horWarn.style.display=(v&&!parseHorario(v))?"block":"none"; });
+  const limpiarChoque=()=>{ const c=$("#f_choque"); if(c){ c.style.display="none"; c.innerHTML=""; } };
+  horInp.addEventListener("input",()=>{ const v=horInp.value.trim(); horWarn.style.display=(v&&!parseHorario(v))?"block":"none"; limpiarChoque(); });
   const ok=()=>{
     // Todo se lee ACÁ: si aparece el aviso de superposición, se reemplaza el cuerpo
     // del cuadro y estos campos dejan de existir.
@@ -5638,7 +5658,18 @@ function promptNewGroup(){
       if(diasSel.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
       else { go({screen:"group",groupId:g.id,term:"1",tab:"datos"}); }
     };
-    confirmarSuperposicion(null,diasSel,hv,crear);
+    // El aviso va acá adentro y no en otro cuadro: abrir un cuadro nuevo reemplaza
+    // este cuerpo y le borra todo lo que ya escribió.
+    const choques=choquesDe(null,diasSel,hv);
+    const panel=$("#f_choque");
+    if(choques.length){
+      panel.innerHTML=choquePanelHTML(choques);
+      panel.style.display="block";
+      try{ panel.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){}
+      return;
+    }
+    if(panel){ panel.style.display="none"; panel.innerHTML=""; }
+    crear();
   };
   $("#f_ok").onclick=ok;
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); });
