@@ -1811,13 +1811,25 @@ function getOwed(t,sid,pid){
 }
 function hasAnyDeuda(t,sid){ return !!(t.deudas&&t.deudas[sid]&&t.deudas[sid].topics&&t.deudas[sid].topics.length); }
 function setFinal(t,sid,v){ if(v==null) delete t.final[sid]; else t.final[sid]=v; save(); }
+/* Qué notas entran al promedio del cuatrimestre.
+   Quedan afuera dos cosas, por lo que son y no por criterio de cada docente:
+   - Los recuperatorios: ya están reflejados en la nota del examen que recuperan.
+     Contarlos aparte hacía que esa nota pesara el doble.
+   - La intensificación (módulo y evaluación): es una instancia POSTERIOR al
+     cuatrimestre, la nota que le queda al alumno si llega hasta ahí. Sumarla al
+     promedio del cuatrimestre le levantaba la nota de cursada y podía llegar a
+     marcarlo "Aprobado", tapando que en realidad había ido a intensificar. */
+function cuentaEnPromedio(e){
+  if(!e) return false;
+  if(e.recuOf) return false;
+  if(e.type==="intens_eval"||e.type==="intens_modulo") return false;
+  return true;
+}
 function finalAuto(t,sid,pm){
-  // Promedio de todas las notas que ya tiene el alumno en el cuatrimestre (exámenes, TP, etc.)
+  // Promedio de las notas del cuatrimestre (exámenes, TP, carpeta, proyecto).
   pm=pm||7;
   const vals=[];
-  // Los recuperatorios NO entran como una nota más: ya están reflejados en la nota
-  // del examen que recuperan. Contarlos aparte hacía que esa nota pesara el doble.
-  t.exams.forEach(e=>{ if(e.recuOf) return; const v=examEffective(t,sid,e.id,pm); if(typeof v==="number") vals.push(v); });
+  t.exams.forEach(e=>{ if(!cuentaEnPromedio(e)) return; const v=examEffective(t,sid,e.id,pm); if(typeof v==="number") vals.push(v); });
   (t.tps||[]).forEach(tp=>{ const v=getTpGrade(t,sid,tp.id); if(typeof v==="number") vals.push(v); });
   if(!vals.length) return null;
   const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
@@ -2180,7 +2192,7 @@ function stats(g,t,sid){
   const faltas=N-presEq; const pct=N?Math.round(presEq/N*100):null;
   let presN=0; const scheme=getValScheme(g); const val={SC:0}; scheme.levels.forEach(lv=>{ val[lv.key]=0; });
   past.forEach(s=>{ const av=attOf(t,sid,s.date,g); if(av==="P"||av==="T"){ presN++; const w=workOf(t,sid,s.date); if(w&&val[w]!=null){ val[w]++; } else val.SC++; } });
-  const eff=t.exams.filter(e=>!e.recuOf).map(e=>examEffective(t,sid,e.id,g.passMark||7)).filter(v=>v!=null&&typeof v==="number");
+  const eff=t.exams.filter(cuentaEnPromedio).map(e=>examEffective(t,sid,e.id,g.passMark||7)).filter(v=>v!=null&&typeof v==="number");
   const prom=eff.length?eff.reduce((a,b)=>a+b,0)/eff.length:null;
   return { N, Nmod:N*mod, pres:presEq, faltas, faltasMod:faltas*mod, pct, presN, val, prom, final:finalOf(t,sid,g.passMark||7), mod, tarde };
 }
