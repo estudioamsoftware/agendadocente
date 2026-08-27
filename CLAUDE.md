@@ -36,54 +36,53 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
 Si algún documento del repo dice Cloudflare Pages o Bubblewrap, está desactualizado:
 quedó de intentos anteriores.
 
-## El login de Google / Drive (resuelto el 19/8/2026)
+## El login de Google / Drive
 
-Ojo: **no está en la cuenta de Estudio AM**. Vive en la cuenta vieja,
-`englishbeatsclasesyrecursos@gmail.com`, proyecto de Google Cloud
-`agenda-docente-500923`.
+### Mudado a proyecto propio (27/8/2026)
 
-- **Cliente OAuth en uso:** `721873412047-e1kbmt4a2uah5cekj69gb8qmqsrmn55m`
-  (nombre `agendadocente`, creado el 27/7/2026). Es el que está escrito en
-  `index.html` como `GD_CID`.
-- Había un cliente viejo, `Agenda docente` (`...-vhvg`, 29/6/2026), sin uso desde
-  el 27/7. Se borró el 19/8 para liberar un dominio.
-- **El bug:** al mudar la app de Cloudflare Pages a GitHub Pages nunca se agregó el
-  origen nuevo, así que Google cortaba con **Error 400: origin_mismatch** y ni
-  llegaba a mostrar el selector de cuentas. Se arregló agregando
-  `https://estudioamsoftware.github.io` a "Orígenes autorizados de JavaScript".
-- **Cuidado con el tope de 10 dominios sin verificar.** Ese proyecto lo comparten
-  otras apps de la dueña (My Band Box, Kiosko don jose, ElBohemio, MyLyricsBox,
-  yuyitos, Agenda Superior, comercios), así que el cupo está lleno. Para agregar un
-  dominio hay que liberar otro, o verificar el dominio en Google Search Console
-  (los verificados no cuentan).
+Agenda Docente ya no comparte proyecto de Google Cloud con las otras apps de la dueña.
 
-### Pendiente: la app está en estado "Prueba"
+- **Proyecto nuevo:** `Agenda Docente` (ID `agenda-docente-506819`), en la cuenta
+  **`estudioam.dev@gmail.com`** (la de Estudio AM, no la vieja de English Beats).
+- **Cliente OAuth en uso:** `186098387728-efdun1mckj6jcil78b6hnn9pbpgij9dr`
+  (tipo Aplicación web, creado el 27/8/2026 en ese proyecto nuevo). Es el que está
+  escrito en `index.html` como `GD_CID`. Origen autorizado:
+  `https://estudioamsoftware.github.io`.
+- Google Drive API habilitada en el proyecto nuevo, pantalla de consentimiento OAuth
+  creada (Externo, nombre "Agenda Docente").
+- **Antes de este cambio se le pidió a la única usuaria activa (la dueña) que bajara
+  "Guardar copia en un archivo"**, siguiendo el plan de abajo. Reconectó Drive después
+  del cambio de `GD_CID` sin pérdida de datos.
+- El proyecto viejo (`agenda-docente-500923`, cuenta `englishbeatsclasesyrecursos@gmail.com`,
+  cliente `721873412047-e1kbmt4a2uah5cekj69gb8qmqsrmn55m`) queda retirado para esta app.
+  No hace falta borrarlo — ya no lo usa `index.html` — pero si algún día se quiere borrar,
+  primero confirmar que ninguna otra app de la dueña lo usa (no debería, era específico de
+  Agenda Docente).
 
-Mientras siga así, **solo las cuentas anotadas a mano como usuarias de prueba pueden
-conectar Drive**. Cualquier otra profe recibe el mismo cartel de bloqueo. Se cambia en
-Google Auth Platform → Público → pasar a "En producción". No debería requerir
-verificación de Google: el único permiso que pide la app es `drive.file`, que no es
-sensible (solo ve los archivos que ella misma creó).
+### Pendiente ahora: publicar el proyecto nuevo a "En producción"
 
-- **`estudioam.dev@gmail.com` es Propietaria del proyecto** (agregada en IAM el
-  19/8/2026), así que todo esto se administra desde la cuenta nueva sin haber movido
-  nada.
+Como el proyecto ya es exclusivo de Agenda Docente, esto **ya no arrastra a ninguna otra
+app** (antes sí, por eso no se tocaba). Mientras la pantalla de consentimiento siga en
+"Prueba", **solo las cuentas anotadas a mano como testers pueden conectar Drive**. Pasarlo
+a "En producción" en Google Auth Platform → Público no debería requerir verificación de
+Google: el único permiso que pide la app es `drive.file`, que no es sensible. Falta
+hacerlo — avisar a la dueña y guiarla paso a paso cuando lo pida.
 
-### No cambiar el cliente de OAuth por prolijidad
+### No cambiar el cliente de OAuth por prolijidad (sigue valiendo)
 
-Tentación a evitar: crear un cliente nuevo en la cuenta de Estudio AM para "ordenar".
 El permiso que usa la app es `drive.file`, que da acceso **solo a los archivos que creó
-ese cliente**. Si se cambia el `GD_CID`, la app deja de ver el `Datos de Agenda
-Docente.json` que ya existe — no se borra, pero queda huérfano y la app arranca uno
-nuevo en blanco. Le pasaría a cada docente que ya conectó su Drive. Si hace falta
-administrarlo desde otra cuenta, se dan permisos en IAM (ya hecho), no se migra.
+ese cliente**. Si se cambia el `GD_CID` de nuevo sin plan, la app deja de ver el `Datos de
+Agenda Docente.json` que ya existe para cada docente que conectó Drive con el cliente
+actual — no se borra, pero queda huérfano y la app arranca uno nuevo en blanco. La mudanza
+del 27/8 fue la excepción justificada (aislar el proyecto); no repetir el cambio sin un
+motivo igual de bueno y sin seguir el plan de abajo.
 
-### Cómo mudar el `GD_CID` sin perder datos (revisado el 27/8/2026)
+### Cómo mudar el `GD_CID` sin perder datos (por si hace falta otra vez)
 
-**Ojo: el plan que estaba anotado antes no funcionaba.** Decía hacerlo con "Crear backup" y
-"Restaurar backup de Drive". No sirve: ese backup se sube al Drive de la docente pero *dentro
-de la carpeta que creó el cliente viejo*, y con permiso `drive.file` el cliente nuevo no puede
-verla. El backup queda del lado equivocado de la mudanza.
+**Ojo: un plan viejo decía hacerlo con "Crear backup" y "Restaurar backup de Drive". No
+sirve:** ese backup se sube al Drive de la docente pero *dentro de la carpeta que creó el
+cliente viejo*, y con permiso `drive.file` el cliente nuevo no puede verla. Queda del lado
+equivocado de la mudanza.
 
 Lo que sí vale, mirando el código:
 
@@ -92,7 +91,7 @@ Lo que sí vale, mirando el código:
 - Cuando el cliente nuevo conecta y no encuentra archivo remoto, la app **sube lo local**
   (`gdPull()`: `if(!gd.fid){ await gdPushNow(); ... }`). No borra nada.
 - Ya hay red anti-pisada (`remotePierdeDatos` / `localPierdeDatos` + `showSyncConflictDialog`),
-  agregada justo por el susto del cambio de dominio.
+  agregada justo por el susto del cambio de dominio de agosto.
 
 O sea que para la docente que usa la app en **un solo dispositivo** —el caso normal— la
 mudanza es casi transparente: reconecta Drive, la app no encuentra nada, sube lo que tiene y
@@ -106,7 +105,7 @@ Los dos casos donde **sí** se puede perder algo:
 Para cubrir esos dos casos se agregó al menú ⋯ (27/8): **"Guardar copia en un archivo"** y
 **"Restaurar desde un archivo"** (`exportToFile()` / `importFromFile()` en `index.html`).
 Bajan y cargan un `.json` común, que no depende ni de Drive ni del cliente de OAuth — es la
-única copia que cruza la mudanza.
+única copia que cruza una mudanza de `GD_CID`.
 
 **Orden para el día de la mudanza:**
 1. Que cada docente entre a la app y use "Guardar copia en un archivo" (queda en Descargas).
@@ -114,47 +113,34 @@ Bajan y cargan un `.json` común, que no depende ni de Drive ni del cliente de O
 3. Cada una reconecta Drive. Si sus datos siguen ahí (lo esperable), listo.
 4. Si a alguna le falta algo, "Restaurar desde un archivo" con el `.json` del paso 1.
 
-### Links directos a las dos consolas
+### Play Console (sigue en la cuenta de Estudio AM, sin cambios)
 
-Para sumar una docente nueva a la prueba hay que anotarla en **dos listas distintas, en
-dos cuentas distintas** (fricción conocida; desaparece la segunda cuando se publique la
-app de OAuth):
+Para sumar una docente nueva a la prueba interna de Play Store:
+https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers
 
-- **Que pueda bajar la app** — Play Console (cuenta Estudio AM):
-  https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers
-- **Que pueda conectar su Drive** — Google Cloud (cuenta English Beats):
-  https://console.cloud.google.com/auth/audience?authuser=2&project=agenda-docente-500923
+Si a una tester le sale **"No se encontró el elemento"** en la Play Store, o no está
+anotada ahí, o el mail anotado no es el que tiene puesto en la Play Store del celular
+(aceptar la invitación en el navegador con otra cuenta no sirve). Esta lista sigue siendo
+necesaria — es independiente de la lista de testers de Drive, y no desaparece con la
+mudanza de arriba.
 
-Si a una tester le sale **"No se encontró el elemento"** en la Play Store, es la primera
-lista: o no está anotada, o el mail anotado no es el que tiene puesto en la Play Store
-del celular (aceptar la invitación en el navegador con otra cuenta no sirve).
+### Pendientes de orden (actualizado 27/8/2026)
 
-### Pendientes de orden (charlado el 19/8, sin hacer todavía)
+- ~~Mudar Agenda Docente a su propio proyecto de Google Cloud~~ ✅ hecho (ver arriba).
+- **Publicar el proyecto nuevo a "En producción"** — ver sección de arriba. Es lo que
+  saca la necesidad de anotar testers a mano para el login de Drive.
+- Lo del tope de 10 dominios sin verificar y "limpiar dominios muertos"
+  (`plantillacomercios.pages.dev`, `comercios.pages.dev`) ya **no aplica a Agenda
+  Docente** — era un problema del proyecto viejo compartido. Sigue siendo un tema para
+  las otras apps de la dueña si algún día se ordena ese proyecto, pero no es parte de
+  este repo.
 
-- **No tocar "Publicar app".** El estado de publicación es **por proyecto, no por app**,
-  y ese proyecto lo comparten seis apps personales de la dueña — entre ellas `yuyitos`,
-  que le hizo a una amiga y usa solo ella. Publicar las destraba a todas. Mientras las
-  docentes que prueban sean pocas, sumarlas a mano en Google Auth Platform → Público →
-  "+ Add users".
-- **Antes de vender: mudar Agenda Docente a su propio proyecto**, en la cuenta de Estudio
-  AM. Hoy comparte proyecto con dos productos vendibles y cinco cosas personales; ya se
-  quedó sin cupo de dominios una vez y las decisiones de una condicionan a las otras.
-  **Conviene hacerlo cuanto antes:** implica cambiar el `GD_CID`, y eso deja huérfano el
-  archivo de Drive de cada docente que ya lo conectó (ver arriba). Con cinco personas es
-  barato; con cien pagando, es un lío. Cómo se hace sin perder datos: ver abajo.
-- **Limpiar dominios muertos** para recuperar lugares de los 10: `plantillacomercios.pages.dev`
-  ya no se usa (se convirtió en "Kiosko don jose"), y `comercios.pages.dev` también quedó
-  viejo. Orden obligado: primero sacarle el origen al cliente que lo tenga cargado (o
-  borrar ese cliente si es un sobrante), recién después borrar el dominio en "Información
-  de la marca". Si no, Google no deja.
+### Ojo con las cuentas
 
-### Ojo con las dos cuentas
-
-El login de Drive vive en la cuenta de English Beats; Firebase (proyecto
-`agenda-docente-8c53d`, número 903525915752) vive en `estudioam.dev@gmail.com`. Son
-proyectos distintos de cuentas distintas. Hoy no molesta, pero antes de cobrar hay que
-decidir en cuál queda todo, porque Play Console, Firebase y este login se tienen que
-hablar entre ellos.
+Ahora Drive (proyecto `agenda-docente-506819`) y Firebase (proyecto `agenda-docente-8c53d`,
+número 903525915752) viven los dos en `estudioam.dev@gmail.com` — se resolvió la separación
+que había antes. Falta confirmar que Play Console también termine ahí antes de cobrar (hoy
+es la cuenta de Estudio AM, a confirmar si es la misma).
 
 ## Dónde está cada cosa (importante antes de empezar)
 
