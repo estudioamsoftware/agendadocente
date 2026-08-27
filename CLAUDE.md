@@ -367,25 +367,45 @@ Node ni JDK. Pasos:
 
 `twa/` (Bubblewrap) queda como plan B nomás; con PWABuilder alcanza.
 
+### El producto de suscripción (creado 27/8/2026)
+
+- **Producto:** ID `agenda_completa` (con prefijo del nombre de la app, a propósito — ver
+  `PLAY-STORE-GUIA.md` sobre por qué, si se agregan más apps vendibles a futuro).
+  Nombre visible: "Agenda Docente completa".
+- **Plan básico mensual:** ID `mensual`, renovación automática, **$2.99 USD**, cargado con
+  "Set prices" a los 177 países de una — Argentina queda en pesos, convertido automático
+  por Google. **Ya activado.**
+- **Plan anual:** decidido sumarlo como descuento por compromiso (**$25 USD**, ~30% menos
+  que 12 meses sueltos) — falta cargarlo, es el mismo producto `agenda_completa`, otro base
+  plan con ID `anual`.
+- Los beneficios que se cargaron en la ficha del producto (visibles para la compradora):
+  Cursos ilimitados, Registro de licencias y paros, Alertas de vencimientos, Guía del
+  Estatuto Docente. **Pendiente:** el diálogo `licPaywall()` en `index.html` todavía tiene
+  el texto viejo de la primera versión del candado (dice "asistencia, notas y cursada" como
+  si fuera premium, cuando en realidad quedó decidido que es gratis) — hay que actualizarlo
+  para que diga lo mismo que acá.
+- Clasificación por edad del producto: sin especificar (ese campo solo aplica a ciertos
+  estados de EE.UU., no afecta a Argentina).
+
 ### Pendientes en orden (actualizado 27/8/2026 — el orden cambió)
 
 1. ~~Revisar y juntar las dos ramas~~ ✅ hecho.
 2. ~~Crear la cuenta de comerciante / perfil de pagos~~ ✅ hecho (falta solo el banco, ver
    arriba).
-3. **Regenerar el `.aab` declarando Play Billing y subirlo a prueba interna.** Bloquea todo
-   lo que sigue. Primero confirmar que aparezca el keystore de PWABuilder (ver arriba).
-4. Recién ahí, crear el producto de suscripción en Play Console (Monetiza con Play →
-   Productos → Suscripciones). Anotar acá el **ID del producto** que se elija, porque
-   después va escrito en `index.html`. Decidido: **solo plan mensual** al principio (un
-   precio anual fijo en pesos se desactualiza rápido con inflación; el anual se puede sumar
-   después como otro base plan sin tocar el mensual).
-5. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
+3. ~~Regenerar el `.aab` declarando Play Billing y subirlo a prueba interna~~ ✅ hecho
+   (versión 2, `1.0.1.0`), reusando la firma original de PWABuilder.
+4. ~~Crear el producto de suscripción en Play Console~~ ✅ hecho, plan mensual activo (ver
+   arriba). Falta sumar el plan anual.
+5. Actualizar el texto de `licPaywall()` en `index.html` para que coincida con los
+   beneficios reales cargados en Play Console (ver arriba).
+6. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
    `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
    apuntando a la URL de `playRtdn`. Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
-6. Integrar en `index.html` el flujo de compra con la Digital Goods API
-   (`getDigitalGoodsService('https://play.google.com/billing')`), llamar a `verifyPurchase`
-   tras la compra, y recién ahí encender `LIC_ENFORCE`.
-7. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
+7. Integrar en `index.html` el flujo de compra con la Digital Goods API
+   (`getDigitalGoodsService('https://play.google.com/billing')`), usando el ID de producto
+   `agenda_completa` y los planes `mensual`/`anual`. Llamar a `verifyPurchase` tras la
+   compra, y recién ahí encender `LIC_ENFORCE`.
+8. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
    —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
    paralelo, no bloquea nada.
-8. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
+9. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
