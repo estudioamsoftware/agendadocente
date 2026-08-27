@@ -142,7 +142,9 @@ Bajan y cargan un `.json` común, que no depende ni de Drive ni del cliente de O
 3. Cada una reconecta Drive. Si sus datos siguen ahí (lo esperable), listo.
 4. Si a alguna le falta algo, "Restaurar desde un archivo" con el `.json` del paso 1.
 
-### Play Console (sigue en la cuenta de Estudio AM, sin cambios)
+### Play Console
+
+Cuenta "Estudio AM" (`mullerana@hotmail.com`, ver "Ojo con las cuentas" abajo).
 
 Para sumar una docente nueva a la prueba interna de Play Store:
 https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers
@@ -164,12 +166,21 @@ mudanza de arriba.
   las otras apps de la dueña si algún día se ordena ese proyecto, pero no es parte de
   este repo.
 
-### Ojo con las cuentas
+### Ojo con las cuentas (confirmado 27/8/2026)
 
-Ahora Drive (proyecto `agenda-docente-506819`) y Firebase (proyecto `agenda-docente-8c53d`,
-número 903525915752) viven los dos en `estudioam.dev@gmail.com` — se resolvió la separación
-que había antes. Falta confirmar que Play Console también termine ahí antes de cobrar (hoy
-es la cuenta de Estudio AM, a confirmar si es la misma).
+Son **dos cuentas de Google distintas**, y esto ya no es una duda: está verificado en
+pantalla.
+
+- **Drive** (proyecto `agenda-docente-506819`) y **Firebase** (proyecto
+  `agenda-docente-8c53d`, número 903525915752) → `estudioam.dev@gmail.com`.
+- **Play Console** (cuenta "Estudio AM", ID `6208089129841152998`) →
+  **`mullerana@hotmail.com`**. No es la cuenta de Estudio AM que se usa para todo lo demás.
+
+No hay que cambiar nada — funciona así. Pero tenerlo presente en el paso del
+`PLAY_SERVICE_ACCOUNT` (ver más abajo): ahí hay que darle permiso desde Play Console
+(cuenta de Hotmail) a una cuenta de servicio que vive en el proyecto de Google Cloud
+(cuenta de Gmail). Se cruzan dos cuentas, y es más fácil saberlo antes que descubrirlo
+en el momento.
 
 ## La venta: estado y qué falta (actualizado 27/8/2026, ramas ya mergeadas)
 
@@ -274,17 +285,90 @@ unificar los dos enfoques:
   son **dos flujos de Google distintos que todavía no se unificaron** — cada uno pide su
   propio consentimiento por separado.
 
-### Pendientes en orden (retomando desde acá)
+### El perfil de pagos de Play (hecho 27/8/2026) y lo que falta del banco
 
-1. ~~Revisar y juntar las dos ramas~~ ✅ hecho hoy.
-2. Crear el producto de suscripción en Play Console (Monetización).
-3. Regenerar el `.aab` declarando Play Billing — el que generó PWABuilder no lo trae (en
-   Bubblewrap sería `"features": { "playBilling": { "enabled": true } }` en
-   `twa/twa-manifest.json`).
-4. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
+Para poder siquiera **entrar** a Monetiza con Play → Productos → Suscripciones, Play
+Console exige tener creada una **cuenta de comerciante de Google Payments**. Antes de eso
+la pantalla de suscripciones está bloqueada con "Requisitos que faltan para acceder a esta
+página". Ese perfil se creó el 27/8/2026 con estos datos (son el **perfil público**, lo ve
+la compradora):
+
+- Nombre de la empresa: `Estudio AM` (no hace falta tener sociedad; monotributista con CUIT
+  alcanza, se pone el nombre de fantasía).
+- Sitio web: `https://estudioamsoftware.github.io/agendadocente/`
+- ¿Qué vende?: `Software de computadoras`
+- Correo de Atención al cliente: `estudioam.dev@gmail.com`
+- Nombre del resumen de la tarjeta de crédito: `ESTUDIO AM` (es lo que la docente ve en el
+  resumen de su tarjeta; si no lo reconoce, desconoce el cargo).
+
+**Umbral de pago: USD 1.00, se paga mensual.** O sea que Google deposita todos los meses
+con que haya habido cualquier venta — no acumula hasta juntar un mínimo grande.
+
+**Falta todavía (y es a propósito):** cargar la **forma de pago** (la cuenta bancaria donde
+Google deposita). La dueña es **monotributista y no tiene contador**. Antes de completar ese
+paso quedó en hacer una consulta suelta con un contador/gestor, porque:
+- lo que pague Google suma a su facturación anual del monotributo (ojo con el tope de
+  categoría y la recategorización);
+- es plata que entra del exterior, y las reglas cambiarias/impositivas argentinas para eso
+  cambian seguido — no improvisar acá.
+
+Esto **no bloquea nada del trabajo técnico**: es el último eslabón, hace falta recién el día
+que se quiera cobrar de verdad.
+
+Sobre el **programa de cargos del servicio del 15%**: se creó el grupo de cuentas (paso 1),
+pero el link para aceptar los términos (paso 2) no apareció en la consola. **No vale la pena
+perseguirlo:** para *suscripciones* Google ya cobra 15% de entrada sin necesidad de anotarse;
+ese programa pesa sobre todo en ventas de una sola vez. Si algún día aparece el link, se
+acepta y listo.
+
+### El requisito que reordena todo: el `.aab` tiene que declarar Play Billing
+
+**Descubierto el 27/8/2026, cambia el orden del plan.** Con el perfil de pagos ya creado, la
+pantalla de Suscripciones se destraba, pero dice *"La app aún no tiene suscripciones"* y el
+único botón es **"Sube un nuevo APK"**. Play Console **no deja crear el producto de
+suscripción hasta que haya subido un build que declare el permiso de Play Billing**
+(`com.android.vending.BILLING`). El `.aab` que está publicado hoy salió de PWABuilder y no
+lo trae.
+
+O sea: **primero el `.aab`, después el producto de suscripción.** Al revés no se puede.
+
+**Antes de regenerar nada, hay que responder esto:** ¿aparece todavía el **keystore** (la
+firma) que generó PWABuilder, con sus contraseñas? PWABuilder lo entrega en el zip de la
+descarga, junto con un archivo de texto con las claves. Importa porque:
+- Si se firma el build nuevo con **otra** clave, Play rechaza la subida por firma que no
+  coincide (habría que pedirle a Google el reseteo de la clave de subida — se puede, pero
+  es trámite).
+- La verificación de dominio (`assetlinks.json`, en el repo
+  `estudioamsoftware/estudioamsoftware.github.io`) está atada a la huella de la firma. Si
+  cambia la clave sin actualizar ese archivo, la app vuelve a abrirse con la barra del
+  navegador.
+
+Caminos para regenerar, en orden de preferencia:
+1. **PWABuilder de nuevo**, si ofrece la opción de Play Billing — es el flujo que ya conoce
+   la dueña y mantiene la misma firma.
+2. **Bubblewrap**, con `"features": { "playBilling": { "enabled": true } }` en
+   `twa/twa-manifest.json` (la config de referencia ya está en el repo). Necesita una
+   computadora con Node.js y JDK; ver `twa/README.md`.
+
+### Pendientes en orden (actualizado 27/8/2026 — el orden cambió)
+
+1. ~~Revisar y juntar las dos ramas~~ ✅ hecho.
+2. ~~Crear la cuenta de comerciante / perfil de pagos~~ ✅ hecho (falta solo el banco, ver
+   arriba).
+3. **Regenerar el `.aab` declarando Play Billing y subirlo a prueba interna.** Bloquea todo
+   lo que sigue. Primero confirmar que aparezca el keystore de PWABuilder (ver arriba).
+4. Recién ahí, crear el producto de suscripción en Play Console (Monetiza con Play →
+   Productos → Suscripciones). Anotar acá el **ID del producto** que se elija, porque
+   después va escrito en `index.html`. Decidido: **solo plan mensual** al principio (un
+   precio anual fijo en pesos se desactualiza rápido con inflación; el anual se puede sumar
+   después como otro base plan sin tocar el mensual).
+5. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
    `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
-   apuntando a la URL de `playRtdn`. Antes de esto, agregar `estudioamsoftware.github.io` a
-   los dominios autorizados de Firebase Auth (ver arriba).
-5. Integrar en `index.html` el flujo de compra con la Digital Goods API
+   apuntando a la URL de `playRtdn`. Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
+6. Integrar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`), llamar a `verifyPurchase`
    tras la compra, y recién ahí encender `LIC_ENFORCE`.
+7. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
+   —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
+   paralelo, no bloquea nada.
+8. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
