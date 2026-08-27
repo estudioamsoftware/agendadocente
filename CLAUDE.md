@@ -78,6 +78,42 @@ Docente.json` que ya existe — no se borra, pero queda huérfano y la app arran
 nuevo en blanco. Le pasaría a cada docente que ya conectó su Drive. Si hace falta
 administrarlo desde otra cuenta, se dan permisos en IAM (ya hecho), no se migra.
 
+### Cómo mudar el `GD_CID` sin perder datos (revisado el 27/8/2026)
+
+**Ojo: el plan que estaba anotado antes no funcionaba.** Decía hacerlo con "Crear backup" y
+"Restaurar backup de Drive". No sirve: ese backup se sube al Drive de la docente pero *dentro
+de la carpeta que creó el cliente viejo*, y con permiso `drive.file` el cliente nuevo no puede
+verla. El backup queda del lado equivocado de la mudanza.
+
+Lo que sí vale, mirando el código:
+
+- **Los datos de verdad viven en el dispositivo** (`localStorage`, clave `agendaDocente.v1`).
+  Drive es respaldo y sincronización entre la compu y el celu, no la fuente.
+- Cuando el cliente nuevo conecta y no encuentra archivo remoto, la app **sube lo local**
+  (`gdPull()`: `if(!gd.fid){ await gdPushNow(); ... }`). No borra nada.
+- Ya hay red anti-pisada (`remotePierdeDatos` / `localPierdeDatos` + `showSyncConflictDialog`),
+  agregada justo por el susto del cambio de dominio.
+
+O sea que para la docente que usa la app en **un solo dispositivo** —el caso normal— la
+mudanza es casi transparente: reconecta Drive, la app no encuentra nada, sube lo que tiene y
+sigue. Lo único que se pierde es el historial de backups viejos, y queda un archivo huérfano
+en su Drive (no se borra, simplemente la app deja de verlo).
+
+Los dos casos donde **sí** se puede perder algo:
+1. La docente usa **dos dispositivos** y depende de Drive para sincronizar.
+2. Reinstala la app, cambia de teléfono o limpia los datos del navegador *entre medio*.
+
+Para cubrir esos dos casos se agregó al menú ⋯ (27/8): **"Guardar copia en un archivo"** y
+**"Restaurar desde un archivo"** (`exportToFile()` / `importFromFile()` en `index.html`).
+Bajan y cargan un `.json` común, que no depende ni de Drive ni del cliente de OAuth — es la
+única copia que cruza la mudanza.
+
+**Orden para el día de la mudanza:**
+1. Que cada docente entre a la app y use "Guardar copia en un archivo" (queda en Descargas).
+2. Recién ahí cambiar el `GD_CID` en `index.html` y publicar.
+3. Cada una reconecta Drive. Si sus datos siguen ahí (lo esperable), listo.
+4. Si a alguna le falta algo, "Restaurar desde un archivo" con el `.json` del paso 1.
+
 ### Links directos a las dos consolas
 
 Para sumar una docente nueva a la prueba hay que anotarla en **dos listas distintas, en
@@ -105,8 +141,7 @@ del celular (aceptar la invitación en el navegador con otra cuenta no sirve).
   quedó sin cupo de dominios una vez y las decisiones de una condicionan a las otras.
   **Conviene hacerlo cuanto antes:** implica cambiar el `GD_CID`, y eso deja huérfano el
   archivo de Drive de cada docente que ya lo conectó (ver arriba). Con cinco personas es
-  barato; con cien pagando, es un lío. Se hace sin perder datos usando "Crear backup" y
-  "Restaurar backup" que la app ya tiene: bajar, cambiar el cliente, restaurar.
+  barato; con cien pagando, es un lío. Cómo se hace sin perder datos: ver abajo.
 - **Limpiar dominios muertos** para recuperar lugares de los 10: `plantillacomercios.pages.dev`
   ya no se usa (se convirtió en "Kiosko don jose"), y `comercios.pages.dev` también quedó
   viejo. Orden obligado: primero sacarle el origen al cliente que lo tenga cargado (o

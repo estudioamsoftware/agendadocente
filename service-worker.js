@@ -1,4 +1,4 @@
-const CACHE_NAME = "agenda-docente-v7";
+const CACHE_NAME = "agenda-docente-v8";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", (event) => {

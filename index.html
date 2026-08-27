@@ -692,6 +692,14 @@
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
         <span>Copias en este dispositivo<small>Una por día, sin depender de Drive ni de internet</small></span>
       </button>
+      <button class="sheet-item" id="actExportFile">
+        <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 11v6"/><path d="M9.5 14.5L12 17l2.5-2.5"/></svg></span>
+        <span>Guardar copia en un archivo<small>Se descarga a este dispositivo. Sirve para cambiar de teléfono o guardarla aparte</small></span>
+      </button>
+      <button class="sheet-item" id="actImportFile">
+        <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 17v-6"/><path d="M9.5 13.5L12 11l2.5 2.5"/></svg></span>
+        <span>Restaurar desde un archivo<small>Cargar una copia que hayas guardado antes</small></span>
+      </button>
       <hr>
       <button class="sheet-item" id="actAyuda">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
@@ -701,7 +709,7 @@
       <div style="padding:4px 12px 2px;font-size:12.5px;color:var(--faint);line-height:1.5;">
         Para usarla como app: abrila en el navegador de la tablet y elegí <b>Agregar a pantalla de inicio</b>.
       </div>
-      <div style="padding:0 12px;font-size:11px;color:var(--faint);">Versión: splash-fix-15
+      <div style="padding:0 12px;font-size:11px;color:var(--faint);">Versión: copia-archivo-16
       </div>
     </div>
   </div>
@@ -1043,6 +1051,42 @@ function openLocalSnapshotsDlg(){
       }catch(e){ toastError("No se pudo restaurar esa copia"); }
     });
   });
+}
+/* ===== Copia a un archivo suelto =====
+   Las copias de arriba viven en este dispositivo, y el backup de Drive vive
+   dentro de la carpeta que creó la app. Ninguna de las dos sobrevive a un
+   cambio de teléfono ni a un cambio del cliente de Google. Esta baja un
+   archivo común y corriente, que se puede guardar o mandar a donde sea. */
+function exportToFile(){
+  closeMenu();
+  try{
+    download("Agenda Docente - copia "+todayStampAD()+".json",JSON.stringify(state),"application/json");
+    toastSuccess("\u2713 Copia descargada a este dispositivo","#A9500A");
+  }catch(e){ toastError("No se pudo descargar la copia"); }
+}
+function importFromFile(){
+  closeMenu();
+  const inp=document.createElement("input");
+  inp.type="file"; inp.accept="application/json,.json";
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      let incoming=null;
+      try{ incoming=JSON.parse(String(rd.result)); }catch(e){}
+      if(!incoming||!Array.isArray(incoming.groups)){ toastError("Ese archivo no es una copia de la Agenda"); return; }
+      confirmDlg("\u00bfRestaurar esta copia?","Ese archivo tiene: "+countSummary(incoming)+".\nAhora mismo ten\u00e9s: "+countSummary(state)+".\n\nEsto reemplaza TODOS los datos actuales. Antes de hacerlo se guarda una copia de lo que hay ahora en este dispositivo, por las dudas.","Restaurar",()=>{
+        try{
+          saveLocalSnapshot(true); // red de seguridad antes de pisar lo que hay
+          state=migrate(incoming); save(); view={screen:"home"}; render();
+          toastSuccess("\u2713 Copia restaurada","#A9500A");
+        }catch(e){ toastError("No se pudo restaurar ese archivo"); }
+      });
+    };
+    rd.onerror=()=>toastError("No se pudo leer el archivo");
+    rd.readAsText(f);
+  };
+  inp.click();
 }
 let undoStack=[];
 let redoStack=[];
@@ -6267,6 +6311,8 @@ $("#reloadBtn").onclick=()=>{ location.reload(); };
 $("#actBackup").onclick=backup;
 $("#actRestore").onclick=restoreFromDrive;
 $("#actLocalSnaps").onclick=openLocalSnapshotsDlg;
+$("#actExportFile").onclick=exportToFile;
+$("#actImportFile").onclick=importFromFile;
 ["menuScrim","dlgScrim"].forEach(id=>{ const el=$("#"+id); el.addEventListener("click",e=>{ if(e.target===el) el.classList.remove("open"); }); });
 // Cuando se abre el teclado en el celular/tablet, el visor real (visualViewport) se achica
 // aunque el layout no siempre lo note. Guardamos ese alto real en --vvh para que los cuadros
