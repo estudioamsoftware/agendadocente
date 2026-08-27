@@ -688,10 +688,6 @@
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
         <span>Restaurar backup de Drive<small>Recuperá una copia guardada en tu Drive</small></span>
       </button>
-      <button class="sheet-item" id="actLocalSnaps">
-        <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
-        <span>Copias en este dispositivo<small>Una por día, sin depender de Drive ni de internet</small></span>
-      </button>
       <button class="sheet-item" id="actExportFile">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 11v6"/><path d="M9.5 14.5L12 17l2.5-2.5"/></svg></span>
         <span>Guardar copia en un archivo<small>Se descarga a este dispositivo. Sirve para cambiar de teléfono o guardarla aparte</small></span>
@@ -709,7 +705,7 @@
       <div style="padding:4px 12px 2px;font-size:12.5px;color:var(--faint);line-height:1.5;">
         Para usarla como app: abrila en el navegador de la tablet y elegí <b>Agregar a pantalla de inicio</b>.
       </div>
-      <div style="padding:0 12px;font-size:11px;color:var(--faint);">Versión: copia-archivo-16
+      <div style="padding:0 12px;font-size:11px;color:var(--faint);">Versión: menu-simple-17
       </div>
     </div>
   </div>
@@ -1017,40 +1013,6 @@ function saveLocalSnapshot(force){
     while(snaps.length>SNAP_KEEP) snaps.shift();
     localStorage.setItem(SNAP_KEY,JSON.stringify(snaps));
   }catch(e){ /* si no hay espacio no interrumpe: es una red extra */ }
-}
-function listLocalSnapshots(){
-  try{ const raw=localStorage.getItem(SNAP_KEY); const s=raw?JSON.parse(raw):[]; return Array.isArray(s)?s.slice().reverse():[]; }catch(e){ return []; }
-}
-function openLocalSnapshotsDlg(){
-  closeMenu();
-  const snaps=listLocalSnapshots();
-  let rows;
-  if(!snaps.length){
-    rows='<p style="font-size:13px;color:var(--muted);margin:0">Todavía no hay copias guardadas en este dispositivo. Se guarda una por día automáticamente al abrir la agenda.</p>';
-  } else {
-    rows=snaps.map((s,i)=>`<button class="btn ${i===0?'':'subtle'}" data-snapi="${i}" style="margin-bottom:8px;font-size:13.5px;text-align:left;">🛟 ${s.stamp} <span style="opacity:.75">· ${s.device||''} · ${s.summary||''}</span></button>`).join('');
-  }
-  openDlg("Copias en este dispositivo",`
-    <p style="font-size:13.5px;color:var(--muted);margin:0 0 6px;line-height:1.5;">Guardadas acá mismo, sin depender de Drive ni de internet. Se conservan las últimas ${SNAP_KEEP}.</p>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Ahora mismo tenés: <b>${countSummary(state)}</b></p>
-    <div id="snap_list">${rows}</div>
-    <div class="dlg-actions" style="margin-top:8px;">
-      <button class="btn subtle" id="snap_now">💾 Guardar copia ahora</button>
-      <button class="btn subtle" id="snap_cancel">Cerrar</button>
-    </div>`);
-  $("#snap_cancel").onclick=closeDlg;
-  $("#snap_now").onclick=()=>{ saveLocalSnapshot(true); closeDlg(); toastSuccess("✓ Copia guardada en este dispositivo","#A9500A"); };
-  $("#snap_list").querySelectorAll("[data-snapi]").forEach(b=>b.onclick=()=>{
-    const snap=listLocalSnapshots()[Number(b.dataset.snapi)]; if(!snap) return;
-    closeDlg();
-    confirmDlg("¿Restaurar esta copia?","Se vuelve a como estaba todo el "+snap.stamp+" ("+(snap.summary||'')+"). Lo que cargaste después se pierde.","Restaurar",()=>{
-      try{
-        saveLocalSnapshot(true); // por las dudas, guardamos lo actual antes de pisarlo
-        state=migrate(JSON.parse(snap.data)); save(); view={screen:"home"}; render();
-        toastSuccess("✓ Copia restaurada","#A9500A");
-      }catch(e){ toastError("No se pudo restaurar esa copia"); }
-    });
-  });
 }
 /* ===== Copia a un archivo suelto =====
    Las copias de arriba viven en este dispositivo, y el backup de Drive vive
@@ -6310,7 +6272,6 @@ const actAyudaBtn=$("#actAyuda"); if(actAyudaBtn) actAyudaBtn.onclick=promptAyud
 $("#reloadBtn").onclick=()=>{ location.reload(); };
 $("#actBackup").onclick=backup;
 $("#actRestore").onclick=restoreFromDrive;
-$("#actLocalSnaps").onclick=openLocalSnapshotsDlg;
 $("#actExportFile").onclick=exportToFile;
 $("#actImportFile").onclick=importFromFile;
 ["menuScrim","dlgScrim"].forEach(id=>{ const el=$("#"+id); el.addEventListener("click",e=>{ if(e.target===el) el.classList.remove("open"); }); });
