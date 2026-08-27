@@ -59,14 +59,23 @@ Agenda Docente ya no comparte proyecto de Google Cloud con las otras apps de la 
   primero confirmar que ninguna otra app de la dueña lo usa (no debería, era específico de
   Agenda Docente).
 
-### Pendiente ahora: publicar el proyecto nuevo a "En producción"
+### Publicado a "En producción" (27/8/2026) — ya no hace falta anotar testers para Drive
 
-Como el proyecto ya es exclusivo de Agenda Docente, esto **ya no arrastra a ninguna otra
-app** (antes sí, por eso no se tocaba). Mientras la pantalla de consentimiento siga en
-"Prueba", **solo las cuentas anotadas a mano como testers pueden conectar Drive**. Pasarlo
-a "En producción" en Google Auth Platform → Público no debería requerir verificación de
-Google: el único permiso que pide la app es `drive.file`, que no es sensible. Falta
-hacerlo — avisar a la dueña y guiarla paso a paso cuando lo pida.
+Como el proyecto ya es exclusivo de Agenda Docente, publicarlo **no arrastra a ninguna otra
+app** de la dueña (antes sí, por eso no se tocaba en el proyecto viejo compartido). Se hizo
+en Google Auth Platform → Público → "Publicar app", sin pedir verificación de Google (los
+permisos que pide la app —`drive.file` y `email`— son no sensibles). Cualquier profe con
+cuenta de Google ya puede conectar Drive sin que la anotemos a mano en ninguna lista.
+
+Antes de poder publicar hizo falta completar en **Información de la marca**:
+- Página principal: `https://estudioamsoftware.github.io/agendadocente/`
+- Política de Privacidad: `https://estudioamsoftware.github.io/agendadocente/privacy-policy.html`
+
+**A propósito no se subió logo.** En cuanto se sube un logo a esa pantalla, Google exige
+mandar la app a verificación (trámite de semanas, pide video de demostración, etc.). Sin
+logo la pantalla de permisos de Google se ve más genérica, pero funciona igual. Si en algún
+momento se quiere esa pantalla más prolija, hay que estar dispuestas a pasar por la
+verificación — no es necesario para que la app funcione.
 
 ### No cambiar el cliente de OAuth por prolijidad (sigue valiendo)
 
@@ -98,6 +107,26 @@ mudanza es casi transparente: reconecta Drive, la app no encuentra nada, sube lo
 sigue. Lo único que se pierde es el historial de backups viejos, y queda un archivo huérfano
 en su Drive (no se borra, simplemente la app deja de verlo).
 
+**Dos trampas nuevas que aparecieron al hacer la mudanza del 27/8, para no repetirlas:**
+
+1. **No alcanza con crear el cliente OAuth — hay que declarar los permisos aparte.** En
+   Google Auth Platform → "Acceso a los datos", si no se agregan explícitamente los scopes
+   (`.../auth/drive.file` y `.../auth/userinfo.email`), el cliente nuevo consigue un token
+   pero sin permiso real sobre Drive: la app tira **"Error en Drive: Request had
+   insufficient authentication scopes"**. Se soluciona agregando esos dos scopes ahí y
+   guardando — pero ojo con el punto 2, no alcanza con arreglar esto solo.
+
+2. **Una vez que la app quedó con un token "malo" guardado, no se autocorrige sola.** El
+   token se guarda en `sessionStorage` (`gd_tok`) y la marca de "ya se conectó antes" en
+   `localStorage` (`gd_was_connected`). Mientras esa marca siga en `1`, la app solo reintenta
+   en silencio (`gdReconnect()`, sin mostrar pantalla de permisos) — nunca vuelve a pedir el
+   consentimiento completo con los scopes nuevos. Ni recargar la página ni tocar "Reintentar"
+   alcanza. Hace falta borrar **todos los datos guardados del sitio** (`chrome://settings/content/all`
+   → buscar `estudioamsoftware.github.io` → Eliminar datos, o en la consola del navegador
+   `localStorage.clear(); sessionStorage.clear(); location.reload();`) para forzar que
+   vuelva a pedir todo de cero. Como esto también borra `agendaDocente.v1` (los datos locales),
+   por eso el paso 1 del orden de abajo (bajar el archivo antes de tocar nada) es imprescindible.
+
 Los dos casos donde **sí** se puede perder algo:
 1. La docente usa **dos dispositivos** y depende de Drive para sincronizar.
 2. Reinstala la app, cambia de teléfono o limpia los datos del navegador *entre medio*.
@@ -127,8 +156,8 @@ mudanza de arriba.
 ### Pendientes de orden (actualizado 27/8/2026)
 
 - ~~Mudar Agenda Docente a su propio proyecto de Google Cloud~~ ✅ hecho (ver arriba).
-- **Publicar el proyecto nuevo a "En producción"** — ver sección de arriba. Es lo que
-  saca la necesidad de anotar testers a mano para el login de Drive.
+- ~~Publicar el proyecto nuevo a "En producción"~~ ✅ hecho (ver arriba). Ya no hace falta
+  anotar testers a mano para el login de Drive.
 - Lo del tope de 10 dominios sin verificar y "limpiar dominios muertos"
   (`plantillacomercios.pages.dev`, `comercios.pages.dev`) ya **no aplica a Agenda
   Docente** — era un problema del proyecto viejo compartido. Sigue siendo un tema para
