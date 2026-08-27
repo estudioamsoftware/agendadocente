@@ -74,6 +74,22 @@ puede pedir un reseteo de la clave de subida, pero es trámite y demora.
 4. Programar la compra en la web con la **Digital Goods API**
    (`getDigitalGoodsService('https://play.google.com/billing')`).
 
+### Un producto puede tener varios planes (mensual + anual)
+
+No hace falta crear una suscripción separada para cada período. Adentro de un mismo
+producto (por ejemplo `completa`) se agregan varios **planes base**, cada uno con su
+propio ID, precio y período de facturación (`mensual`, `anual`). Es lo normal para ofrecer
+mensual y anual con descuento sin duplicar nada.
+
+### Si vas a vender varias apps: cuidado con el ID del producto
+
+No quedó claro buscándolo si el ID de un producto (`completa`, por ejemplo) tiene que ser
+único solo dentro de esa app, o único en **toda tu cuenta de desarrollador** (todas tus
+apps juntas) — las fuentes se contradicen. Para no arriesgarte a que Play te rechace un ID
+repetido entre apps distintas, **ponele el nombre de la app adelante en cada una menos la
+primera**: `agendadocente_completa`, `chetaxi_completa`, etc. Así no importa cuál sea la
+regla real, nunca vas a chocar.
+
 ### Reglas de Google que conviene no olvidar
 
 - **Play Billing es obligatorio** para contenido digital consumido dentro de una app de
