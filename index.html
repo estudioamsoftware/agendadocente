@@ -6772,5 +6772,45 @@ if("serviceWorker" in navigator){
   });
 }
 </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBxDVr9MfxKBDwuT1o-zz97JvW1zMoLOzY",
+    authDomain: "agenda-docente-8c53d.firebaseapp.com",
+    projectId: "agenda-docente-8c53d",
+    storageBucket: "agenda-docente-8c53d.firebasestorage.app",
+    messagingSenderId: "903525915752",
+    appId: "1:903525915752:web:b086ebfb1986e27081efdd",
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const fbAuth = getAuth(fbApp);
+  const fbDb = getFirestore(fbApp);
+
+  let unsubSubscription = null;
+
+  function applySubscriptionStatus(status){
+    document.documentElement.dataset.subscription = status;
+    window.dispatchEvent(new CustomEvent("subscription-status", { detail: { status } }));
+  }
+
+  onAuthStateChanged(fbAuth, (user) => {
+    if (unsubSubscription) { unsubSubscription(); unsubSubscription = null; }
+    if (!user) { applySubscriptionStatus("inactive"); return; }
+    unsubSubscription = onSnapshot(doc(fbDb, "subscriptions", user.uid), (snap) => {
+      applySubscriptionStatus(snap.exists() ? snap.data().status : "inactive");
+    });
+  });
+
+  window.fbSignIn = async function fbSignIn(){
+    const result = await signInWithPopup(fbAuth, new GoogleAuthProvider());
+    return result.user;
+  };
+  window.fbSignOut = () => signOut(fbAuth);
+</script>
 </body>
 </html>

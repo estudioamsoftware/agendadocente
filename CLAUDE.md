@@ -171,29 +171,120 @@ número 903525915752) viven los dos en `estudioam.dev@gmail.com` — se resolvi�
 que había antes. Falta confirmar que Play Console también termine ahí antes de cobrar (hoy
 es la cuenta de Estudio AM, a confirmar si es la misma).
 
-## Dónde está cada cosa (importante antes de empezar)
+## La venta: estado y qué falta (actualizado 27/8/2026, ramas ya mergeadas)
 
-El trabajo de venta/suscripción está repartido en **dos ramas, ninguna mergeada a
-`main`**. Antes de arrancar algo de eso, mirar las dos — si no, se rehace trabajo ya
-hecho:
+Las dos ramas viejas de venta/suscripción (`claude/agenda-docente-play-store-7lv177` y
+`claude/subscription-by-device-jzdkkp`, ninguna mergeada a `main` hasta hoy) ya están
+juntas en esta rama. Quedaron sumados:
 
-- **`claude/agenda-docente-play-store-7lv177`** — el candado de la versión gratis
-  (sección `/* ============ Licencia ============ */` en `index.html`), `VENTA.md` con
-  el plan de venta, y la config del TWA en `twa/`.
-- **`claude/subscription-by-device-jzdkkp`** — Firebase Auth + Firestore ya integrados
-  y probados, esqueleto de Cloud Functions para validar compras de Play, y los assets
-  de la ficha de Play Store. Tiene un `CLAUDE.md` propio con el detalle del proyecto
-  de Firebase — ojo que choca con este archivo si se mergean las dos ramas.
+- El candado de la versión gratis (sección `/* ============ Licencia ============ */` en
+  `index.html`, ver detalle abajo) y `VENTA.md` con el plan de venta.
+- La config de referencia del TWA con Bubblewrap en `twa/` (no es la que se usa hoy — el
+  `.aab` publicado salió de PWABuilder — pero sirve si el día de mañana hay que regenerar
+  declarando Play Billing).
+- Firebase Auth + Firestore integrados en `index.html` (al final, `<script type="module">`
+  nuevo que no toca el resto de la app), esqueleto de Cloud Functions (`functions/`), config
+  de Firebase CLI (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) y los
+  assets de la ficha de Play Store (`play-store-assets/`).
+- `privacy-policy.html` ya tiene la sección "Suscripción y pagos".
 
-`VENTA.md` da Firebase por pendiente, pero en la otra rama ya está hecho y probado.
+### El candado de la versión gratis
 
-## Decisiones tomadas sobre la venta
+- `LIC_ENFORCE` en `index.html` está en **`false`**: mientras esté apagado, nadie ve el
+  candado (las profes que están probando la app no se topan con esto). Se enciende recién
+  cuando la app salga a la venta de verdad.
+- `LIC_FREE_GROUPS=1`: la versión gratis deja llevar un curso.
+- `LIC_REGALADAS`: cuentas con la versión completa de regalo, como hash SHA-256 del mail
+  (el repo es público). Hoy solo la cuenta de Estudio AM. Esta lista es un parche
+  provisorio — la idea es que la responda Firebase, no el código público (ver abajo).
+- `licPaywall()`: hoy el botón "Quiero la completa" abre un mail a `estudioam.dev@gmail.com`.
+  Cuando esté Play Billing, tiene que disparar la compra en su lugar.
+
+### Qué funciones van a ser premium (decidido, no implementado todavía)
+
+Esta decisión es más amplia que el candado de "un curso" de arriba — quedó pendiente
+unificar los dos enfoques:
+
+- **Gratis:** cursos y alumnos ilimitados, carga de asistencia y notas sin restricción — el
+  uso diario core de la app no se toca.
+- **Premium:**
+  - Cursos ilimitados (el candado de `LIC_FREE_GROUPS` de arriba).
+  - Carga de **licencias, paros y demás eventos administrativos** (todo lo que hoy permite
+    llevar registro/conteo anual — ver `LICENCIA_TIPOS`, `LICENCIA_INFO`,
+    `licenciaTallyThisYear()` etc. en `index.html`).
+  - **Alertas automáticas** (ej. `listadosProximosAVencer()`).
+  - Ver la **ayuda de licencias sacada del Estatuto Docente** (`LICENCIA_INFO`): la idea es
+    que sepan que existe (visible pero bloqueada), no que esté oculta del todo.
+- La web (`estudioamsoftware.github.io/agendadocente/`) también queda bloqueada, no solo la
+  app de Play Store — Google Play Billing solo se puede usar dentro de la app empaquetada,
+  así que en la web hay que mostrar un cartel tipo "Descargá la app de Play Store para
+  suscribirte" en vez de un flujo de pago in-situ.
+- Cuando se encienda el bloqueo, la cuenta de Google de la dueña tiene que quedar exceptuada
+  (hoy vía `LIC_REGALADAS`, más adelante vía su doc en `subscriptions/{uid}` marcado `active`).
+
+### Decisiones tomadas sobre la venta
 
 - Se vende **por Play Store**, no por afuera ("por fuera nadie la toma en serio").
-- Modelo: **gratis con límite de cursos, versión completa paga**. Se descartó la app
-  paga de entrada porque nadie compra a ciegas una herramienta de uso diario.
+- Modelo: **gratis con límite de cursos, versión completa paga**. Se descartó la app paga
+  de entrada porque nadie compra a ciegas una herramienta de uso diario.
+- **Cobro: Google Play Billing únicamente.** Se descartó Mercado Pago porque Google exige
+  que el contenido digital consumido dentro de una app de Play use su propio sistema de
+  facturación.
+- **Backend: Firebase** (no Supabase — la dueña usa Supabase en otro proyecto sin relación).
+  Se eligió Firebase porque las notificaciones de Google Play (RTDN) se integran
+  nativamente vía Pub/Sub con Cloud Functions, sin webhook intermedio.
 - Ojo con esto: Play deja pasar una app de paga a gratis, **nunca al revés**.
-- La licencia se ata a la cuenta de Google. Limitación detectada probando en el celu:
-  **el teléfono ofrece solo la cuenta con la que está logueado Chrome**, sin dejar
-  elegir otra. Si la docente compra con una cuenta y usa el celu con otra, no va a
-  poder activar. Hay que preverlo (explicarlo bien, o sumar activación por código).
+- **Pendiente de decidir con la dueña:** la licencia se ata a la cuenta de Google, pero
+  **el teléfono ofrece solo la cuenta con la que está logueado Chrome**, sin dejar elegir
+  otra. Si la docente compra con una cuenta y usa el celu con otra, no va a poder activar.
+  Falta resolver esto (explicarlo bien, o sumar activación por código).
+
+### Estado del proyecto de Firebase (backend de la suscripción — no confundir con el de Drive)
+
+- **Nombre:** Agenda Docente — **Project ID:** `agenda-docente-8c53d`, en
+  `estudioam.dev@gmail.com` (mismo dueño que el proyecto de Drive, ver arriba, pero es
+  **otro proyecto de Google Cloud** — Drive usa `agenda-docente-506819`).
+- **Plan actual:** Spark (gratis). Para desplegar las Cloud Functions hay que pasar a
+  **Blaze** (pago por uso, pide tarjeta) — se puede poner una alerta de presupuesto en $0 y
+  el uso esperado de esta app cae dentro de la capa gratuita de Blaze igual.
+- **Firestore:** creado. Edición Standard, modo producción, región `southamerica-east1`
+  (São Paulo). Reglas de `firestore.rules` (cada docente lee solo su propio doc de
+  suscripción, nadie escribe salvo el Admin SDK) ya están pegadas y publicadas a mano en la
+  consola de Firestore (pestaña Reglas) — si se vuelve a tocar `firestore.rules`, hay que
+  repetir el pegado a mano o desplegar con `firebase deploy --only firestore:rules`.
+- **Authentication:** proveedor Google habilitado.
+- **Dominios autorizados (pendiente de revisar):** la lista tenía `localhost`,
+  `agenda-docente-8c53d.firebaseapp.com`, `agenda-docente-8c53d.web.app` y
+  `agendadocente.pages.dev` — este último es el dominio viejo de Cloudflare, ya no
+  corresponde. **Falta agregar `estudioamsoftware.github.io`** (el dominio real de
+  producción) en Firebase Console → Authentication → Settings → Dominios autorizados, si
+  no `fbSignIn()` (el popup de login para la suscripción) no va a andar ahí.
+- **Cloud Functions (`functions/index.js`), sin desplegar todavía** (falta el plan Blaze):
+  `verifyPurchase` (callable, valida una compra recién hecha contra la Google Play
+  Developer API) y `playRtdn` (HTTP endpoint que recibe las notificaciones push de Play
+  cuando una suscripción se renueva o cancela). Ambas necesitan el secreto
+  `PLAY_SERVICE_ACCOUNT` (JSON de una cuenta de servicio con permiso "Ver datos
+  financieros" en Play Console → Configuración → Acceso a la API), que todavía no se creó.
+- **Validado el 19/8/2026** (en un preview de Cloudflare Pages que ya no existe, pero la
+  lógica de Firebase es independiente del dominio): `fbSignIn()` abre el popup de Google y
+  devuelve el usuario logueado; la escucha en tiempo real de `subscriptions/{uid}` en
+  Firestore funciona sin recargar la página. **Auth + Firestore confirmado funcionando
+  end-to-end.** Falta todo lo de Play Store/Billing, que depende de Play Console.
+- Login de Firebase Auth (para la suscripción) y login de Google Drive (para el respaldo)
+  son **dos flujos de Google distintos que todavía no se unificaron** — cada uno pide su
+  propio consentimiento por separado.
+
+### Pendientes en orden (retomando desde acá)
+
+1. ~~Revisar y juntar las dos ramas~~ ✅ hecho hoy.
+2. Crear el producto de suscripción en Play Console (Monetización).
+3. Regenerar el `.aab` declarando Play Billing — el que generó PWABuilder no lo trae (en
+   Bubblewrap sería `"features": { "playBilling": { "enabled": true } }` en
+   `twa/twa-manifest.json`).
+4. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
+   `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
+   apuntando a la URL de `playRtdn`. Antes de esto, agregar `estudioamsoftware.github.io` a
+   los dominios autorizados de Firebase Auth (ver arriba).
+5. Integrar en `index.html` el flujo de compra con la Digital Goods API
+   (`getDigitalGoodsService('https://play.google.com/billing')`), llamar a `verifyPurchase`
+   tras la compra, y recién ahí encender `LIC_ENFORCE`.

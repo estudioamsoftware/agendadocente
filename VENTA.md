@@ -54,17 +54,23 @@ activar la licencia.
 Hay que preverlo: o se explica bien que compre con la misma cuenta del celu, o se
 suma una forma alternativa de activar (por ejemplo, un código que se canjea).
 
-## Etapa 2 — Firebase (pendiente)
+## Etapa 2 — Firebase (el servidor ya existe, falta conectarlo al candado)
 
-Hoy la lista de licencias está escrita en el código, que es público y corre en el
-navegador: alguien que sepa puede editarlo y saltearse el candado. Para que sea
-un candado de verdad, la respuesta tiene que venir de un servidor.
+Hoy la lista de licencias (`LIC_REGALADAS`) está escrita en el código, que es público y
+corre en el navegador: alguien que sepa puede editarlo y saltearse el candado. Para que
+sea un candado de verdad, la respuesta tiene que venir de un servidor.
 
-Hace falta:
-1. Crear el proyecto en Firebase (los créditos de Google cubren el costo).
-2. Firestore con una colección de licencias por mail.
-3. Reemplazar la consulta a `LIC_REGALADAS` dentro de `licRefresh()` por la
-   consulta a Firestore.
+**Ya está hecho** (rama `claude/subscription-by-device-jzdkkp`, mergeada a esta rama):
+proyecto de Firebase creado, Firestore con la colección `subscriptions/{uid}`, login con
+Firebase Auth (`window.fbSignIn()`) probado end-to-end. Ver el detalle completo en
+`CLAUDE.md`, sección "La venta: estado y qué falta".
+
+**Falta todavía:**
+1. Reemplazar la consulta a `LIC_REGALADAS` dentro de `licRefresh()` por una lectura del
+   estado de `subscriptions/{uid}` en Firestore (hoy son dos sistemas separados: el candado
+   de `index.html` sigue mirando la lista hardcodeada, no Firestore).
+2. Pasar Firebase a plan Blaze y desplegar las Cloud Functions (`functions/`) que ya están
+   escritas — validan la compra contra Play y actualizan Firestore.
 
 ## Etapa 3 — cobrar dentro de la app (pendiente)
 
