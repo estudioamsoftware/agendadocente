@@ -332,23 +332,40 @@ lo trae.
 
 O sea: **primero el `.aab`, después el producto de suscripción.** Al revés no se puede.
 
-**Antes de regenerar nada, hay que responder esto:** ¿aparece todavía el **keystore** (la
-firma) que generó PWABuilder, con sus contraseñas? PWABuilder lo entrega en el zip de la
-descarga, junto con un archivo de texto con las claves. Importa porque:
-- Si se firma el build nuevo con **otra** clave, Play rechaza la subida por firma que no
-  coincide (habría que pedirle a Google el reseteo de la clave de subida — se puede, pero
-  es trámite).
-- La verificación de dominio (`assetlinks.json`, en el repo
-  `estudioamsoftware/estudioamsoftware.github.io`) está atada a la huella de la firma. Si
-  cambia la clave sin actualizar ese archivo, la app vuelve a abrirse con la barra del
-  navegador.
+**La firma está guardada y aparecida (27/8/2026).** En el Drive de la dueña, carpeta
+`agenda docente play store`, están los seis archivos que largó PWABuilder el 19/8:
+`Agenda Docente.aab`, `Agenda Docente.apk`, `assetlinks.json`, `Readme.html`,
+**`signing-key-info.txt`** (las contraseñas) y **`signing.keystore`** (la firma).
 
-Caminos para regenerar, en orden de preferencia:
-1. **PWABuilder de nuevo**, si ofrece la opción de Play Billing — es el flujo que ya conoce
-   la dueña y mantiene la misma firma.
-2. **Bubblewrap**, con `"features": { "playBilling": { "enabled": true } }` en
-   `twa/twa-manifest.json` (la config de referencia ya está en el repo). Necesita una
-   computadora con Node.js y JDK; ver `twa/README.md`.
+Eso es lo que hace fácil la regeneración, porque:
+- Firmando con la **misma** clave, Play reconoce el build como una versión nueva de la app
+  que ya está. Con otra clave lo rechaza por firma que no coincide (habría que pedirle a
+  Google el reseteo de la clave de subida — se puede, pero es trámite).
+- La verificación de dominio (`assetlinks.json`, publicado en el repo
+  `estudioamsoftware/estudioamsoftware.github.io`) está atada a la huella de la firma.
+  Como la clave no cambia, **ese archivo no hay que tocarlo** y la app va a seguir abriendo
+  sin la barra del navegador.
+
+⚠️ Ese `signing.keystore` es irreemplazable: si se pierde, no se puede volver a actualizar
+nunca más la app en Play. Y `signing-key-info.txt` tiene contraseñas en texto plano —
+**nunca commitearlo al repo**, que es público.
+
+**Cómo regenerar: con PWABuilder, no hace falta Bubblewrap.** Verificado en la documentación
+de PWABuilder: soporta tanto la opción de **Google Play Billing** (que es justo lo que
+falta) como la de **firmar con una clave propia** ("Mine": se sube el `.keystore` y se
+completan alias, key password y store password). Se hace entero desde la web, sin instalar
+Node ni JDK. Pasos:
+
+1. pwabuilder.com → pegar `https://estudioamsoftware.github.io/agendadocente/`.
+2. Paquete de Android / Google Play → abrir las opciones.
+3. Activar **Google Play Billing**.
+4. Subir la versión: `appVersion` a `1.0.1` y **`appVersionCode` de 1 a 2** (Play rechaza
+   subir dos veces el mismo version code).
+5. Signing key → **"Mine"** → subir `signing.keystore` y completar alias/contraseñas
+   leyéndolas de `signing-key-info.txt`.
+6. Generar, descargar, y subir el `.aab` a la pista de prueba interna en Play Console.
+
+`twa/` (Bubblewrap) queda como plan B nomás; con PWABuilder alcanza.
 
 ### Pendientes en orden (actualizado 27/8/2026 — el orden cambió)
 
