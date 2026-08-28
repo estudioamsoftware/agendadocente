@@ -1,0 +1,39 @@
+{
+  "packageId": "com.estudioam.agendadocente",
+  "host": "estudioamsoftware.github.io",
+  "name": "Agenda Docente",
+  "launcherName": "Agenda Docente",
+  "display": "standalone",
+  "themeColor": "#F7EFE7",
+  "themeColorDark": "#2B2A28",
+  "navigationColor": "#F7EFE7",
+  "navigationColorDark": "#2B2A28",
+  "navigationDividerColor": "#F7EFE7",
+  "navigationDividerColorDark": "#2B2A28",
+  "backgroundColor": "#F7EFE7",
+  "enableNotifications": false,
+  "startUrl": "/agendadocente/index.html",
+  "iconUrl": "https://estudioamsoftware.github.io/agendadocente/icon-512.png",
+  "maskableIconUrl": "https://estudioamsoftware.github.io/agendadocente/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "androidagendadocente"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://estudioamsoftware.github.io/agendadocente/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://estudioamsoftware.github.io/agendadocente/",
+  "minSdkVersion": 21,
+  "orientation": "default"
+}
