@@ -171,6 +171,18 @@ Cuenta "Estudio AM" → **`estudioam.dev@gmail.com`** (ver "Ojo con las cuentas"
 Para sumar una docente nueva a la prueba interna de Play Store:
 https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers
 
+**Link de invitación a la prueba interna (el que se le pasa a cada tester) — anotado el
+29/8/2026, NO volver a pedirlo:**
+
+    https://play.google.com/apps/internaltest/4701617366361420267
+
+Se abre en el celular **con la cuenta que esa persona tiene puesta en Play Store**, se
+acepta ser verificador, y recién ahí aparece el botón para instalar desde Play Store. El
+mail tiene que estar además en la lista de arriba: las dos cosas hacen falta.
+Ojo: mientras la ficha esté incompleta, en Play Store la app se ve con el **nombre temporal
+`com.estudioam.agendadocente (unreviewed)`** en vez de "Agenda Docente". Es normal, no es
+un error — se arregla al completar la ficha.
+
 Si a una tester le sale **"No se encontró el elemento"** en la Play Store, o no está
 anotada ahí, o el mail anotado no es el que tiene puesto en la Play Store del celular
 (aceptar la invitación en el navegador con otra cuenta no sirve). Esta lista sigue siendo
