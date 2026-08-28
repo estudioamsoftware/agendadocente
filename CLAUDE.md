@@ -38,6 +38,12 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
   Producción en `https://estudioamsoftware.github.io/agendadocente/`.
+  ⚠️ **Todo cambio va SIEMPRE a `main`, y no está publicado hasta que llegue ahí.**
+  Instrucción explícita de la dueña (29/8/2026), vale para toda sesión futura: no dejar
+  el trabajo colgado en una rama esperando que ella apruebe un pedido de cambio. Si se
+  trabajó en una rama, hay que mergearla a `main` y pushear `main` en la misma sesión —
+  si no, ella recarga la app, sigue viendo el número de versión viejo, y perdemos el
+  viaje (ya pasó). Al terminar un cambio, confirmar que `main` tiene el `APP_VER` nuevo.
 - **Empaquetado para Android:** se usó **PWABuilder** (pwabuilder.com), no Bubblewrap.
   El `.aab` que está publicado salió de ahí. `twa/README.md` documenta Bubblewrap como
   alternativa, pero nunca se usó.
