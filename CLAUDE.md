@@ -197,6 +197,13 @@ pantalla.
   `agenda-docente-8c53d`, número 903525915752) → `estudioam.dev@gmail.com`.
 - **Play Console** (cuenta "Estudio AM", ID `6208089129841152998`) →
   **`mullerana@hotmail.com`**. No es la cuenta de Estudio AM que se usa para todo lo demás.
+  **Síntoma de que entró con la cuenta equivocada: Play Console le ofrece "crear una
+  cuenta de desarrollador".** Eso no es un error de la consola — es que la cuenta con la
+  que está navegando no tiene consola. **Nunca crear esa cuenta** (es otra cuenta nueva, y
+  se paga). Hay que cambiar a la de Hotmail desde la foto de perfil, o entrar directo por
+  `https://play.google.com/console`. Ojo también con el `/u/0/` de los links guardados en
+  este documento: ese `0` significa "la primera cuenta con la que estés logueada", así que
+  si tiene varias abiertas puede caer en la equivocada.
 
 No hay que cambiar nada — funciona así. Pero tenerlo presente en el paso del
 `PLAY_SERVICE_ACCOUNT` (ver más abajo): ahí hay que darle permiso desde Play Console
