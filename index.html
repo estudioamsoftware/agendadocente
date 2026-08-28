@@ -633,7 +633,7 @@
     <div class="splash-greet" id="splashGreet">¡Bienvenida!</div>
     <div class="splash-tag"><span class="st-rule"></span><span class="st-dot"></span><span class="st-rule"></span></div>
     <div class="splash-lema">Ella organiza. <span>Vos enseñás.</span></div>
-    <div class="splash-sub">By EstudioAM</div>
+    <div class="splash-sub">By EstudioAM · <span id="splashVersion"></span></div>
   </div>
   <div class="topbar">
     <div class="wrap topbar-in">
@@ -6569,6 +6569,7 @@ function initClock(){
 
 function initSplash(){
   const el=$("#splash"); if(!el) return;
+  const sv=$("#splashVersion"); if(sv) sv.textContent=APP_BUILD;
   if(state.userName){
     $("#splashGreet").textContent="¡Bienvenida, "+state.userName+"!";
     setTimeout(()=>{ el.classList.add("hide"); document.documentElement.style.background=""; setTimeout(()=>el.remove(),600); },2800);
@@ -6592,6 +6593,7 @@ function runSplashGreeting(name){
   const el=$("#splash"); if(!el) return;
   el.classList.remove("hide");
   $("#splashGreet").textContent="¡Bienvenida, "+name+"!";
+  const sv=$("#splashVersion"); if(sv) sv.textContent=APP_BUILD;
   setTimeout(()=>{ el.classList.add("hide"); document.documentElement.style.background=""; setTimeout(()=>el.remove(),600); },2800);
 }
 
