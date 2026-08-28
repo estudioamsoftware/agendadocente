@@ -733,7 +733,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.28-1';
+const APP_VER='v2026.08.28-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1270,8 +1270,27 @@ function describeError(e){
   if(!e) return "(sin datos)";
   const name=e.name||(e.constructor&&e.constructor.name)||"";
   const msg=e.message||"";
+  // Ojo: para un DOMException, e.code es el código viejo del estándar web
+  // (NotSupportedError = 9), NO un código de Google Play. Confundir uno con
+  // otro nos mandó a investigar el paquete .aab al pedo una vez; no repetirlo.
   const code=(typeof e.code==="number")?` (code ${e.code})`:"";
   return ([name,msg].filter(Boolean).join(": ")||String(e))+code;
+}
+
+// Qué navegador está mostrando la app por dentro. En una app empaquetada
+// (TWA) esto NO es siempre Chrome: puede ser Samsung Internet u otro, según
+// cuál sea el navegador predeterminado del celular — y hay reportes de que el
+// cobro de Play solo funciona cuando quien la muestra es Chrome.
+function describeBrowser(){
+  const ua=navigator.userAgent||"";
+  let name="otro", ver="";
+  const pick=(re)=>{ const m=ua.match(re); return m?m[1]:""; };
+  if(/SamsungBrowser\//.test(ua)){ name="Samsung Internet"; ver=pick(/SamsungBrowser\/([\d.]+)/); }
+  else if(/EdgA?\//.test(ua)){ name="Edge"; ver=pick(/EdgA?\/([\d.]+)/); }
+  else if(/OPR\//.test(ua)){ name="Opera"; ver=pick(/OPR\/([\d.]+)/); }
+  else if(/Firefox\//.test(ua)){ name="Firefox"; ver=pick(/Firefox\/([\d.]+)/); }
+  else if(/Chrome\//.test(ua)){ name="Chrome"; ver=pick(/Chrome\/([\d.]+)/); }
+  return name+(ver?" "+ver:"");
 }
 
 // Devuelve {service, error}: si algo falla, error queda con un texto legible
@@ -1330,6 +1349,36 @@ function playFormatPrice(item){
   catch(e){ return `${item.price.value} ${item.price.currency}`; }
 }
 
+// Cuando la compra no arranca, mostramos todo lo que sabemos en un cuadro que
+// se puede leer y fotografiar tranquila (antes era un cartelito que se iba
+// solo). La idea es que UNA sola prueba en el celular alcance para saber qué
+// pasa, sin tener que enchufarlo a una computadora ni publicar otra versión.
+async function playShowPurchaseError(e, itemId){
+  let probe;
+  try{
+    const pr=new PaymentRequest(
+      [{supportedMethods:"https://play.google.com/billing", data:{sku:itemId}}],
+      {total:{label:"Total", amount:{currency:"USD", value:"0"}}}
+    );
+    probe=(await pr.canMakePayment())?"sí":"no";
+  }catch(e2){ probe="falló — "+describeError(e2); }
+  const filas=[
+    ["Error", describeError(e)],
+    ["Navegador que muestra la app", describeBrowser()],
+    ["Producto", itemId||"(sin id)"],
+    ["Google Play acepta el pago", probe]
+  ];
+  openDlg("No se pudo iniciar la compra",
+    `<div style="font-size:14px;line-height:1.6;color:var(--ink);">
+       <p style="margin:0 0 12px;">No pudimos abrir el cuadro de pago de Google. Sacale una foto a esto y mandánoslo:</p>
+       <div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:12px 14px;font-size:12.5px;line-height:1.7;user-select:text;-webkit-user-select:text;word-break:break-word;">
+         ${filas.map(([k,v])=>`<div><b>${esc(k)}:</b> ${esc(String(v))}</div>`).join("")}
+       </div>
+     </div>
+     <div class="dlg-actions"><button class="btn subtle" id="perr_close">Cerrar</button></div>`);
+  const b=$("#perr_close"); if(b) b.onclick=closeDlg;
+}
+
 async function playComprar(itemId){
   const {service}=await playGetService();
   if(!service){ toast("No se pudo conectar con Google Play"); return; }
@@ -1349,7 +1398,7 @@ async function playComprar(itemId){
     response=await request.show();
   }catch(e){
     if(e&&e.name==="AbortError") return; // canceló el cuadro de pago
-    toast("No se pudo iniciar la compra: "+describeError(e));
+    await playShowPurchaseError(e, itemId);
     return;
   }
   const purchaseToken=response.details&&(response.details.purchaseToken||response.details.token);

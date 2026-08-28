@@ -540,57 +540,79 @@ Node ni JDK. Pasos:
 
    **🔴 Bloqueo actual, sin resolver:** con el `sku` ya arreglado, la compra real en el
    celular tira ahora **`NotSupportedError: The payment method
-   "https://play.google.com/billing" is not supported. (code 9)`**. El "code 9" es un
-   código propio de Google Play Billing = `FEATURE_NOT_SUPPORTED` ("esta función de
-   facturación no está soportada"). Esto ya no parece un bug de `index.html`.
+   "https://play.google.com/billing" is not supported. (code 9)`**.
 
-   **Investigación de gabinete hecha (29/8/2026), sin acceso al celular real — descarta
-   una hipótesis y suma una pista más concreta:**
-   - **La hipótesis de "PWABuilder arma mal el puente" queda descartada.** Se revisó el
-     código fuente público de `pwabuilder-google-play` (el servicio que corre
-     PWABuilder en la nube, que por dentro usa Bubblewrap igual que nosotros lo
-     haríamos a mano) — archivo `build/bubbleWrapper.ts`, función `createTwaManifest`:
-     cuando el pedido trae `features.playBilling.enabled=true`, el código arma
-     automáticamente `alphaDependencies:{enabled:true}` también. O sea, activar el
-     toggle "Google Play Billing" en PWABuilder produce el **mismo** `twa-manifest.json`
-     que armaríamos a mano con Bubblewrap (`alphaDependencies` + `playBilling` juntos).
-     **Conclusión: regenerar con Bubblewrap en vez de PWABuilder probablemente NO
-     cambie nada**, porque de fondo arman la misma configuración y la misma librería
-     nativa. No vale la pena gastar tiempo en esa migración como primer paso.
-   - **Pista nueva, más prometedora:** Google puso una fecha límite (31/8/2025,
-     prorrogable a mano hasta 1/11/2025, ya vencida hace rato) exigiendo que toda
-     integración de Play Billing —Bubblewrap/TWA incluido— use **Play Billing Library
-     7.0.0 o superior**, que en el mundo TWA se traduce en la dependencia
-     `com.google.androidbrowserhelper:billing` en versión **1.1.0 o superior**. Hubo un
-     reporte de bug abierto en el propio PWABuilder pidiendo justo esa actualización
-     (issue #5019, de julio 2025, ya cerrado — probablemente arreglado, pero no
-     confirmado con certeza). Si por algún motivo el `.aab` que armó PWABuilder el
-     19/8/2026 quedó con una versión vieja de esa librería, el síntoma esperable es
-     exactamente "función de facturación no soportada" — porque Google Play, del otro
-     lado, ya no atiende builds con la librería vieja. Esto no está confirmado todavía,
-     pero es más chequeable que la hipótesis del puente.
-   - **Límite real y ya confirmado (no cambia con nada de lo de arriba):** una
-     suscripción con más de un plan base (nuestro caso: mensual + anual) solo se puede
-     comprar desde una TWA por el plan marcado "compatible con versiones anteriores" —
-     confirmado con el issue #830 de Bubblewrap en GitHub, con el mismo reclamo de otro
-     desarrollador. Esto ya lo teníamos resuelto (mostramos un solo plan cuando aplica).
-   - También puede ser un tema de que la suscripción usa el modelo nuevo de **"planes
-     base y ofertas"** de Play Console en sí (más allá de la librería) — sigue sin
-     descartarse del todo, pero es más difícil de confirmar que el punto de la librería.
-   - **Próximos pasos concretos para retomar (en este orden, de más fácil a más
-     costoso):** (a) confirmar la versión real de `androidbrowserhelper:billing` que
-     trae el `.aab` publicado — se puede ver desabriendo el `.aab` (es un zip) y mirando
-     las dependencias, o simplemente regenerando de nuevo en PWABuilder (por si el
-     servicio actualizó su plantilla desde el 19/8) y repitiendo la prueba de compra
-     antes de tocar nada más; (b) si sigue fallando, probar en un segundo dispositivo
-     Android para descartar un tema puntual del celular de prueba (Play Store
-     desactualizado en ese equipo específico, caché de Play Store); (c) recién como
-     último recurso, migrar a Bubblewrap — no porque se espere que solucione el "code
-     9" (ver arriba, probablemente no), sino porque da más control para pisar a mano la
-     versión de la librería si (a) confirma que ese es el problema; (d) si nada de esto
-     destraba, escalar el caso a los foros de Google (Play Console → Ayuda, o el
-     repositorio de GitHub `GoogleChrome/android-browser-helper`) con el error exacto,
-     la versión del `.aab` y del `androidbrowserhelper`.
+   ⚠️ **CORRECCIÓN IMPORTANTE (29/8/2026): el "code 9" NO es de Google Play.** Se había
+   anotado que era `FEATURE_NOT_SUPPORTED` de Play Billing, y eso mandó a investigar el
+   `.aab` al pedo. Verificado contra la documentación oficial de Android:
+   `FEATURE_NOT_SUPPORTED` vale **−2**, y **ningún** código de Play Billing vale 9. El 9
+   sale de `describeError()` en `index.html`, que imprime `e.code`: para un
+   `DOMException` ese campo es el código viejo del estándar web, donde
+   `NotSupportedError` = 9. O sea, el "(code 9)" es simplemente la forma numérica de
+   "NotSupportedError" y no agrega información ninguna. El error real es el texto pelado:
+   **Chrome dice que no encuentra quién atienda el método de pago de Google Play.**
+   (Se dejó un comentario en `describeError()` avisando esto, para no volver a caer.)
+
+   **✅ EL `.aab` PUBLICADO ESTÁ PERFECTO — verificado abriéndolo (29/8/2026). NO hay
+   que regenerarlo, ni con PWABuilder ni con Bubblewrap.** Se abrió el archivo
+   `Agenda Docente.aab` de la carpeta de Drive (un `.aab` es un zip: se descomprime y se
+   leen `BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.pb` y
+   `base/manifest/AndroidManifest.xml`). Es el build publicado: `versionName 1.0.1.0`,
+   `package com.estudioam.agendadocente`, `targetSdk 36`. Trae **todo** lo que hace falta:
+   - `com.google.androidbrowserhelper:billing:1.2.0` (el mínimo exigido era 1.1.0) ✅
+   - `com.android.billingclient:billing:8.3.0` (el mínimo exigido era 7.0.0) ✅
+   - `com.google.androidbrowserhelper:androidbrowserhelper:2.7.0-alpha02` — la versión
+     *alpha*, o sea que PWABuilder efectivamente prendió `alphaDependencies` ✅
+   - permiso `com.android.vending.BILLING` ✅
+   - `...playbilling.provider.PaymentActivity` y `...playbilling.provider.PaymentService` ✅
+   - los filtros `org.chromium.intent.action.PAY` e `IS_READY_TO_PAY`, y el dato
+     `org.chromium.default_payment_method_name` = `https://play.google.com/billing` ✅
+
+   **Quedan descartadas de raíz, con evidencia, las dos hipótesis viejas:** (1) que
+   PWABuilder no armara el puente nativo — lo arma completo, idéntico a lo que armaría
+   Bubblewrap (además se leyó su código fuente: `pwabuilder-google-play`,
+   `build/bubbleWrapper.ts`, prende `alphaDependencies` solo cuando pedís playBilling);
+   y (2) que la librería de billing estuviera vieja — está más nueva que el mínimo.
+   **Migrar a Bubblewrap no tiene ningún sentido: produciría exactamente lo mismo.**
+
+   **Dónde queda parada la búsqueda entonces:** el paquete está bien y el código de
+   `index.html` sigue la documentación oficial al pie de la letra (se releyó
+   `playComprar()`: método `https://play.google.com/billing`, `data:{sku:itemId}`,
+   `total` presente — todo correcto). Y sabemos que el puente **funciona en parte**,
+   porque `getDigitalGoodsService()` + `getDetails()` sí devolvieron el precio real del
+   plan mensual desde Google. O sea: Play contesta cuando le preguntamos el precio, pero
+   Chrome dice no encontrar quién cobre cuando le pedimos cobrar. Eso deja como
+   sospechoso principal **el entorno del celular de prueba, no el paquete ni el código**:
+   - **Hipótesis principal: qué navegador está mostrando la app por dentro.** Una app
+     empaquetada (TWA) la dibuja el navegador predeterminado del celular, que no siempre
+     es Chrome (en Samsung suele ser Samsung Internet). Hay un reporte de otro
+     desarrollador con este mismo cuadro —Digital Goods API andando, `PaymentRequest`
+     fallando— que **se resolvió solo con poner Chrome como navegador predeterminado**
+     (PWABuilder issue #6151). Es lo más barato de probar y lo primero que hay que
+     descartar.
+   - Hipótesis secundaria: Chrome o Play Store desactualizados en ese celular puntual.
+   - Hipótesis a tener presente pero difícil de confirmar: que el modelo nuevo de
+     "planes base y ofertas" de Play Console tenga soporte incompleto en este camino de
+     compra. Ojo que el límite de "solo se puede comprar el plan marcado compatible con
+     versiones anteriores" ya está confirmado (issue #830 de Bubblewrap) y ya está
+     resuelto en el código — es otra cosa, no este bloqueo.
+
+   **Herramienta nueva para la próxima prueba (ya en el código, `APP_VER v2026.08.28-2`):**
+   cuando la compra falla, en vez de un cartelito que se va solo, ahora se abre un cuadro
+   que se queda quieto y se puede fotografiar, con cuatro datos: el error, **qué navegador
+   está mostrando la app** (`describeBrowser()`), el id del producto, y si Google Play
+   acepta el pago (`canMakePayment()`). Con una sola prueba en el celular ya se sabe si la
+   hipótesis del navegador es la buena, sin publicar otra versión ni enchufar el celu a
+   una computadora.
+
+   **Próximos pasos concretos para retomar:** (a) que la dueña abra la app actualizada en
+   el celular de prueba, toque comprar, y mande la foto de ese cuadro; (b) si ahí dice un
+   navegador que no es Chrome, poner Chrome como predeterminado en Android
+   (Configuración → Aplicaciones → Aplicaciones predeterminadas → Navegador) y repetir;
+   (c) si dice Chrome y aun así falla, probar en un segundo celular Android para
+   descartar algo puntual de ese equipo; (d) si nada destraba, escalar con el error
+   exacto y estos datos del `.aab` al repositorio `GoogleChrome/android-browser-helper`
+   en GitHub, que es donde vive el puente y donde contestan los que lo mantienen.
    - `LIC_ENFORCE` **sigue en `false`** a propósito — no lo enciendas hasta resolver
      este bloqueo y completar una compra de punta a punta de verdad. La cuenta de
      Estudio AM no sirve para probar porque está en `LIC_REGALADAS`. Ya hay una lista de
