@@ -1259,30 +1259,46 @@ const PLAY_MANAGE_URL=`https://play.google.com/store/account/subscriptions?sku=$
 
 function playBillingAvailable(){ return typeof window.getDigitalGoodsService==="function"; }
 
+// Da más detalle que e.message solo (nombre del error + código, si los
+// tiene) — un Error genérico sin mensaje se ve como "Error" a secas, que no
+// alcanza para diagnosticar nada.
+function describeError(e){
+  if(!e) return "(sin datos)";
+  const name=e.name||(e.constructor&&e.constructor.name)||"";
+  const msg=e.message||"";
+  const code=(typeof e.code==="number")?` (code ${e.code})`:"";
+  return ([name,msg].filter(Boolean).join(": ")||String(e))+code;
+}
+
 // Devuelve {service, error}: si algo falla, error queda con un texto legible
 // para mostrar en el cuadro de compra — así se puede diagnosticar un fallo
 // real de celular sin necesidad de conectarlo a una computadora.
 async function playGetService(){
   if(!playBillingAvailable()) return {service:null, error:"getDigitalGoodsService no existe en este navegador."};
   try{ return {service:await window.getDigitalGoodsService("https://play.google.com/billing"), error:null}; }
-  catch(e){ return {service:null, error:"getDigitalGoodsService falló: "+((e&&e.message)||e)}; }
+  catch(e){ return {service:null, error:"getDigitalGoodsService falló: "+describeError(e)}; }
 }
 
 // El id de ítem que la Digital Goods API espera para un plan base de una
 // suscripción no tiene un único formato estable documentado (a veces es
 // "producto:plan", a veces el id del plan solo). Probamos las dos variantes
-// y nos quedamos con la que getDetails() realmente reconozca — así no
-// dependemos de acertarle a ciegas.
+// UNA POR UNA (no todas juntas en un solo getDetails, por si Play corta todo
+// el pedido apenas un id no existe) y nos quedamos con la que responda.
 async function playGetPlanDetails(service){
   const planIds=["mensual","anual"];
-  const idToPlan={}, allIds=[];
-  planIds.forEach(p=>{ [`${PLAY_PRODUCT_ID}:${p}`,p].forEach(id=>{ idToPlan[id]=p; allIds.push(id); }); });
-  let details=[], error=null;
-  try{ details=await service.getDetails(allIds); }
-  catch(e){ error="getDetails falló: "+((e&&e.message)||e); }
-  const byPlan={};
-  (details||[]).forEach(d=>{ const p=idToPlan[d.itemId]; if(p&&!byPlan[p]) byPlan[p]=d; });
-  if(!error&&!details.length) error="getDetails no devolvió nada para: "+allIds.join(", ");
+  const byPlan={}, errors=[];
+  for(const p of planIds){
+    for(const id of [`${PLAY_PRODUCT_ID}:${p}`, p]){
+      try{
+        const details=await service.getDetails([id]);
+        if(details&&details[0]){ byPlan[p]=details[0]; break; }
+        errors.push(id+": sin resultados");
+      }catch(e){
+        errors.push(id+": "+describeError(e));
+      }
+    }
+  }
+  const error=(byPlan.mensual||byPlan.anual)?null:errors.join(" | ");
   return {byPlan, error};
 }
 
