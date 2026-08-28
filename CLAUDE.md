@@ -462,37 +462,55 @@ Node ni JDK. Pasos:
       --region=us-central1 --limit=10`) que esa notificación de prueba de Play realmente
       llegó a la función — se cortó la sesión antes de revisar ese último log.
    Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
-7. ~~Integrar en `index.html` el flujo de compra con la Digital Goods API~~ ✅ código
-   escrito (28/8/2026), **falta probarlo en el celular** — recién ahí se puede marcar
-   como terminado de verdad. Quedó así:
-   - Botón nuevo en el menú ⋯ → **"Mi suscripción"**. Si no tenés la versión completa,
-     abre el mismo cuadro de siempre (beneficios) y, si la app está corriendo empaquetada
-     (`getDigitalGoodsService` existe), agrega dos tarjetas "Mensual"/"Anual" con precio
-     real y botón de compra. Si la abrís desde el navegador, en cambio, muestra "abrí la
-     app de Play Store" con un link — **no** se puede pagar desde la web (Play Billing
-     solo funciona empaquetado, como dice más abajo en este documento).
+7. ~~Integrar en `index.html` el flujo de compra con la Digital Goods API~~ ✅ hecho y
+   **probado en el celular real** (28/8/2026). Quedó así:
+   - Botón en el menú ⋯ → **"Mi suscripción"**. Si no tenés la versión completa, abre el
+     cuadro de siempre (beneficios) y, si la app está corriendo empaquetada
+     (`getDigitalGoodsService` existe), busca los planes disponibles y muestra tarjeta(s)
+     con precio real y botón de compra. Si la abrís desde el navegador, en cambio,
+     muestra "abrí la app de Play Store" con un link — no se puede pagar desde la web.
    - Al comprar: pide iniciar sesión con `fbSignIn()` (Firebase, si no lo hizo antes),
      dispara el cuadro de pago nativo con `PaymentRequest` + `https://play.google.com/billing`,
      y al confirmar llama a la Cloud Function `verifyPurchase` con el `purchaseToken`
-     para dar acceso inmediato. `verifyPurchase` ahora también hace el
-     **acknowledge** de la suscripción (`purchases.subscriptions.acknowledge`), que
-     Google exige dentro de las 72 hs o reembolsa sola — antes faltaba, ya está sumado.
-   - **Ojo, esto quedó sin poder probarse de punta a punta**: la Digital Goods API
-     (`getDigitalGoodsService`) solo existe corriendo *adentro* de la app empaquetada
-     (TWA) en un celular Android real — no en una compu, ni en Chrome de escritorio, ni
-     en este entorno de trabajo. Tampoco hay forma de confirmar acá el formato exacto
-     del "item id" que Play espera para un plan base de una suscripción (la
-     documentación de Google no lo deja 100% claro); el código prueba dos formatos
-     (`agenda_completa:mensual` y `mensual` solo) y usa el que Play reconozca, pero
-     **la prueba real recién se puede hacer con el próximo `.aab` instalado en un
-     celular**, tocando "Mi suscripción" y viendo si aparecen los precios.
-   - Por eso `LIC_ENFORCE` **se dejó en `false`** a propósito — no lo prendas hasta
-     haber probado la compra de verdad en el celular. Ojo: la cuenta de Estudio AM no
-     sirve para esa prueba porque ya está en `LIC_REGALADAS` (el cuadro le va a decir
-     "ya tenés la completa", sin llegar a mostrar los planes). Para probar la compra sin
-     que se cobre de verdad hace falta cargar una cuenta de Gmail distinta como
-     **"license tester"** en Play Console (Configuración → Cuentas de prueba de
-     licencias) — con esa cuenta, Play muestra los planes reales pero simula el pago.
+     para dar acceso inmediato. `verifyPurchase` también hace el **acknowledge** de la
+     suscripción (`purchases.subscriptions.acknowledge`), que Google exige dentro de las
+     72 hs o reembolsa sola.
+   - **Hallazgo importante (28/8/2026), confirmado en el celular y con un reporte
+     idéntico de otro desarrollador a Google (issue de Bubblewrap #830):** comprando
+     desde la Digital Goods API dentro de una TWA, Google Play **hoy solo deja comprar
+     el plan marcado como "Compatible con versiones anteriores"** en la consola de Play
+     — no los dos. El otro plan existe, está activo, pero no aparece como comprable por
+     esta vía. No es un bug de la app, es una limitación real y actual de esta
+     tecnología (no de la Play Store nativa — ahí si algún día se vende la app afuera de
+     una TWA no pasaría esto).
+     - Con la config actual, el plan comprable es el **mensual** (`agenda_completa`,
+       consultado con su id solo — sin plan — que es lo que Play reconoce; el código
+       identifica cuál es por la duración que informa Google). El anual quedó
+       configurado pero no comprable desde la app por ahora.
+     - `licPaywall()` ya lo maneja bien: si solo hay un plan disponible, muestra una
+       sola tarjeta con una nota chica y neutra explicándolo (no un error) — si algún
+       día Google habilita los dos, la grilla de dos columnas vuelve sola sin tocar
+       código.
+     - **Pendiente de decisión (no técnica, es de la dueña):** ¿dejar así por ahora
+       (solo vender el mensual desde la app, y sumar el anual el día que Google lo
+       permita), o cambiar cuál plan está marcado "Compatible con versiones anteriores"
+       en Play Console (Monetiza con Play → Productos → Suscripciones →
+       `agenda_completa` → planes base) para vender el anual en su lugar? Cambiarlo no
+       tiene costo técnico, es un toggle en la consola — pero ojo, sea cual sea el que
+       se elija, el otro sigue sin poderse comprar desde la app hasta que Google
+       resuelva esto.
+   - Si en algún test futuro **el diagnóstico en el cuadro de compra muestra texto en
+     rojo** (no la nota gris de "un solo plan"), es un error real (de conexión, de
+     configuración) — copiarlo tal cual para poder diagnosticarlo, la función
+     `describeError()` en `index.html` está pensada para dar detalle suficiente sin
+     depurar por USB.
+   - `LIC_ENFORCE` **sigue en `false`** a propósito — falta decidir el punto de arriba
+     (mensual vs. anual) y probar la compra de punta a punta con una cuenta de prueba
+     antes de encenderlo. La cuenta de Estudio AM no sirve para esa prueba porque ya
+     está en `LIC_REGALADAS` (el cuadro le va a decir "ya tenés la completa", sin
+     mostrar planes). Para probar sin que cobre de verdad hace falta cargar una cuenta
+     de Gmail distinta como **"license tester"** en Play Console (Configuración →
+     Cuentas de prueba de licencias).
 8. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
    —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
    paralelo, no bloquea nada.
