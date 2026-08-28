@@ -814,6 +814,11 @@ Node ni JDK. Pasos:
    cargar una tarjeta real. O sea que la compra **todavía no se completó de punta a punta**.
    Ojo: esas pantallas de pago **no se pueden fotografiar** (Android bloquea la captura y
    sale toda negra), así que no pedirle capturas de ahí — que lo cuente con palabras.
+   **Dato del celular de prueba (Motorola de la dueña), por si explica algo más adelante:
+   tiene DOS perfiles (personal y de trabajo), o sea dos Google Play Store instaladas.**
+   Por eso Play Store le ofrece "Cambiar a Play Store (personal)". Al limpiar caché hay que
+   hacerlo en las dos. Si alguna vez algo se comporta distinto entre "la app que veo" y "la
+   cuenta que paga", mirar esto antes que nada.
    Lo siguiente a probar, en orden: (a) borrar la caché de Google Play Store en el celular
    (Ajustes → Aplicaciones → Google Play Store → Almacenamiento → Borrar caché), y si no
    alcanza, "Borrar datos"; (b) esperar — lo de probadores de licencia puede tardar en
