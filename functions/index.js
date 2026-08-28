@@ -39,6 +39,33 @@ function isActive(subscriptionState) {
   );
 }
 
+// Google exige "reconocer" (acknowledge) toda compra de suscripción dentro de
+// los 3 días o la reembolsa y anula sola. subscriptionsv2 no tiene un método
+// de acknowledge propio: se hace con el endpoint clásico
+// purchases.subscriptions.acknowledge, que ya no pide subscriptionId como
+// obligatorio, pero se lo pasamos igual (lineItems[0].productId, que es lo
+// que reemplazó al subscriptionId viejo) por compatibilidad.
+async function acknowledgeIfNeeded(purchaseToken, subscription) {
+  if (subscription.acknowledgementState === "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") {
+    return;
+  }
+  const publisher = getAndroidPublisher();
+  const productId = subscription.lineItems?.[0]?.productId;
+  try {
+    await publisher.purchases.subscriptions.acknowledge({
+      packageName: PACKAGE_NAME,
+      subscriptionId: productId,
+      token: purchaseToken,
+    });
+  } catch (e) {
+    // No cortamos verifyPurchase por esto: el estado ya se guardó en
+    // Firestore igual. Si ya estaba reconocida o el nombre del campo de
+    // arriba no era exactamente ese, esto solo reintenta un acknowledge
+    // que puede no hacer falta — no hay daño en pedirlo de más.
+    console.error("No se pudo confirmar (acknowledge) la suscripción", e);
+  }
+}
+
 async function saveSubscriptionState(uid, purchaseToken, subscription) {
   const state = subscription.subscriptionState;
   const expiryTime =
@@ -78,6 +105,7 @@ exports.verifyPurchase = onCall(
 
     const subscription = await fetchSubscription(purchaseToken);
     await saveSubscriptionState(request.auth.uid, purchaseToken, subscription);
+    await acknowledgeIfNeeded(purchaseToken, subscription);
 
     return { status: isActive(subscription.subscriptionState) ? "active" : "inactive" };
   }

@@ -697,6 +697,11 @@
         <span>Restaurar desde un archivo<small>Cargar una copia que hayas guardado antes</small></span>
       </button>
       <hr>
+      <button class="sheet-item" id="actSuscripcion">
+        <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.9.9-5 4.8 1.2 6.9L12 17.6l-6 3.3 1.2-6.9-5-4.8 6.9-.9z"/></svg></span>
+        <span>Mi suscripción<small id="subEstadoTxt">Versión gratis</small></span>
+      </button>
+      <hr>
       <button class="sheet-item" id="actAyuda">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
         <span>Ayuda e instrucciones<small>Cómo usar la Agenda Docente</small></span>
@@ -1204,10 +1209,22 @@ const LIC_REGALADAS=[
   "e88602ff4db038b3d5f872a8f4a535f9da5db508c267d224c32ed87592cefb9b", // cuenta de Estudio AM
 ];
 let lic={plan:"gratis",email:null};
+// Si Firebase confirma una suscripción activa (subscriptions/{uid}.status==="active"
+// en Firestore, ver el <script type="module"> al final del archivo), esta bandera
+// se prende sola vía el evento "subscription-status" — no hace falta recargar.
+let fbSubActive=false;
+window.addEventListener("subscription-status",e=>{
+  fbSubActive=!!(e.detail&&e.detail.status==="active");
+  if(typeof render==="function") render();
+});
 
 function licLoad(){ try{ const raw=localStorage.getItem("lic"); if(raw) lic=Object.assign(lic,JSON.parse(raw)); }catch(e){} }
 function licSave(){ try{ localStorage.setItem("lic",JSON.stringify(lic)); }catch(e){} }
-function licIsFull(){ return !LIC_ENFORCE||lic.plan==="completa"; }
+function licIsFull(){ return !LIC_ENFORCE||lic.plan==="completa"||fbSubActive; }
+// A diferencia de licIsFull() (que da todo libre mientras LIC_ENFORCE esté
+// apagado), esto dice si la cuenta tiene de verdad un plan pago o regalado —
+// lo usan el paywall y el menú para mostrar el estado real, no el candado.
+function licTienePlanPago(){ return lic.plan==="completa"||fbSubActive; }
 // Los archivados no cuentan: son cursos de años anteriores, no ocupan lugar.
 function licGroupCount(){ return state.groups.filter(g=>!g.archived).length; }
 // Ojo: esto solo frena cursos nuevos. A quien ya tenga varios cargados no se le
@@ -1230,8 +1247,92 @@ async function licRefresh(){
   licSave();
 }
 
-function licPaywall(){
-  const conectada=!!gd.email;
+/* ============ Compra (Google Play Billing) ============
+   Solo funciona adentro de la app empaquetada (TWA) — la Digital Goods API
+   no existe en un navegador común. En la web mostramos un cartel para
+   descargarla de Play Store en lugar de un flujo de pago in-situ, porque
+   Play Billing solo se puede usar dentro de la app. */
+const PLAY_PACKAGE="com.estudioam.agendadocente";
+const PLAY_PRODUCT_ID="agenda_completa";
+const PLAY_STORE_URL=`https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}`;
+const PLAY_MANAGE_URL=`https://play.google.com/store/account/subscriptions?sku=${PLAY_PRODUCT_ID}&package=${PLAY_PACKAGE}`;
+
+function playBillingAvailable(){ return typeof window.getDigitalGoodsService==="function"; }
+
+async function playGetService(){
+  if(!playBillingAvailable()) return null;
+  try{ return await window.getDigitalGoodsService("https://play.google.com/billing"); }
+  catch(e){ return null; }
+}
+
+// El id de ítem que la Digital Goods API espera para un plan base de una
+// suscripción no tiene un único formato estable documentado (a veces es
+// "producto:plan", a veces el id del plan solo). Probamos las dos variantes
+// y nos quedamos con la que getDetails() realmente reconozca — así no
+// dependemos de acertarle a ciegas.
+async function playGetPlanDetails(service){
+  const planIds=["mensual","anual"];
+  const idToPlan={}, allIds=[];
+  planIds.forEach(p=>{ [`${PLAY_PRODUCT_ID}:${p}`,p].forEach(id=>{ idToPlan[id]=p; allIds.push(id); }); });
+  let details=[];
+  try{ details=await service.getDetails(allIds); }catch(e){ details=[]; }
+  const byPlan={};
+  (details||[]).forEach(d=>{ const p=idToPlan[d.itemId]; if(p&&!byPlan[p]) byPlan[p]=d; });
+  return byPlan;
+}
+
+function playFormatPrice(item){
+  if(!item||!item.price) return "";
+  try{ return new Intl.NumberFormat("es-AR",{style:"currency",currency:item.price.currency}).format(Number(item.price.value)); }
+  catch(e){ return `${item.price.value} ${item.price.currency}`; }
+}
+
+async function playComprar(itemId){
+  const service=await playGetService();
+  if(!service){ toast("No se pudo conectar con Google Play"); return; }
+  if(!window.fbUser){
+    try{ await window.fbSignIn(); }
+    catch(e){ toast("Hace falta iniciar sesión con Google para suscribirte"); return; }
+  }
+  let response;
+  try{
+    const request=new PaymentRequest(
+      [{supportedMethods:"https://play.google.com/billing", data:{itemId}}],
+      {total:{label:"Total", amount:{currency:"USD", value:"0"}}}
+    );
+    response=await request.show();
+  }catch(e){
+    if(e&&e.name==="AbortError") return; // canceló el cuadro de pago
+    toast("No se pudo iniciar la compra");
+    return;
+  }
+  const purchaseToken=response.details&&(response.details.purchaseToken||response.details.token);
+  try{ await response.complete("success"); }catch(e){}
+  if(!purchaseToken||!window.fbVerifyPurchase){
+    toast("La compra se hizo pero no se pudo confirmar sola. Escribinos a estudioam.dev@gmail.com.");
+    return;
+  }
+  try{
+    await window.fbVerifyPurchase(purchaseToken);
+    closeDlg();
+    toastSuccess("¡Listo! Ya tenés la versión completa","var(--present-ink)");
+  }catch(e){
+    toast("La compra se hizo pero no se pudo confirmar. Escribinos a estudioam.dev@gmail.com y lo resolvemos.");
+  }
+}
+
+async function licPaywall(){
+  if(licTienePlanPago()){
+    openDlg("Tu suscripción",`<div style="font-size:14.5px;line-height:1.6;color:var(--ink);">
+        <p style="margin:0 0 12px;">Ya tenés la <strong>versión completa</strong>.</p>
+        <p style="font-size:13px;color:var(--muted);margin:0;">Para cambiar de plan o cancelar, abrí Play Store → tocá tu foto de perfil → Pagos y suscripciones.</p>
+      </div>
+      <div class="dlg-actions"><button class="btn subtle" id="lic_close">Cerrar</button><a class="btn" style="text-decoration:none;" href="${PLAY_MANAGE_URL}" target="_blank" rel="noopener">Administrar</a></div>`);
+    $("#lic_close").onclick=closeDlg;
+    return;
+  }
+
+  const enTWA=playBillingAvailable();
   openDlg("Versión completa",`<div style="font-size:14.5px;line-height:1.6;color:var(--ink);">
       <p style="margin:0 0 12px;">La versión gratis te deja llevar <strong>un curso</strong>. Para cargar todos los tuyos necesitás la versión completa.</p>
       <div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:12px 14px;margin-bottom:14px;">
@@ -1243,16 +1344,35 @@ function licPaywall(){
           · Respaldo en tu Google Drive
         </div>
       </div>
-      ${conectada?"":`<p style="font-size:13px;color:var(--muted);margin:0 0 12px;">Para activarla vas a tener que conectar tu cuenta de Google desde el menú — es así como la app sabe que la licencia es tuya.</p>`}
+      ${enTWA?`<div class="typegrid" id="lic_plans">
+        <button type="button" class="typecard" data-plan="mensual"><span class="typecard-ic">📅</span><span class="typecard-lbl">Mensual<br><b id="lic_price_mensual">…</b></span></button>
+        <button type="button" class="typecard" data-plan="anual"><span class="typecard-ic">🗓️</span><span class="typecard-lbl">Anual<br><b id="lic_price_anual">…</b></span></button>
+      </div>
+      <p style="font-size:12.5px;color:var(--faint);margin:8px 0 0;">Se cobra por Google Play, con la cuenta de Google con la que abriste la app.</p>`
+      :`<p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Para suscribirte, abrí la app instalada desde Play Store — el pago no está disponible desde el navegador.</p>`}
     </div>
-    <div class="dlg-actions"><button class="btn subtle" id="lic_cancel">Ahora no</button><button class="btn" id="lic_ok">Quiero la completa</button></div>`);
+    <div class="dlg-actions">
+      <button class="btn subtle" id="lic_cancel">Ahora no</button>
+      ${enTWA?"":`<a class="btn" style="text-decoration:none;" href="${PLAY_STORE_URL}" target="_blank" rel="noopener">Abrir en Play Store</a>`}
+    </div>`);
   $("#lic_cancel").onclick=closeDlg;
-  $("#lic_ok").onclick=()=>{
-    const asunto=encodeURIComponent("Quiero la versión completa de Agenda Docente");
-    const cuerpo=encodeURIComponent(`Hola! Quiero la versión completa.\n\nMi cuenta de Google: ${gd.email||"(la conecto y te la paso)"}\n`);
-    location.href=`mailto:estudioam.dev@gmail.com?subject=${asunto}&body=${cuerpo}`;
-    closeDlg();
-  };
+
+  if(enTWA){
+    const service=await playGetService();
+    const byPlan=service?await playGetPlanDetails(service):{};
+    ["mensual","anual"].forEach(p=>{
+      const el=$("#lic_price_"+p);
+      if(el) el.textContent=byPlan[p]?playFormatPrice(byPlan[p]):"—";
+    });
+    const plansEl=$("#lic_plans");
+    if(plansEl) plansEl.querySelectorAll(".typecard").forEach(btn=>{
+      btn.onclick=()=>{
+        const item=byPlan[btn.dataset.plan];
+        if(!item){ toast("No se pudo cargar el precio de este plan. Probá de nuevo en un momento."); return; }
+        playComprar(item.itemId);
+      };
+    });
+  }
 }
 
 /* ============ Data ops ============ */
@@ -6329,11 +6449,16 @@ function promptAyuda(startTab){
   if(typeof startTab==="string"){ const b=document.querySelector(`#ayudaTabs .tab[data-tab="${startTab}"]`); if(b) b.click(); }
 }
 
-function openMenu(){ $("#menuScrim").classList.add("open"); ["bnInicio","bnEventos","bnPapelera"].forEach(id=>$("#"+id).classList.remove("on")); }
+function openMenu(){
+  $("#menuScrim").classList.add("open");
+  ["bnInicio","bnEventos","bnPapelera"].forEach(id=>$("#"+id).classList.remove("on"));
+  const subTxt=$("#subEstadoTxt"); if(subTxt) subTxt.textContent=licTienePlanPago()?"Versión completa":"Versión gratis";
+}
 function closeMenu(){ $("#menuScrim").classList.remove("open"); wireBottomNav(); }
 $("#menuBackBtn").onclick=closeMenu;
 $("#menuBtn").onclick=openMenu;
 const actAyudaBtn=$("#actAyuda"); if(actAyudaBtn) actAyudaBtn.onclick=promptAyuda;
+const actSuscripcionBtn=$("#actSuscripcion"); if(actSuscripcionBtn) actSuscripcionBtn.onclick=()=>{ closeMenu(); licPaywall(); };
 $("#reloadBtn").onclick=()=>{ location.reload(); };
 $("#actBackup").onclick=backup;
 $("#actRestore").onclick=restoreFromDrive;
@@ -6777,6 +6902,7 @@ if("serviceWorker" in navigator){
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
   import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-functions.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBxDVr9MfxKBDwuT1o-zz97JvW1zMoLOzY",
@@ -6790,6 +6916,7 @@ if("serviceWorker" in navigator){
   const fbApp = initializeApp(firebaseConfig);
   const fbAuth = getAuth(fbApp);
   const fbDb = getFirestore(fbApp);
+  const fbFunctions = getFunctions(fbApp);
 
   let unsubSubscription = null;
 
@@ -6799,6 +6926,7 @@ if("serviceWorker" in navigator){
   }
 
   onAuthStateChanged(fbAuth, (user) => {
+    window.fbUser = user || null;
     if (unsubSubscription) { unsubSubscription(); unsubSubscription = null; }
     if (!user) { applySubscriptionStatus("inactive"); return; }
     unsubSubscription = onSnapshot(doc(fbDb, "subscriptions", user.uid), (snap) => {
@@ -6811,6 +6939,14 @@ if("serviceWorker" in navigator){
     return result.user;
   };
   window.fbSignOut = () => signOut(fbAuth);
+
+  // Se llama justo después de que la app completa una compra con la Digital
+  // Goods API, para dar acceso inmediato sin esperar el webhook de Play (RTDN).
+  window.fbVerifyPurchase = async function fbVerifyPurchase(purchaseToken){
+    const verifyPurchase = httpsCallable(fbFunctions, "verifyPurchase");
+    const result = await verifyPurchase({ purchaseToken });
+    return result.data;
+  };
 </script>
 </body>
 </html>

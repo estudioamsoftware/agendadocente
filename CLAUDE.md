@@ -448,10 +448,37 @@ Node ni JDK. Pasos:
       --region=us-central1 --limit=10`) que esa notificación de prueba de Play realmente
       llegó a la función — se cortó la sesión antes de revisar ese último log.
    Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
-7. Integrar en `index.html` el flujo de compra con la Digital Goods API
-   (`getDigitalGoodsService('https://play.google.com/billing')`), usando el ID de producto
-   `agenda_completa` y los planes `mensual`/`anual`. Llamar a `verifyPurchase` tras la
-   compra, y recién ahí encender `LIC_ENFORCE`.
+7. ~~Integrar en `index.html` el flujo de compra con la Digital Goods API~~ ✅ código
+   escrito (28/8/2026), **falta probarlo en el celular** — recién ahí se puede marcar
+   como terminado de verdad. Quedó así:
+   - Botón nuevo en el menú ⋯ → **"Mi suscripción"**. Si no tenés la versión completa,
+     abre el mismo cuadro de siempre (beneficios) y, si la app está corriendo empaquetada
+     (`getDigitalGoodsService` existe), agrega dos tarjetas "Mensual"/"Anual" con precio
+     real y botón de compra. Si la abrís desde el navegador, en cambio, muestra "abrí la
+     app de Play Store" con un link — **no** se puede pagar desde la web (Play Billing
+     solo funciona empaquetado, como dice más abajo en este documento).
+   - Al comprar: pide iniciar sesión con `fbSignIn()` (Firebase, si no lo hizo antes),
+     dispara el cuadro de pago nativo con `PaymentRequest` + `https://play.google.com/billing`,
+     y al confirmar llama a la Cloud Function `verifyPurchase` con el `purchaseToken`
+     para dar acceso inmediato. `verifyPurchase` ahora también hace el
+     **acknowledge** de la suscripción (`purchases.subscriptions.acknowledge`), que
+     Google exige dentro de las 72 hs o reembolsa sola — antes faltaba, ya está sumado.
+   - **Ojo, esto quedó sin poder probarse de punta a punta**: la Digital Goods API
+     (`getDigitalGoodsService`) solo existe corriendo *adentro* de la app empaquetada
+     (TWA) en un celular Android real — no en una compu, ni en Chrome de escritorio, ni
+     en este entorno de trabajo. Tampoco hay forma de confirmar acá el formato exacto
+     del "item id" que Play espera para un plan base de una suscripción (la
+     documentación de Google no lo deja 100% claro); el código prueba dos formatos
+     (`agenda_completa:mensual` y `mensual` solo) y usa el que Play reconozca, pero
+     **la prueba real recién se puede hacer con el próximo `.aab` instalado en un
+     celular**, tocando "Mi suscripción" y viendo si aparecen los precios.
+   - Por eso `LIC_ENFORCE` **se dejó en `false`** a propósito — no lo prendas hasta
+     haber probado la compra de verdad en el celular. Ojo: la cuenta de Estudio AM no
+     sirve para esa prueba porque ya está en `LIC_REGALADAS` (el cuadro le va a decir
+     "ya tenés la completa", sin llegar a mostrar los planes). Para probar la compra sin
+     que se cobre de verdad hace falta cargar una cuenta de Gmail distinta como
+     **"license tester"** en Play Console (Configuración → Cuentas de prueba de
+     licencias) — con esa cuenta, Play muestra los planes reales pero simula el pago.
 8. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
    —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
    paralelo, no bloquea nada.
