@@ -421,9 +421,27 @@ Node ni JDK. Pasos:
    servicio), en Google Cloud Console → Facturación → Presupuestos y alertas.
    ~~Crear el secreto `PLAY_SERVICE_ACCOUNT`~~ ✅ hecho (28/8/2026) — ver el bloque nuevo
    más abajo con el detalle de la cuenta de servicio.
-   Falta todavía: desplegar `functions/` (`firebase deploy --only functions`), configurar
-   RTDN en Play Console apuntando a la URL
-   de `playRtdn`. Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
+   ~~Desplegar `functions/`~~ ✅ hecho (28/8/2026) desde Google Cloud Shell (sin instalar
+   nada en la compu de la dueña — `git clone` del repo, `npm install -g firebase-tools`,
+   `firebase login --no-localhost`, `firebase deploy --only functions --project
+   agenda-docente-8c53d`). Las dos funciones están corriendo:
+   - `verifyPurchase`: callable, sin URL pública.
+   - `playRtdn`: `https://us-central1-agenda-docente-8c53d.cloudfunctions.net/playRtdn`
+   Falta todavía: **configurar RTDN en Play Console** — esto no es tan directo como decía
+   antes esta nota. Play no manda las notificaciones directo a la URL de la función: hace
+   falta un tema de **Pub/Sub** en el medio. Pasos (sin hacer todavía):
+   1. Crear un tema de Pub/Sub en el proyecto `agenda-docente-8c53d` (ej. `play-rtdn`).
+   2. Darle permiso de publicar en ese tema a la cuenta de servicio de Google Play:
+      `google-play-developer-notifications@system.gserviceaccount.com` (rol "Publicador
+      de Pub/Sub").
+   3. Crear una **suscripción de tipo push** sobre ese tema, con el extremo de push
+      apuntando a la URL de `playRtdn` de arriba — recién ahí las notificaciones de Play
+      llegan a la función (el código de `playRtdn` ya espera exactamente el formato que
+      manda una suscripción push de Pub/Sub).
+   4. En Play Console → Monetizar → Configuración de monetización → notificaciones en
+      tiempo real, cargar el nombre completo del tema:
+      `projects/agenda-docente-8c53d/topics/play-rtdn`.
+   Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
 7. Integrar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`), usando el ID de producto
    `agenda_completa` y los planes `mensual`/`anual`. Llamar a `verifyPurchase` tras la
