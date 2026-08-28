@@ -274,6 +274,18 @@ unificar los dos enfoques:
 ### Decisiones tomadas sobre la venta
 
 - Se vende **por Play Store**, no por afuera ("por fuera nadie la toma en serio").
+- **Salir de la prueba interna y pasar a prueba abierta / pública (decidido 29/8/2026).**
+  En cuanto se confirme que la compra funciona de punta a punta, hay que sacar la app de
+  la pista de **prueba interna**. Motivo, en palabras de la dueña: si le pasa un link a
+  una profe y esa profe **ya tiene problemas para bajar la app**, no va a llegar nunca a
+  probarla ni a aprobarla. La prueba interna obliga a anotar cada mail a mano y a que cada
+  una acepte una invitación antes de poder instalar — fricción fatal para conseguir que
+  una docente la pruebe. En prueba abierta (o producción) se les pasa un link de Play
+  Store común y la instalan como cualquier app, sin listas ni invitaciones.
+  Para poder pasar hace falta **terminar la ficha de Play Store** (descripción, capturas
+  —ya están en `play-store-assets/`—, clasificación de contenido), que iba en "2 de 11
+  tareas" y hay que completar igual antes de vender. Es el próximo tema grande después de
+  la compra.
 - Modelo: **gratis con límite de cursos, versión completa paga**. Se descartó la app paga
   de entrada porque nadie compra a ciegas una herramienta de uso diario.
 - **Cobro: Google Play Billing únicamente.** Se descartó Mercado Pago porque Google exige
