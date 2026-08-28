@@ -383,6 +383,27 @@ Node ni JDK. Pasos:
 - Clasificación por edad del producto: sin especificar (ese campo solo aplica a ciertos
   estados de EE.UU., no afecta a Argentina).
 
+### La cuenta de servicio para `PLAY_SERVICE_ACCOUNT` (creada 28/8/2026)
+
+- **Cuenta de servicio:** `play-store-api@agenda-docente-8c53d.iam.gserviceaccount.com`,
+  creada en Google Cloud Console (proyecto `agenda-docente-8c53d`, IAM y administración →
+  Cuentas de servicio). Sin roles de IAM asignados en Cloud — no los necesita.
+- **Clave JSON descargada** y guardada en la carpeta de Drive de la dueña junto con el
+  `signing.keystore` (mismo criterio: nunca commitear al repo).
+- **Invitada en Play Console** (Usuarios y permisos → Invitar a un usuario) con **un solo
+  permiso**: "Ver los datos financieros" sobre la app Agenda Docente. A propósito no se le
+  dio "Administrar los pedidos y las suscripciones" — las funciones (`verifyPurchase`,
+  `playRtdn`) solo necesitan leer el estado, no reembolsar ni cancelar.
+- **El secreto ya está cargado** en Secret Manager (Google Cloud Console → Seguridad →
+  Secret Manager → `PLAY_SERVICE_ACCOUNT`, proyecto `agenda-docente-8c53d`), subiendo el
+  archivo JSON directo desde el navegador — no hizo falta la Firebase CLI para este paso.
+  `defineSecret("PLAY_SERVICE_ACCOUNT")` en `functions/index.js` lo va a encontrar solo en
+  el momento del deploy, sin volver a tocar nada de esto.
+- **Nota para la pantalla de "Acceso a la API" de Play Console:** en esta versión de Play
+  Console esa pantalla clásica no aparece ni en "Usuarios y permisos" ni en "Configuración"
+  — se resolvió igual armando la cuenta de servicio directo en Google Cloud e invitándola
+  como "usuario" en Play Console con el permiso puntual.
+
 ### Pendientes en orden (actualizado 27/8/2026 — el orden cambió)
 
 1. ~~Revisar y juntar las dos ramas~~ ✅ hecho.
@@ -398,8 +419,10 @@ Node ni JDK. Pasos:
    que ya tenía la dueña de otro proyecto. Se armó además una alerta de presupuesto en $0
    para el proyecto `agenda-docente-8c53d` específicamente (solo alertas, no corta el
    servicio), en Google Cloud Console → Facturación → Presupuestos y alertas.
-   Falta todavía: crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar `functions/`
-   (`firebase deploy --only functions`), configurar RTDN en Play Console apuntando a la URL
+   ~~Crear el secreto `PLAY_SERVICE_ACCOUNT`~~ ✅ hecho (28/8/2026) — ver el bloque nuevo
+   más abajo con el detalle de la cuenta de servicio.
+   Falta todavía: desplegar `functions/` (`firebase deploy --only functions`), configurar
+   RTDN en Play Console apuntando a la URL
    de `playRtdn`. Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
 7. Integrar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`), usando el ID de producto
