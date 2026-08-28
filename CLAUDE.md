@@ -264,12 +264,10 @@ unificar los dos enfoques:
   consola de Firestore (pestaña Reglas) — si se vuelve a tocar `firestore.rules`, hay que
   repetir el pegado a mano o desplegar con `firebase deploy --only firestore:rules`.
 - **Authentication:** proveedor Google habilitado.
-- **Dominios autorizados (pendiente de revisar):** la lista tenía `localhost`,
+- **Dominios autorizados: ya está prolijo (28/8/2026).** Quedaron `localhost`,
   `agenda-docente-8c53d.firebaseapp.com`, `agenda-docente-8c53d.web.app` y
-  `agendadocente.pages.dev` — este último es el dominio viejo de Cloudflare, ya no
-  corresponde. **Falta agregar `estudioamsoftware.github.io`** (el dominio real de
-  producción) en Firebase Console → Authentication → Settings → Dominios autorizados, si
-  no `fbSignIn()` (el popup de login para la suscripción) no va a andar ahí.
+  `estudioamsoftware.github.io` (el dominio real de producción, agregado). Se sacó
+  `agendadocente.pages.dev`, el dominio viejo de Cloudflare que ya no se usa.
 - **Cloud Functions (`functions/index.js`), sin desplegar todavía** (falta el plan Blaze):
   `verifyPurchase` (callable, valida una compra recién hecha contra la Google Play
   Developer API) y `playRtdn` (HTTP endpoint que recibe las notificaciones push de Play
