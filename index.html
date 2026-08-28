@@ -1259,10 +1259,13 @@ const PLAY_MANAGE_URL=`https://play.google.com/store/account/subscriptions?sku=$
 
 function playBillingAvailable(){ return typeof window.getDigitalGoodsService==="function"; }
 
+// Devuelve {service, error}: si algo falla, error queda con un texto legible
+// para mostrar en el cuadro de compra — así se puede diagnosticar un fallo
+// real de celular sin necesidad de conectarlo a una computadora.
 async function playGetService(){
-  if(!playBillingAvailable()) return null;
-  try{ return await window.getDigitalGoodsService("https://play.google.com/billing"); }
-  catch(e){ return null; }
+  if(!playBillingAvailable()) return {service:null, error:"getDigitalGoodsService no existe en este navegador."};
+  try{ return {service:await window.getDigitalGoodsService("https://play.google.com/billing"), error:null}; }
+  catch(e){ return {service:null, error:"getDigitalGoodsService falló: "+((e&&e.message)||e)}; }
 }
 
 // El id de ítem que la Digital Goods API espera para un plan base de una
@@ -1274,11 +1277,13 @@ async function playGetPlanDetails(service){
   const planIds=["mensual","anual"];
   const idToPlan={}, allIds=[];
   planIds.forEach(p=>{ [`${PLAY_PRODUCT_ID}:${p}`,p].forEach(id=>{ idToPlan[id]=p; allIds.push(id); }); });
-  let details=[];
-  try{ details=await service.getDetails(allIds); }catch(e){ details=[]; }
+  let details=[], error=null;
+  try{ details=await service.getDetails(allIds); }
+  catch(e){ error="getDetails falló: "+((e&&e.message)||e); }
   const byPlan={};
   (details||[]).forEach(d=>{ const p=idToPlan[d.itemId]; if(p&&!byPlan[p]) byPlan[p]=d; });
-  return byPlan;
+  if(!error&&!details.length) error="getDetails no devolvió nada para: "+allIds.join(", ");
+  return {byPlan, error};
 }
 
 function playFormatPrice(item){
@@ -1288,7 +1293,7 @@ function playFormatPrice(item){
 }
 
 async function playComprar(itemId){
-  const service=await playGetService();
+  const {service}=await playGetService();
   if(!service){ toast("No se pudo conectar con Google Play"); return; }
   if(!window.fbUser){
     try{ await window.fbSignIn(); }
@@ -1348,7 +1353,8 @@ async function licPaywall(){
         <button type="button" class="typecard" data-plan="mensual"><span class="typecard-ic">📅</span><span class="typecard-lbl">Mensual<br><b id="lic_price_mensual">…</b></span></button>
         <button type="button" class="typecard" data-plan="anual"><span class="typecard-ic">🗓️</span><span class="typecard-lbl">Anual<br><b id="lic_price_anual">…</b></span></button>
       </div>
-      <p style="font-size:12.5px;color:var(--faint);margin:8px 0 0;">Se cobra por Google Play, con la cuenta de Google con la que abriste la app.</p>`
+      <p style="font-size:12.5px;color:var(--faint);margin:8px 0 0;">Se cobra por Google Play, con la cuenta de Google con la que abriste la app.</p>
+      <p id="lic_diag" style="font-size:11.5px;color:var(--absent);margin:8px 0 0;"></p>`
       :`<p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Para suscribirte, abrí la app instalada desde Play Store — el pago no está disponible desde el navegador.</p>`}
     </div>
     <div class="dlg-actions">
@@ -1358,12 +1364,15 @@ async function licPaywall(){
   $("#lic_cancel").onclick=closeDlg;
 
   if(enTWA){
-    const service=await playGetService();
-    const byPlan=service?await playGetPlanDetails(service):{};
+    const {service, error:serviceError}=await playGetService();
+    let byPlan={}, detailsError=null;
+    if(service){ ({byPlan, error:detailsError}=await playGetPlanDetails(service)); }
     ["mensual","anual"].forEach(p=>{
       const el=$("#lic_price_"+p);
       if(el) el.textContent=byPlan[p]?playFormatPrice(byPlan[p]):"—";
     });
+    const diagEl=$("#lic_diag");
+    if(diagEl) diagEl.textContent=serviceError||detailsError||"";
     const plansEl=$("#lic_plans");
     if(plansEl) plansEl.querySelectorAll(".typecard").forEach(btn=>{
       btn.onclick=()=>{
