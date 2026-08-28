@@ -800,6 +800,26 @@ Node ni JDK. Pasos:
      de licencia — nombre de la lista: "Verificadores Agenda Docente"), con 4 mails
      agregados, entre ellos `englishbeatsclasesyrecursos@gmail.com` (la que se usó para
      esta prueba) y `estudioam.dev@gmail.com`.
+     **Confirmado de nuevo el 29/8/2026 por la dueña: esa lista está cargada y englishbeats
+     está adentro. NO volver a preguntarlo ni pedir captura.** Link directo, por si hace
+     falta mirarlo:
+     `https://play.google.com/console/u/0/developers/6208089129841152998/settings/license-testing`
+
+   **DÓNDE QUEDÓ LA COMPRA AL CIERRE DEL 29/8/2026 (lo único pendiente):** el cuadro de
+   pago de Google Play **abre correctamente** — toda la cadena técnica funciona. Pero la
+   cuenta `englishbeats` **nunca tuvo una forma de pago cargada**, así que Google muestra
+   la pantalla de alta *"Comienza por agregar una forma de pago"* (opciones: "Canjear
+   código" y "Agregar tarjeta") en vez del listado de tarjetas donde vive la **tarjeta de
+   prueba** ("siempre aprueba"). Verificado en el celular: en "Más opciones" solo ofrece
+   cargar una tarjeta real. O sea que la compra **todavía no se completó de punta a punta**.
+   Ojo: esas pantallas de pago **no se pueden fotografiar** (Android bloquea la captura y
+   sale toda negra), así que no pedirle capturas de ahí — que lo cuente con palabras.
+   Lo siguiente a probar, en orden: (a) borrar la caché de Google Play Store en el celular
+   (Ajustes → Aplicaciones → Google Play Store → Almacenamiento → Borrar caché), y si no
+   alcanza, "Borrar datos"; (b) esperar — lo de probadores de licencia puede tardar en
+   propagarse; (c) si aun así no aparece la tarjeta de prueba, evaluar hacer una compra
+   real y pedir el reembolso desde Play Console, que es plata de verdad pero destraba la
+   verificación de punta a punta.
 
    **Otros arreglos de esta sesión (28/8/2026), no relacionados con la compra en sí
    pero encontrados mientras se probaba, todos ya en `main`:**
