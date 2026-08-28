@@ -6,9 +6,14 @@
   botones). Le tildan el celular cuando está trabajando desde ahí. Si hace falta
   preguntar algo, se pregunta **en texto normal**, dentro de la respuesta.
 - No es programadora. Cuando hay que hacer algo en una consola web (Firebase, Play
-  Console, GitHub), dar los pasos concretos ("tocá X, después Y"), sin asumir que
-  sabe dónde está cada cosa. Si pide un link, pasarle el link pelado y nada más:
-  suele estar en el celu, donde copiar y pegar es un engorro.
+  Console, GitHub, PWABuilder, etc.), dar los pasos concretos ("tocá X, después Y"),
+  sin asumir que sabe dónde está cada cosa. Si pide un link, pasarle el link pelado y
+  nada más: suele estar en el celu, donde copiar y pegar es un engorro.
+- **Dar siempre el link posta (la URL completa y clickeable) de la página a la que hay
+  que ir, no solo el nombre del sitio ("andá a pwabuilder.com" no alcanza).** Y guiar
+  pantalla por pantalla de una, sin esperar a que ella pida "el link y la guía" — ya
+  pasó más de una vez que hubo que pedirlo explícitamente porque quedó descripto en
+  general nomás. Esto vale en cualquier chat nuevo, no solo en el que quedó anotado.
 - Trabaja desde el celular y desde la compu, alternando. Respuestas cortas.
 
 ## Qué es esto
