@@ -166,7 +166,7 @@ Bajan y cargan un `.json` común, que no depende ni de Drive ni del cliente de O
 
 ### Play Console
 
-Cuenta "Estudio AM" (`mullerana@hotmail.com`, ver "Ojo con las cuentas" abajo).
+Cuenta "Estudio AM" → **`estudioam.dev@gmail.com`** (ver "Ojo con las cuentas" abajo).
 
 Para sumar una docente nueva a la prueba interna de Play Store:
 https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers
@@ -188,28 +188,37 @@ mudanza de arriba.
   las otras apps de la dueña si algún día se ordena ese proyecto, pero no es parte de
   este repo.
 
-### Ojo con las cuentas (confirmado 27/8/2026)
+### Ojo con las cuentas (CORREGIDO 29/8/2026 por la dueña — leer esto antes de nombrar ninguna cuenta)
 
-Son **dos cuentas de Google distintas**, y esto ya no es una duda: está verificado en
-pantalla.
+🚨 **`mullerana@hotmail.com` NO EXISTE y no tiene nada que ver con este proyecto.** Estuvo
+escrito acá por error desde el commit `f2b0b99` y **hay que borrarlo de la cabeza**: no es
+la cuenta de Play Console, ni de Google Play, ni de nada. La dueña ya lo había corregido en
+una sesión anterior, pero **esa corrección se dijo en el chat y nunca se guardó en este
+archivo**, así que al cerrarse esa conversación se perdió y el dato viejo volvió a salir.
+Por eso terminó teniendo que explicarlo de nuevo, a los gritos y con razón. **Moraleja para
+cualquier sesión futura: una corrección que no se commitea, no existe.** Si la dueña corrige
+un dato, se escribe acá y se pushea a `main` en el momento, antes de seguir con nada.
 
-- **Drive** (proyecto `agenda-docente-506819`) y **Firebase** (proyecto
-  `agenda-docente-8c53d`, número 903525915752) → `estudioam.dev@gmail.com`.
-- **Play Console** (cuenta "Estudio AM", ID `6208089129841152998`) →
-  **`mullerana@hotmail.com`**. No es la cuenta de Estudio AM que se usa para todo lo demás.
-  **Síntoma de que entró con la cuenta equivocada: Play Console le ofrece "crear una
-  cuenta de desarrollador".** Eso no es un error de la consola — es que la cuenta con la
-  que está navegando no tiene consola. **Nunca crear esa cuenta** (es otra cuenta nueva, y
-  se paga). Hay que cambiar a la de Hotmail desde la foto de perfil, o entrar directo por
-  `https://play.google.com/console`. Ojo también con el `/u/0/` de los links guardados en
-  este documento: ese `0` significa "la primera cuenta con la que estés logueada", así que
-  si tiene varias abiertas puede caer en la equivocada.
+**Cómo es de verdad — todo el lado Google de estas apps es `estudioam.dev@gmail.com`:**
 
-No hay que cambiar nada — funciona así. Pero tenerlo presente en el paso del
-`PLAY_SERVICE_ACCOUNT` (ver más abajo): ahí hay que darle permiso desde Play Console
-(cuenta de Hotmail) a una cuenta de servicio que vive en el proyecto de Google Cloud
-(cuenta de Gmail). Se cruzan dos cuentas, y es más fácil saberlo antes que descubrirlo
-en el momento.
+- **Play Console / Google Play, y la cuenta que creó las apps** (cuenta "Estudio AM",
+  ID `6208089129841152998`) → **`estudioam.dev@gmail.com`**.
+- **Firebase** (proyecto `agenda-docente-8c53d`) → `estudioam.dev@gmail.com`.
+- **Google Cloud del login de Drive** (proyecto `agenda-docente-506819`) →
+  `estudioam.dev@gmail.com`.
+- **`englishbeatsclasesyrecursos@gmail.com`** no administra nada: quedó como la cuenta con
+  la que se prueba el **Drive de Agenda Docente**, y además está anotada como tester.
+
+**Testers cargados en la prueba interna** (las tres, confirmado por la dueña el 29/8/2026):
+`estudioam.dev@gmail.com`, `englishbeatsclasesyrecursos@gmail.com` y `mullerana2` (la
+cuenta que empieza así — no confundir con el mail de Hotmail inventado de arriba).
+
+**Si Play Console ofrece "crear una cuenta de desarrollador"**, es que el navegador está
+usando otra cuenta: hay que cambiar a `estudioam.dev@gmail.com` desde la foto de perfil, o
+entrar por `https://play.google.com/console`. **Nunca crear esa cuenta** — sería una cuenta
+nueva y se paga. Ojo también con el `/u/0/` de los links guardados en este documento: ese
+`0` significa "la primera cuenta con la que estés logueada", así que teniendo varias
+abiertas puede caer en la equivocada.
 
 ## La venta: estado y qué falta (actualizado 27/8/2026, ramas ya mergeadas)
 
@@ -490,7 +499,8 @@ Node ni JDK. Pasos:
       en los logs de Cloud Functions (`gcloud functions logs read playRtdn --gen2
       --region=us-central1 --limit=10`) que esa notificación de prueba de Play realmente
       llegó a la función — se cortó la sesión antes de revisar ese último log.
-   Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
+   (No hay ningún "cruce de cuentas": es todo `estudioam.dev@gmail.com` — ver "Ojo con
+   las cuentas".)
 7. Integrar en `index.html` el flujo de compra con la Digital Goods API — **código
    hecho, probado a fondo en el celular real el 28/8/2026, pero todavía NO se pudo
    completar una compra de punta a punta.** Se llegó lejos y se encontraron y
