@@ -63,6 +63,15 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
   de la app** que da Play Console (Prueba y lanza → Integridad de la app). Se pueden
   tener varias huellas en el mismo archivo: conviene dejar las dos, así funcionan tanto la
   instalada de Play como la instalada a mano.
+  **Huella SHA-256 de la clave de firma de Play (sacada de Play Console el 29/8/2026 —
+  no volver a pedirla):**
+
+      DE:35:EC:45:38:4C:A8:D4:32:2E:BC:2D:07:05:F3:DA:D9:2A:E6:CD:84:4A:49:52:E5:07:77:01:9C:E0:83:25
+
+  Dónde se saca, porque Google movió la pantalla y cuesta encontrarla: Play Console →
+  `.../app/<id>/keymanagement` (link directo; el camino por menú es Prueba y lanza →
+  Integridad de la app → "Ir a Protegido con Play", y desde 2026 ya no está donde
+  decía la documentación vieja).
 - **Estado en Play Console:** publicada en pista de **prueba interna**.
   ⚠️ Acá decía que abría "sin barra de navegador, o sea que la verificación de dominio
   anda". **Eso estaba mal y confundió todo:** esa observación se hizo sobre la app
