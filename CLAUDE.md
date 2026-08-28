@@ -209,9 +209,20 @@ un dato, se escribe acá y se pushea a `main` en el momento, antes de seguir con
 - **`englishbeatsclasesyrecursos@gmail.com`** no administra nada: quedó como la cuenta con
   la que se prueba el **Drive de Agenda Docente**, y además está anotada como tester.
 
-**Testers cargados en la prueba interna** (las tres, confirmado por la dueña el 29/8/2026):
-`estudioam.dev@gmail.com`, `englishbeatsclasesyrecursos@gmail.com` y `mullerana2` (la
-cuenta que empieza así — no confundir con el mail de Hotmail inventado de arriba).
+**Testers de la prueba interna — lista completa y verificada en pantalla el 29/8/2026.
+NO volver a preguntar esto ni pedir captura: está acá.** La lista se llama
+**"Verificadores Agenda Docente"** (Play Console en español dice "Verificadores", no
+"Testers" — por eso cuesta encontrar la pestaña). Los cuatro mails cargados son:
+
+1. `englishbeatsclasesyrecursos@gmail.com`
+2. `estudioam.dev@gmail.com`
+3. `marcelodanielcordoba74@gmail.com`
+4. `mullerana2@hotmail.com`
+
+👉 **De acá salió el error del mail fantasma:** alguna sesión anterior leyó
+`mullerana2@hotmail.com` (que es un **tester**, el cuarto de esta lista) y lo escribió como
+`mullerana@hotmail.com` presentándolo como **la dueña de Play Console**. Dos errores en uno:
+le comió el `2` y le cambió el rol. Play Console es `estudioam.dev@gmail.com` y punto.
 
 **Si Play Console ofrece "crear una cuenta de desarrollador"**, es que el navegador está
 usando otra cuenta: hay que cambiar a `estudioam.dev@gmail.com` desde la foto de perfil, o
