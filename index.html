@@ -1367,18 +1367,10 @@ async function licPaywall(){
   if(licTienePlanPago()){
     openDlg("Tu suscripción",`<div style="font-size:14.5px;line-height:1.6;color:var(--ink);">
         <p style="margin:0 0 12px;">Ya tenés la <strong>versión completa</strong>.</p>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">Para cambiar de plan o cancelar, abrí Play Store → tocá tu foto de perfil → Pagos y suscripciones.</p>
-        <p style="font-size:12px;color:var(--faint);margin:0;"><a href="#" id="lic_switch_account" style="color:inherit;">¿No sos vos, o querés probar con otra cuenta? Cerrar esta sesión</a></p>
+        <p style="font-size:13px;color:var(--muted);margin:0;">Para cambiar de plan o cancelar, abrí Play Store → tocá tu foto de perfil → Pagos y suscripciones.</p>
       </div>
       <div class="dlg-actions"><button class="btn subtle" id="lic_close">Cerrar</button><a class="btn" style="text-decoration:none;" href="${PLAY_MANAGE_URL}" target="_blank" rel="noopener">Administrar</a></div>`);
     $("#lic_close").onclick=closeDlg;
-    const switchLink=$("#lic_switch_account");
-    if(switchLink) switchLink.onclick=async (e)=>{
-      e.preventDefault();
-      try{ if(window.fbSignOut) await window.fbSignOut(); }catch(err){}
-      closeDlg();
-      toast("Listo, cerré esa sesión. Abrí de nuevo 'Mi suscripción'.");
-    };
     return;
   }
 
