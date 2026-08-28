@@ -633,15 +633,18 @@
     <div class="splash-greet" id="splashGreet">¡Bienvenida!</div>
     <div class="splash-tag"><span class="st-rule"></span><span class="st-dot"></span><span class="st-rule"></span></div>
     <div class="splash-lema">Ella organiza. <span>Vos enseñás.</span></div>
-    <div class="splash-sub">By EstudioAM · <span id="splashVersion"></span></div>
+    <div class="splash-sub">By EstudioAM</div>
   </div>
   <div class="topbar">
+    <div class="wrap" style="padding:4px 0 0;text-align:right;">
+      <span id="topVersion" style="font-size:11px;color:var(--faint);"></span>
+    </div>
     <div class="wrap topbar-in">
       <div id="topLeft" class="brand">
         <img class="mark" src="icon-192.png" alt="AD">
         <div style="min-width:0;flex:1;">
           <div class="name">Agenda <span class="name-accent">Docente</span></div>
-          <div class="sub">By EstudioAM · <span id="topVersion"></span></div>
+          <div class="sub">By EstudioAM</div>
         </div>
       </div>
       <div class="clockbar" id="clockBar"></div>
@@ -732,7 +735,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v0828e';
+const APP_VER='v0828f';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2401,7 +2404,7 @@ function setTopBack(onBack){ const left=$("#topLeft");
   // El logo y "Agenda Docente" con su subtítulo quedan siempre visibles.
   // Adentro de un curso, se agrega nada más un "Atrás" chico debajo.
   const backRow=onBack?`<button class="topback-link" id="topBack"><span style="width:16px;height:16px;display:inline-flex;flex:none;">${I.back}</span>Atrás</button>`:"";
-  left.innerHTML=`<img class="mark" src="icon-192.png" alt="AD"><div style="min-width:0;flex:1;"><div class="name">Agenda <span class="name-accent">Docente</span></div><div class="sub">By EstudioAM · ${APP_VER}</div>${backRow}</div>`;
+  left.innerHTML=`<img class="mark" src="icon-192.png" alt="AD"><div style="min-width:0;flex:1;"><div class="name">Agenda <span class="name-accent">Docente</span></div><div class="sub">By EstudioAM</div>${backRow}</div>`;
   if(onBack){ $("#topBack").onclick=onBack; }
 }
 
@@ -6596,7 +6599,6 @@ function initClock(){
 
 function initSplash(){
   const el=$("#splash"); if(!el) return;
-  const sv=$("#splashVersion"); if(sv) sv.textContent=APP_BUILD;
   if(state.userName){
     $("#splashGreet").textContent="¡Bienvenida, "+state.userName+"!";
     setTimeout(()=>{ el.classList.add("hide"); document.documentElement.style.background=""; setTimeout(()=>el.remove(),600); },2800);
@@ -6620,7 +6622,6 @@ function runSplashGreeting(name){
   const el=$("#splash"); if(!el) return;
   el.classList.remove("hide");
   $("#splashGreet").textContent="¡Bienvenida, "+name+"!";
-  const sv=$("#splashVersion"); if(sv) sv.textContent=APP_BUILD;
   setTimeout(()=>{ el.classList.add("hide"); document.documentElement.style.background=""; setTimeout(()=>el.remove(),600); },2800);
 }
 
