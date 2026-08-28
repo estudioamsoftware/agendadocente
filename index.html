@@ -6941,7 +6941,9 @@ async function gdSyncNow(){
 }
 $("#actSyncNow").onclick=gdSyncNow;
 
-setTimeout(gdInit,400);
+// 3200ms y no 400: así no le pisa el saludo de bienvenida (dura 2.8s) si
+// necesita mostrar el cartel de "elegí una cuenta" para reconectar Drive.
+setTimeout(gdInit,3200);
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
     navigator.serviceWorker.register("service-worker.js").catch(e=>console.error("SW registration failed",e));
