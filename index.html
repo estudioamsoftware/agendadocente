@@ -729,7 +729,7 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-08-28-compra-play';
+const APP_BUILD='2026-08-28-compra-play-b';
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
   const a=year%19, b=Math.floor(year/100), c=year%100, d=Math.floor(b/4), e=b%4,
@@ -1278,15 +1278,33 @@ async function playGetService(){
   catch(e){ return {service:null, error:"getDigitalGoodsService falló: "+describeError(e)}; }
 }
 
-// El id de ítem que la Digital Goods API espera para un plan base de una
-// suscripción no tiene un único formato estable documentado (a veces es
-// "producto:plan", a veces el id del plan solo). Probamos las dos variantes
-// UNA POR UNA (no todas juntas en un solo getDetails, por si Play corta todo
-// el pedido apenas un id no existe) y nos quedamos con la que responda.
+// Limitación conocida de la Digital Goods API en TWA (reportada por otros
+// desarrolladores con el mismo síntoma: getDetails() sin resultados para
+// cada plan): comprando desde la app empaquetada, Play hoy solo deja comprar
+// el plan marcado como "compatible con versiones anteriores" en la consola —
+// no los dos. Por eso primero probamos el id "plano" del producto (sin
+// plan), que es el que encuentra ese plan compatible, y adivinamos cuál es
+// (mensual/anual) por la duración que informa Google. Las variantes viejas
+// (con plan en el id) se prueban después, por si Google llega a soportarlas.
 async function playGetPlanDetails(service){
-  const planIds=["mensual","anual"];
   const byPlan={}, errors=[];
+  try{
+    const details=await service.getDetails([PLAY_PRODUCT_ID]);
+    const item=details&&details[0];
+    if(item){
+      const period=item.subscriptionPeriod||"";
+      const plan=/Y/.test(period)?"anual":(/M/.test(period)?"mensual":null);
+      if(plan) byPlan[plan]=item;
+      else errors.push(PLAY_PRODUCT_ID+": encontrado pero sin duración reconocible ("+JSON.stringify(item)+")");
+    } else {
+      errors.push(PLAY_PRODUCT_ID+": sin resultados");
+    }
+  }catch(e){
+    errors.push(PLAY_PRODUCT_ID+": "+describeError(e));
+  }
+  const planIds=["mensual","anual"];
   for(const p of planIds){
+    if(byPlan[p]) continue;
     for(const id of [`${PLAY_PRODUCT_ID}:${p}`, p]){
       try{
         const details=await service.getDetails([id]);
@@ -1387,7 +1405,10 @@ async function licPaywall(){
       if(el) el.textContent=byPlan[p]?playFormatPrice(byPlan[p]):"—";
     });
     const diagEl=$("#lic_diag");
-    if(diagEl) diagEl.textContent=serviceError||detailsError||"";
+    if(diagEl){
+      const soloUno=(byPlan.mensual&&!byPlan.anual)||(byPlan.anual&&!byPlan.mensual);
+      diagEl.textContent=serviceError||detailsError||(soloUno?"Por ahora Google Play solo deja comprar uno de los dos planes desde la app instalada (limitación de esta tecnología, no de la app) — el otro se habilita cuando Google lo permita.":"");
+    }
     const plansEl=$("#lic_plans");
     if(plansEl) plansEl.querySelectorAll(".typecard").forEach(btn=>{
       btn.onclick=()=>{
