@@ -462,8 +462,13 @@ Node ni JDK. Pasos:
       --region=us-central1 --limit=10`) que esa notificación de prueba de Play realmente
       llegó a la función — se cortó la sesión antes de revisar ese último log.
    Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
-7. ~~Integrar en `index.html` el flujo de compra con la Digital Goods API~~ ✅ hecho y
-   **probado en el celular real** (28/8/2026). Quedó así:
+7. Integrar en `index.html` el flujo de compra con la Digital Goods API — **código
+   hecho, probado a fondo en el celular real el 28/8/2026, pero todavía NO se pudo
+   completar una compra de punta a punta.** Se llegó lejos y se encontraron y
+   arreglaron varios bugs reales; queda un bloqueo final sin resolver. Detalle completo
+   abajo para no repetir la investigación en la próxima sesión.
+
+   **Cómo quedó el flujo:**
    - Botón en el menú ⋯ → **"Mi suscripción"**. Si no tenés la versión completa, abre el
      cuadro de siempre (beneficios) y, si la app está corriendo empaquetada
      (`getDigitalGoodsService` existe), busca los planes disponibles y muestra tarjeta(s)
@@ -475,42 +480,101 @@ Node ni JDK. Pasos:
      para dar acceso inmediato. `verifyPurchase` también hace el **acknowledge** de la
      suscripción (`purchases.subscriptions.acknowledge`), que Google exige dentro de las
      72 hs o reembolsa sola.
-   - **Hallazgo importante (28/8/2026), confirmado en el celular y con un reporte
-     idéntico de otro desarrollador a Google (issue de Bubblewrap #830):** comprando
-     desde la Digital Goods API dentro de una TWA, Google Play **hoy solo deja comprar
-     el plan marcado como "Compatible con versiones anteriores"** en la consola de Play
-     — no los dos. El otro plan existe, está activo, pero no aparece como comprable por
-     esta vía. No es un bug de la app, es una limitación real y actual de esta
-     tecnología (no de la Play Store nativa — ahí si algún día se vende la app afuera de
-     una TWA no pasaría esto).
-     - Con la config actual, el plan comprable es el **mensual** (`agenda_completa`,
-       consultado con su id solo — sin plan — que es lo que Play reconoce; el código
-       identifica cuál es por la duración que informa Google). El anual quedó
-       configurado pero no comprable desde la app por ahora.
+
+   **Bugs reales encontrados y ya arreglados (28/8/2026), probando en el celular:**
+   - `getDetails()` no reconocía ningún formato de id de plan probado
+     (`agenda_completa:mensual`, `mensual` solo) → **causa real**: comprando desde la
+     Digital Goods API en una TWA, Google Play hoy **solo deja ver/comprar el plan
+     marcado como "Compatible con versiones anteriores"** en la consola — no los dos a
+     la vez. No es un bug de la app, es una limitación real y actual de esta tecnología,
+     confirmada con un reporte idéntico de otro desarrollador a Google (issue de
+     Bubblewrap #830). Se arregló consultando primero el id "plano" del producto
+     (`agenda_completa`, sin plan), que sí encuentra el plan permitido, e identificando
+     cuál es (mensual/anual) por la duración que informa Google
+     (`subscriptionPeriod`). Con la config actual, el plan comprable es el **mensual**.
+     El anual quedó configurado en Play Console pero no comprable desde la app hasta que
+     Google lo permita.
      - `licPaywall()` ya lo maneja bien: si solo hay un plan disponible, muestra una
        sola tarjeta con una nota chica y neutra explicándolo (no un error) — si algún
        día Google habilita los dos, la grilla de dos columnas vuelve sola sin tocar
        código.
-     - **Pendiente de decisión (no técnica, es de la dueña):** ¿dejar así por ahora
-       (solo vender el mensual desde la app, y sumar el anual el día que Google lo
-       permita), o cambiar cuál plan está marcado "Compatible con versiones anteriores"
-       en Play Console (Monetiza con Play → Productos → Suscripciones →
-       `agenda_completa` → planes base) para vender el anual en su lugar? Cambiarlo no
-       tiene costo técnico, es un toggle en la consola — pero ojo, sea cual sea el que
-       se elija, el otro sigue sin poderse comprar desde la app hasta que Google
-       resuelva esto.
-   - Si en algún test futuro **el diagnóstico en el cuadro de compra muestra texto en
-     rojo** (no la nota gris de "un solo plan"), es un error real (de conexión, de
-     configuración) — copiarlo tal cual para poder diagnosticarlo, la función
-     `describeError()` en `index.html` está pensada para dar detalle suficiente sin
-     depurar por USB.
-   - `LIC_ENFORCE` **sigue en `false`** a propósito — falta decidir el punto de arriba
-     (mensual vs. anual) y probar la compra de punta a punta con una cuenta de prueba
-     antes de encenderlo. La cuenta de Estudio AM no sirve para esa prueba porque ya
-     está en `LIC_REGALADAS` (el cuadro le va a decir "ya tenés la completa", sin
-     mostrar planes). Para probar sin que cobre de verdad hace falta cargar una cuenta
-     de Gmail distinta como **"license tester"** en Play Console (Configuración →
-     Cuentas de prueba de licencias).
+     - **Pendiente de decisión (no técnica, es de la dueña):** ¿dejar así (solo vender
+       el mensual desde la app, sumar el anual cuando Google lo permita), o cambiar cuál
+       plan está marcado "Compatible con versiones anteriores" en Play Console
+       (Monetiza con Play → Productos → Suscripciones → `agenda_completa` → planes
+       base) para vender el anual en su lugar? Cambiarlo no tiene costo técnico, es un
+       toggle en la consola — pero el otro plan sigue sin poderse comprar desde la app
+       hasta que Google resuelva esto de fondo.
+   - `PaymentRequest` tiraba **"No se pudo iniciar la compra"** sin detalle → causa
+     real: el código mandaba el identificador del producto en `data:{itemId}`, pero la
+     documentación oficial de Chrome para este método de pago pide la clave **`sku`**,
+     no `itemId` (aunque el resto de la Digital Goods API sí usa `itemId` para
+     `getDetails()` — son dos convenciones distintas conviviendo). Arreglado:
+     `data:{sku:itemId}`.
+   - Se agregó `describeError()` para mostrar nombre + código de cualquier error de
+     Play en vez de un genérico sin info — fue clave para diagnosticar todo lo de
+     arriba sin depurar por USB. Si en algún test futuro el diagnóstico muestra texto en
+     rojo, copiarlo tal cual.
+   - Quedó un documento de prueba vieja en Firestore (`subscriptions/{uid}` con
+     `status:"active"`, sin `purchaseToken` real) que hacía que la cuenta de prueba
+     pareciera tener ya la versión completa — se identificó y se borró a mano desde la
+     consola de Firebase. Si vuelve a pasar algo similar (una cuenta que "ya tiene la
+     completa" sin haber comprado nunca), revisar `subscriptions` en Firestore por un
+     documento viejo de alguna prueba.
+
+   **🔴 Bloqueo actual, sin resolver:** con el `sku` ya arreglado, la compra real en el
+   celular tira ahora **`NotSupportedError: The payment method
+   "https://play.google.com/billing" is not supported. (code 9)`**. El "code 9" es un
+   código propio de Google Play Billing = `FEATURE_NOT_SUPPORTED` ("esta función de
+   facturación no está soportada"). Esto ya no parece un bug de `index.html`:
+   - Hipótesis más fuerte: puede ser un tema de cómo quedó **empaquetado el `.aab`**
+     (versión 2, generada con PWABuilder activando "Google Play Billing"), no de la
+     página web. Para que `PaymentRequest` funcione de verdad hace falta un puente
+     nativo específico entre la TWA y la Play Billing Library del lado de Android — con
+     **Bubblewrap** ese puente se declara a mano en `twa-manifest.json`
+     (`alphaDependencies` + la función `playBilling`, que agregan la dependencia
+     `com.google.androidbrowserhelper:billing`); no está confirmado si el toggle
+     "Activar Google Play Billing" de PWABuilder arma ese mismo puente por completo o
+     solo agrega el permiso `com.android.vending.BILLING` sin el resto.
+   - También puede ser un tema de que la suscripción usa el modelo nuevo de **"planes
+     base y ofertas"** de Play Console (el que se usó acá, con mensual/anual como
+     planes base de un mismo producto) — hay indicios de que ese modelo más nuevo tiene
+     soporte incompleto todavía en el camino de compra vía `PaymentRequest`/TWA en
+     general, más allá del tema de "solo el plan compatible" ya documentado arriba.
+   - **Próximos pasos concretos para retomar:** (a) investigar más a fondo si el toggle
+     de PWABuilder realmente arma el puente nativo completo, o si hace falta
+     regenerar el `.aab` con **Bubblewrap** en su lugar (`twa/` ya tiene una config de
+     referencia, ver más arriba en este documento) declarando `alphaDependencies` +
+     `playBilling` explícitamente; (b) si se prueba con Bubblewrap, repetir exactamente
+     esta misma prueba (celular real, cuenta de prueba de licencias, plan mensual) para
+     ver si cambia el resultado; (c) buscar si hay reportes recientes (2025-2026) de
+     otros desarrolladores con este mismo "code 9" específico y cómo lo resolvieron.
+   - `LIC_ENFORCE` **sigue en `false`** a propósito — no lo enciendas hasta resolver
+     este bloqueo y completar una compra de punta a punta de verdad. La cuenta de
+     Estudio AM no sirve para probar porque está en `LIC_REGALADAS`. Ya hay una lista de
+     **cuentas de prueba de licencias** cargada en Play Console (Configuración → Prueba
+     de licencia — nombre de la lista: "Verificadores Agenda Docente"), con 4 mails
+     agregados, entre ellos `englishbeatsclasesyrecursos@gmail.com` (la que se usó para
+     esta prueba) y `estudioam.dev@gmail.com`.
+
+   **Otros arreglos de esta sesión (28/8/2026), no relacionados con la compra en sí
+   pero encontrados mientras se probaba, todos ya en `main`:**
+   - El `service-worker.js` pedía la página con `fetch()` normal, que respeta la caché
+     HTTP del navegador — GitHub Pages manda `Cache-Control` con un rato de validez, así
+     que el celular podía quedarse mostrando una versión vieja por más que el service
+     worker en sí estuviera al día. Se agregó `cache:"no-store"` para forzar siempre ir
+     a la red. Este fue el motivo real de tener que estar borrando caché constantemente
+     durante toda la sesión de hoy.
+   - El botón "Recargar la app" (flechita circular del topbar) antes solo hacía
+     `location.reload()`, que no alcanza si quedó un service worker viejo controlando la
+     página. Ahora primero desregistra el service worker y borra su caché, y recién ahí
+     recarga — reemplaza tener que ir a la configuración de Android a borrar caché.
+   - Se agregó un número de versión (`APP_VER`, formato `v2026.08.28-1`) visible
+     siempre, en su propia fila chiquita y gris debajo de la barra del logo (no adentro
+     del saludo de bienvenida, que dura muy poco) — pedido explícito de la dueña, con el
+     mismo formato que usa en sus otras apps (ver "My Band Box" como referencia).
+     **Acordarse de incrementar el número al final de `APP_VER` en cada cambio real**
+     que se publique, para poder confirmar de un vistazo si una actualización llegó.
 8. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
    —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
    paralelo, no bloquea nada.
