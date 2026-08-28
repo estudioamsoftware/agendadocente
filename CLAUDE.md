@@ -375,9 +375,8 @@ Node ni JDK. Pasos:
 - **Plan básico mensual:** ID `mensual`, renovación automática, **$2.99 USD**, cargado con
   "Set prices" a los 177 países de una — Argentina queda en pesos, convertido automático
   por Google. **Ya activado.**
-- **Plan anual:** decidido sumarlo como descuento por compromiso (**$25 USD**, ~30% menos
-  que 12 meses sueltos) — falta cargarlo, es el mismo producto `agenda_completa`, otro base
-  plan con ID `anual`.
+- **Plan anual:** ID `anual`, renovación automática, **$25 USD** (~30% menos que 12 meses
+  sueltos del mensual). **Ya activado.**
 - Los beneficios que se cargaron en la ficha del producto (visibles para la compradora):
   Cursos ilimitados, Registro de licencias y paros, Alertas de vencimientos, Guía del
   Estatuto Docente. **Pendiente:** el diálogo `licPaywall()` en `index.html` todavía tiene
@@ -394,8 +393,8 @@ Node ni JDK. Pasos:
    arriba).
 3. ~~Regenerar el `.aab` declarando Play Billing y subirlo a prueba interna~~ ✅ hecho
    (versión 2, `1.0.1.0`), reusando la firma original de PWABuilder.
-4. ~~Crear el producto de suscripción en Play Console~~ ✅ hecho, plan mensual activo (ver
-   arriba). Falta sumar el plan anual.
+4. ~~Crear el producto de suscripción en Play Console~~ ✅ hecho, planes mensual y anual
+   activos (ver arriba).
 5. Actualizar el texto de `licPaywall()` en `index.html` para que coincida con los
    beneficios reales cargados en Play Console (ver arriba).
 6. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
