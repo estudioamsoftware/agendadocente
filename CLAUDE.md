@@ -531,3 +531,20 @@ Node ni JDK. Pasos:
     que hoy el login de Drive y el de Firebase Auth sean dos ventanas de consentimiento
     separadas — eso es un tema de código (dos flujos de login distintos), no de cuántos
     proyectos de Cloud hay atrás.
+12. **Pendiente futuro, es un cambio de fondo — merece su propia sesión, no un ajuste
+    arriba de otra cosa:** soportar que **un mismo dispositivo lo usen dos o más
+    docentes** (caso real: una tablet del colegio compartida entre profes, planteado por
+    la dueña el 28/8/2026). Hoy el diseño asume **un dispositivo = una docente**: los
+    cursos (`localStorage`), la conexión de Google Drive (`gd`) y la suscripción
+    (`lic` / Firebase Auth) son un solo cajón compartido en todo el dispositivo, sin
+    separar por cuenta. Si dos profes comparten un celu/tablet, la segunda ve los cursos
+    de la primera al abrir la app, y si conecta su propio Drive puede pisar o mezclar los
+    datos de la primera (bajar el Drive de la segunda sobre los cursos locales de la
+    primera, o subir los cursos de la primera al Drive de la segunda).
+    - **Propuesta pensada (no implementada):** un selector de "¿Quién sos?" al abrir la
+      app, con las docentes que ya usaron ese dispositivo más la opción de agregar una
+      nueva. Cada una con su propio cajón de datos, su propia conexión de Drive y su
+      propia suscripción, sin mezclarse entre sí.
+    - Toca la base de cómo se guarda todo (no es un ajuste chico): hay que revisar cada
+      lugar que lee/escribe `localStorage`, la lógica de `gd` (Drive) y de `lic`/Firebase
+      Auth para que queden separados por perfil, en vez de global al dispositivo.
