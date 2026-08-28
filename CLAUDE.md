@@ -407,3 +407,6 @@ Node ni JDK. Pasos:
    —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
    paralelo, no bloquea nada.
 9. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
+10. **Pendiente futuro, no bloquea nada de lo anterior:** armar una landing page para
+    promocionar la app por fuera de Google Play (la dueña lo pidió el 28/8/2026, para
+    después de terminar lo de arriba).
