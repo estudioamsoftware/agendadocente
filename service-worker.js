@@ -1,4 +1,4 @@
-const CACHE_NAME = "agenda-docente-v10";
+const CACHE_NAME = "agenda-docente-v11";
 const ASSETS = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-maskable-192.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -22,7 +22,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
+    // cache:"no-store" para que el navegador vaya siempre a la red y no
+    // reuse una copia vieja de su caché HTTP normal (GitHub Pages manda
+    // Cache-Control con un rato de validez) — sin esto, una actualización
+    // podía tardar en verse aunque el service worker ya estuviera al día.
+    fetch(event.request, { cache: "no-store" })
       .then((res) => {
         if (res && res.ok) {
           const clone = res.clone();
