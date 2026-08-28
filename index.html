@@ -636,9 +636,6 @@
     <div class="splash-sub">By EstudioAM</div>
   </div>
   <div class="topbar">
-    <div class="wrap" style="padding:4px 0 0;text-align:right;">
-      <span id="topVersion" style="font-size:11px;color:var(--faint);"></span>
-    </div>
     <div class="wrap topbar-in">
       <div id="topLeft" class="brand">
         <img class="mark" src="icon-192.png" alt="AD">
@@ -656,6 +653,7 @@
       </button>
     </div>
   </div>
+  <div class="wrap" style="padding:3px 0;"><span id="topVersion" style="font-size:11px;color:var(--faint);"></span></div>
   <button id="gdBanner" class="gd-banner" style="display:none;"></button>
 
   <nav class="bottomnav" id="bottomnav">
@@ -735,7 +733,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v0828g';
+const APP_VER='v2026.08.28-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
