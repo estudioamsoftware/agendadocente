@@ -377,12 +377,11 @@ Node ni JDK. Pasos:
   por Google. **Ya activado.**
 - **Plan anual:** ID `anual`, renovación automática, **$25 USD** (~30% menos que 12 meses
   sueltos del mensual). **Ya activado.**
-- Los beneficios que se cargaron en la ficha del producto (visibles para la compradora):
-  Cursos ilimitados, Registro de licencias y paros, Alertas de vencimientos, Guía del
-  Estatuto Docente. **Pendiente:** el diálogo `licPaywall()` en `index.html` todavía tiene
-  el texto viejo de la primera versión del candado (dice "asistencia, notas y cursada" como
-  si fuera premium, cuando en realidad quedó decidido que es gratis) — hay que actualizarlo
-  para que diga lo mismo que acá.
+- Los beneficios cargados en la ficha del producto (visibles para la compradora): Cursos
+  ilimitados, Licencias/paros y eventos administrativos, Alertas automáticas de
+  vencimientos, Respaldo en tu Google Drive. El diálogo `licPaywall()` en `index.html` ya
+  se actualizó para decir lo mismo (antes tenía el texto viejo de la primera versión del
+  candado, que ofrecía como premium cosas que en realidad son gratis).
 - Clasificación por edad del producto: sin especificar (ese campo solo aplica a ciertos
   estados de EE.UU., no afecta a Argentina).
 
@@ -395,7 +394,7 @@ Node ni JDK. Pasos:
    (versión 2, `1.0.1.0`), reusando la firma original de PWABuilder.
 4. ~~Crear el producto de suscripción en Play Console~~ ✅ hecho, planes mensual y anual
    activos (ver arriba).
-5. Actualizar el texto de `licPaywall()` en `index.html` para que coincida con los
+5. ~~Actualizar el texto de `licPaywall()` en `index.html`~~ ✅ hecho, ya coincide con los
    beneficios reales cargados en Play Console (ver arriba).
 6. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
    `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
