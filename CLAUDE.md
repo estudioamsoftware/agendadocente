@@ -526,29 +526,55 @@ Node ni JDK. Pasos:
    celular tira ahora **`NotSupportedError: The payment method
    "https://play.google.com/billing" is not supported. (code 9)`**. El "code 9" es un
    código propio de Google Play Billing = `FEATURE_NOT_SUPPORTED` ("esta función de
-   facturación no está soportada"). Esto ya no parece un bug de `index.html`:
-   - Hipótesis más fuerte: puede ser un tema de cómo quedó **empaquetado el `.aab`**
-     (versión 2, generada con PWABuilder activando "Google Play Billing"), no de la
-     página web. Para que `PaymentRequest` funcione de verdad hace falta un puente
-     nativo específico entre la TWA y la Play Billing Library del lado de Android — con
-     **Bubblewrap** ese puente se declara a mano en `twa-manifest.json`
-     (`alphaDependencies` + la función `playBilling`, que agregan la dependencia
-     `com.google.androidbrowserhelper:billing`); no está confirmado si el toggle
-     "Activar Google Play Billing" de PWABuilder arma ese mismo puente por completo o
-     solo agrega el permiso `com.android.vending.BILLING` sin el resto.
+   facturación no está soportada"). Esto ya no parece un bug de `index.html`.
+
+   **Investigación de gabinete hecha (29/8/2026), sin acceso al celular real — descarta
+   una hipótesis y suma una pista más concreta:**
+   - **La hipótesis de "PWABuilder arma mal el puente" queda descartada.** Se revisó el
+     código fuente público de `pwabuilder-google-play` (el servicio que corre
+     PWABuilder en la nube, que por dentro usa Bubblewrap igual que nosotros lo
+     haríamos a mano) — archivo `build/bubbleWrapper.ts`, función `createTwaManifest`:
+     cuando el pedido trae `features.playBilling.enabled=true`, el código arma
+     automáticamente `alphaDependencies:{enabled:true}` también. O sea, activar el
+     toggle "Google Play Billing" en PWABuilder produce el **mismo** `twa-manifest.json`
+     que armaríamos a mano con Bubblewrap (`alphaDependencies` + `playBilling` juntos).
+     **Conclusión: regenerar con Bubblewrap en vez de PWABuilder probablemente NO
+     cambie nada**, porque de fondo arman la misma configuración y la misma librería
+     nativa. No vale la pena gastar tiempo en esa migración como primer paso.
+   - **Pista nueva, más prometedora:** Google puso una fecha límite (31/8/2025,
+     prorrogable a mano hasta 1/11/2025, ya vencida hace rato) exigiendo que toda
+     integración de Play Billing —Bubblewrap/TWA incluido— use **Play Billing Library
+     7.0.0 o superior**, que en el mundo TWA se traduce en la dependencia
+     `com.google.androidbrowserhelper:billing` en versión **1.1.0 o superior**. Hubo un
+     reporte de bug abierto en el propio PWABuilder pidiendo justo esa actualización
+     (issue #5019, de julio 2025, ya cerrado — probablemente arreglado, pero no
+     confirmado con certeza). Si por algún motivo el `.aab` que armó PWABuilder el
+     19/8/2026 quedó con una versión vieja de esa librería, el síntoma esperable es
+     exactamente "función de facturación no soportada" — porque Google Play, del otro
+     lado, ya no atiende builds con la librería vieja. Esto no está confirmado todavía,
+     pero es más chequeable que la hipótesis del puente.
+   - **Límite real y ya confirmado (no cambia con nada de lo de arriba):** una
+     suscripción con más de un plan base (nuestro caso: mensual + anual) solo se puede
+     comprar desde una TWA por el plan marcado "compatible con versiones anteriores" —
+     confirmado con el issue #830 de Bubblewrap en GitHub, con el mismo reclamo de otro
+     desarrollador. Esto ya lo teníamos resuelto (mostramos un solo plan cuando aplica).
    - También puede ser un tema de que la suscripción usa el modelo nuevo de **"planes
-     base y ofertas"** de Play Console (el que se usó acá, con mensual/anual como
-     planes base de un mismo producto) — hay indicios de que ese modelo más nuevo tiene
-     soporte incompleto todavía en el camino de compra vía `PaymentRequest`/TWA en
-     general, más allá del tema de "solo el plan compatible" ya documentado arriba.
-   - **Próximos pasos concretos para retomar:** (a) investigar más a fondo si el toggle
-     de PWABuilder realmente arma el puente nativo completo, o si hace falta
-     regenerar el `.aab` con **Bubblewrap** en su lugar (`twa/` ya tiene una config de
-     referencia, ver más arriba en este documento) declarando `alphaDependencies` +
-     `playBilling` explícitamente; (b) si se prueba con Bubblewrap, repetir exactamente
-     esta misma prueba (celular real, cuenta de prueba de licencias, plan mensual) para
-     ver si cambia el resultado; (c) buscar si hay reportes recientes (2025-2026) de
-     otros desarrolladores con este mismo "code 9" específico y cómo lo resolvieron.
+     base y ofertas"** de Play Console en sí (más allá de la librería) — sigue sin
+     descartarse del todo, pero es más difícil de confirmar que el punto de la librería.
+   - **Próximos pasos concretos para retomar (en este orden, de más fácil a más
+     costoso):** (a) confirmar la versión real de `androidbrowserhelper:billing` que
+     trae el `.aab` publicado — se puede ver desabriendo el `.aab` (es un zip) y mirando
+     las dependencias, o simplemente regenerando de nuevo en PWABuilder (por si el
+     servicio actualizó su plantilla desde el 19/8) y repitiendo la prueba de compra
+     antes de tocar nada más; (b) si sigue fallando, probar en un segundo dispositivo
+     Android para descartar un tema puntual del celular de prueba (Play Store
+     desactualizado en ese equipo específico, caché de Play Store); (c) recién como
+     último recurso, migrar a Bubblewrap — no porque se espere que solucione el "code
+     9" (ver arriba, probablemente no), sino porque da más control para pisar a mano la
+     versión de la librería si (a) confirma que ese es el problema; (d) si nada de esto
+     destraba, escalar el caso a los foros de Google (Play Console → Ayuda, o el
+     repositorio de GitHub `GoogleChrome/android-browser-helper`) con el error exacto,
+     la versión del `.aab` y del `androidbrowserhelper`.
    - `LIC_ENFORCE` **sigue en `false`** a propósito — no lo enciendas hasta resolver
      este bloqueo y completar una compra de punta a punta de verdad. La cuenta de
      Estudio AM no sirve para probar porque está en `LIC_REGALADAS`. Ya hay una lista de
