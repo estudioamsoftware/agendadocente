@@ -757,7 +757,16 @@ Node ni JDK. Pasos:
    Services. Ojo que esos reportes usaban `androidbrowserhelper 2.4.0` y nuestro `.aab`
    trae `2.7.0-alpha02`, bastante más nuevo.
 
-   **Lo que se probó de nuestro lado (en `v2026.08.28-3`):** como el síntoma parece una
+   **✅ RESUELTO EL MISMO 29/8, Y LO QUE LO DESTRABÓ FUE REINICIAR EL CELULAR.** Después
+   del reinicio, con la app bajada de Play y el `assetlinks.json` ya corregido, la compra
+   abrió el cuadro de pago nativo de Google Play. Importante para no atribuirlo mal: en la
+   pantalla se veía `v2026.08.28-2`, o sea **sin** los reintentos de `playFetchPlans()` —
+   el reinicio solo. Encaja con el diagnóstico de que `clientAppUnavailable` es el
+   "Delegation Service" de la app que no llegó a arrancar: reiniciar el sistema lo arma
+   de nuevo. **Si vuelve a aparecer ese error, lo primero es reiniciar el celular**, antes
+   de tocar nada de código o del `.aab`.
+
+   **Lo que se probó de nuestro lado (en `v2026.08.28-3`), queda como red de seguridad:** como el síntoma parece una
    carrera contra el reloj —el puente tarda en quedar atado después de abrir la app—, se
    agregó `playFetchPlans()`, que reintenta hasta 5 veces con 1,5 s de espera y va
    mostrando "Conectando con Google Play… (intento N)". Si el problema era solo que
