@@ -2406,7 +2406,7 @@ function setTopBack(onBack){ const left=$("#topLeft");
   // El logo y "Agenda Docente" con su subtítulo quedan siempre visibles.
   // Adentro de un curso, se agrega nada más un "Atrás" chico debajo.
   const backRow=onBack?`<button class="topback-link" id="topBack"><span style="width:16px;height:16px;display:inline-flex;flex:none;">${I.back}</span>Atrás</button>`:"";
-  left.innerHTML=`<img class="mark" src="icon-192.png" alt="AD"><div style="min-width:0;flex:1;"><div class="name">Agenda <span class="name-accent">Docente</span></div><div class="sub">By EstudioAM</div>${backRow}</div>`;
+  left.innerHTML=`<img class="mark" src="icon-192.png" alt="AD"><div style="min-width:0;flex:1;"><div class="name">Agenda <span class="name-accent">Docente</span></div><div class="sub">By EstudioAM · ${APP_VER}</div>${backRow}</div>`;
   if(onBack){ $("#topBack").onclick=onBack; }
 }
 
