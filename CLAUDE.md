@@ -611,14 +611,53 @@ Node ni JDK. Pasos:
    hipótesis del navegador es la buena, sin publicar otra versión ni enchufar el celu a
    una computadora.
 
-   **Próximos pasos concretos para retomar:** (a) que la dueña abra la app actualizada en
-   el celular de prueba, toque comprar, y mande la foto de ese cuadro; (b) si ahí dice un
-   navegador que no es Chrome, poner Chrome como predeterminado en Android
-   (Configuración → Aplicaciones → Aplicaciones predeterminadas → Navegador) y repetir;
-   (c) si dice Chrome y aun así falla, probar en un segundo celular Android para
-   descartar algo puntual de ese equipo; (d) si nada destraba, escalar con el error
-   exacto y estos datos del `.aab` al repositorio `GoogleChrome/android-browser-helper`
-   en GitHub, que es donde vive el puente y donde contestan los que lo mantienen.
+   **RESULTADO DE ESA PRUEBA (29/8/2026, celular Motorola de la dueña, `v2026.08.28-2`):**
+   ```
+   Error: NotSupportedError: The payment method "https://play.google.com/billing"
+          is not supported. (code 9)
+   Navegador que muestra la app: Chrome 151.0.0.0
+   Producto: agenda_completa
+   Google Play acepta el pago: no
+   ```
+   Qué se deduce de ahí:
+   - **La hipótesis del navegador queda descartada: es Chrome 151**, actualizadísimo. (La
+     dueña usa **Motorola**, no Samsung — anotarlo porque ya se dio por sentado mal una
+     vez.)
+   - **El puente de Play funciona a medias, y eso es el dato más raro:** para llegar a
+     tocar el botón de comprar, la app tuvo que haber mostrado la tarjeta del plan con su
+     precio real, y esas tarjetas solo se dibujan si `getDigitalGoodsService()` conectó
+     **y** `getDetails()` devolvió el producto desde Google (ver `licPaywall()`: si no
+     hay detalles, muestra "No se pudo cargar el precio" y no dibuja ninguna tarjeta).
+     O sea: **Play contesta el precio, pero Chrome no encuentra quién cobre.** Confirma
+     de nuevo que el `.aab` y el código están bien.
+   - `canMakePayment()` da **no**, así que no es un problema de "gesto del usuario"
+     (eso daría `NotAllowedError`, y `canMakePayment` no necesita gesto): Chrome
+     directamente no encuentra un método de pago disponible.
+
+   **Hipótesis viva ahora (sin confirmar): cómo quedó instalada la app en ese celular.**
+   `getDetails()` puede funcionar aunque la app no se haya instalado desde Play (Play
+   reconoce el paquete y el producto publicado igual), pero el **cobro** sí exige que la
+   app haya llegado desde Play Store y que la cuenta del celular sea tester. En la
+   carpeta de Drive hay también un `Agenda Docente.apk` — si en algún momento se instaló
+   ese archivo a mano en vez de bajarla desde la prueba interna, encaja con todo el
+   cuadro. **Falta confirmarlo con la dueña**, no está verificado.
+   Ojo con la deducción inversa: la app instalada **es la versión 2** (la 1 no declaraba
+   billing y `getDigitalGoodsService()` habría fallado), así que si el `.apk` de Drive es
+   el del 19/8 (versión 1), entonces la instalada vino de Play y esta hipótesis se cae
+   sola. No está chequeado cuál de los dos casos es.
+
+   **Próximos pasos concretos para retomar:** (a) confirmar en el celular si la app
+   figura como instalada desde Play Store (Play Store → foto de perfil → Administrar apps
+   y dispositivos → Administrar → buscar "Agenda Docente"), y si ofrece actualización;
+   (b) si no figura ahí, desinstalar y reinstalar desde el link de prueba interna —
+   **antes de desinstalar, que baje "Guardar copia en un archivo" del menú ⋯**, por las
+   dudas; (c) confirmar que la cuenta de Google que tiene puesta ESE celular en Play
+   Store está en la lista de testers de la prueba interna y en la de prueba de licencias
+   ("Verificadores Agenda Docente") — si el celu tiene otra cuenta que la anotada, no
+   alcanza; (d) probar en un segundo celular Android; (e) si nada destraba, escalar con
+   el error exacto, los datos del `.aab` verificados arriba y este diagnóstico al
+   repositorio `GoogleChrome/android-browser-helper` en GitHub, que es donde vive el
+   puente y donde contestan quienes lo mantienen.
    - `LIC_ENFORCE` **sigue en `false`** a propósito — no lo enciendas hasta resolver
      este bloqueo y completar una compra de punta a punta de verdad. La cuenta de
      Estudio AM no sirve para probar porque está en `LIC_REGALADAS`. Ya hay una lista de
