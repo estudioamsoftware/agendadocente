@@ -52,8 +52,23 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
   `estudioamsoftware/estudioamsoftware.github.io`, en `.well-known/assetlinks.json`.
   Ese repo necesita el archivo `.nojekyll` en la raíz, si no GitHub Pages ignora la
   carpeta `.well-known` y el archivo da 404.
-- **Estado en Play Console:** publicada en pista de **prueba interna**, instalada y
-  funcionando (abre sin barra de navegador, o sea que la verificación de dominio anda).
+  🚨 **PROBLEMA ABIERTO (encontrado 29/8/2026): ese archivo tiene la huella equivocada.**
+  Tiene la huella de la clave **de subida** (el `signing.keystore` de PWABuilder), que es
+  la que firma el `.apk` que se instala a mano. Pero **cuando la app se baja de Play
+  Store, Google la vuelve a firmar con su propia clave** (Play App Signing), que tiene
+  otra huella. Como no coincide, Android no verifica el dominio, la app **no arranca como
+  TWA** sino como una pestaña de navegador con la barra de dirección arriba, y ahí
+  `getDigitalGoodsService()` tira `OperationError: unsupported context` → **no se puede
+  comprar**. Hay que agregar al `assetlinks.json` la huella SHA-256 de la **clave de firma
+  de la app** que da Play Console (Prueba y lanza → Integridad de la app). Se pueden
+  tener varias huellas en el mismo archivo: conviene dejar las dos, así funcionan tanto la
+  instalada de Play como la instalada a mano.
+- **Estado en Play Console:** publicada en pista de **prueba interna**.
+  ⚠️ Acá decía que abría "sin barra de navegador, o sea que la verificación de dominio
+  anda". **Eso estaba mal y confundió todo:** esa observación se hizo sobre la app
+  instalada **a mano desde el `.apk`**, que sí verifica porque está firmada con la clave
+  de subida. La instalada **desde Play Store** abre CON barra de navegador. Nunca dar por
+  buena la verificación de dominio probando el `.apk` — solo cuenta la que vino de Play.
 
 Si algún documento del repo dice Cloudflare Pages o Bubblewrap, está desactualizado:
 quedó de intentos anteriores.
