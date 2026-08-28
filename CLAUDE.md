@@ -412,3 +412,16 @@ Node ni JDK. Pasos:
 10. **Pendiente futuro, no bloquea nada de lo anterior:** armar una landing page para
     promocionar la app por fuera de Google Play (la dueña lo pidió el 28/8/2026, para
     después de terminar lo de arriba).
+11. **Pendiente futuro, no bloquea nada de lo anterior:** unificar los dos proyectos de
+    Google Cloud de esta app (`agenda-docente-506819` de Drive y `agenda-docente-8c53d` de
+    Firebase) en uno solo. Hoy conviven sin problema y ninguna docente nota la diferencia
+    — es una prolijada administrativa, no algo urgente. Pero **conviene hacerlo mientras
+    solo la dueña usa el respaldo de Drive** (nadie más todavía, 28/8/2026), porque después
+    de que se sumen docentes reales, mudar el `GD_CID` vuelve a tener el mismo costo que la
+    mudanza del 27/8 (ver "Cómo mudar el `GD_CID` sin perder datos" arriba — son los mismos
+    pasos: crear un cliente OAuth nuevo *dentro* del proyecto `agenda-docente-8c53d`,
+    declarar los scopes, la dueña baja "Guardar copia en un archivo" antes de tocar nada, se
+    cambia `GD_CID` en `index.html`, se reconecta). Ojo: esto **no** resuelve por sí solo
+    que hoy el login de Drive y el de Firebase Auth sean dos ventanas de consentimiento
+    separadas — eso es un tema de código (dos flujos de login distintos), no de cuántos
+    proyectos de Cloud hay atrás.
