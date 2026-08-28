@@ -394,9 +394,13 @@ Node ni JDK. Pasos:
    activos (ver arriba).
 5. ~~Actualizar el texto de `licPaywall()` en `index.html`~~ ✅ hecho, ya coincide con los
    beneficios reales cargados en Play Console (ver arriba).
-6. Pasar Firebase a plan Blaze, crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar
-   `functions/` (`firebase deploy --only functions`), configurar RTDN en Play Console
-   apuntando a la URL de `playRtdn`. Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
+6. ~~Pasar Firebase a plan Blaze~~ ✅ hecho (28/8/2026), reusando la cuenta de facturación
+   que ya tenía la dueña de otro proyecto. Se armó además una alerta de presupuesto en $0
+   para el proyecto `agenda-docente-8c53d` específicamente (solo alertas, no corta el
+   servicio), en Google Cloud Console → Facturación → Presupuestos y alertas.
+   Falta todavía: crear el secreto `PLAY_SERVICE_ACCOUNT`, desplegar `functions/`
+   (`firebase deploy --only functions`), configurar RTDN en Play Console apuntando a la URL
+   de `playRtdn`. Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
 7. Integrar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`), usando el ID de producto
    `agenda_completa` y los planes `mensual`/`anual`. Llamar a `verifyPurchase` tras la
