@@ -313,6 +313,20 @@ paso quedó en hacer una consulta suelta con un contador/gestor, porque:
 Esto **no bloquea nada del trabajo técnico**: es el último eslabón, hace falta recién el día
 que se quiera cobrar de verdad.
 
+**Preguntas para la consulta con el contador/gestor (armadas 28/8/2026):**
+1. Lo que paga Google Play, ¿suma a la facturación anual del monotributo? ¿A qué tipo de
+   cambio se toma (el del día que llega, el oficial, el del banco)?
+2. ¿Cuenta como "exportación de servicios"? ¿Tiene algún tratamiento impositivo distinto
+   (exenciones, retenciones) por ser un ingreso digital del exterior?
+3. ¿Hay que declararlo de alguna forma en particular, más allá de la facturación mensual
+   común del monotributo?
+4. ¿Puede hacer que se pase de categoría de monotributo? ¿Cómo se calcula el tope estando
+   una parte de los ingresos en dólares?
+5. ¿Conviene recibirlo en una cuenta en pesos (se convierte solo) o en una cuenta en
+   dólares (para decidir cuándo convertir)? ¿Hay diferencia impositiva entre una y otra?
+6. ¿Hay algún límite o restricción del BCRA para este tipo de ingreso, siendo
+   monotributista?
+
 Sobre el **programa de cargos del servicio del 15%**: se creó el grupo de cuentas (paso 1),
 pero el link para aceptar los términos (paso 2) no apareció en la consola. **No vale la pena
 perseguirlo:** para *suscripciones* Google ya cobra 15% de entrada sin necesidad de anotarse;
