@@ -634,7 +634,24 @@ Node ni JDK. Pasos:
      (eso daría `NotAllowedError`, y `canMakePayment` no necesita gesto): Chrome
      directamente no encuentra un método de pago disponible.
 
-   **Hipótesis viva ahora (sin confirmar): cómo quedó instalada la app en ese celular.**
+   **🎯 CAUSA ENCONTRADA (29/8/2026): la app estaba instalada desde el archivo `.apk`,
+   no desde Play Store.** Lo confirmó la dueña. **Google Play Billing no funciona jamás
+   en una app instalada a mano (sideload):** Play acepta *consultar* el catálogo —por eso
+   `getDetails()` devolvía el precio real del plan mensual, que fue lo que nos confundió
+   toda la investigación— pero **rechaza el cobro** si la app no llegó desde Play Store.
+   Del lado de Chrome eso se ve exactamente como lo que salía: no encuentra un método de
+   pago disponible (`canMakePayment()` → `no`, y `PaymentRequest` tira
+   `NotSupportedError`). No había nada roto en el `.aab`, ni en `index.html`, ni en el
+   navegador.
+
+   ⚠️ **Regla general, vale para cualquier app de la dueña que venda algo por Play (va a
+   subir más):** el `.apk` que largan PWABuilder/Bubblewrap sirve para probar que la app
+   *abre* y se ve bien, pero **NO sirve para probar compras**. Cualquier prueba de pago
+   tiene que hacerse con la app bajada desde Play Store (pista de prueba interna alcanza)
+   y con la cuenta del celular anotada como tester. Si alguien vuelve a ver "precio sí,
+   compra no", chequear ESTO antes que nada — nos costó una sesión entera.
+
+   **Hipótesis previa (ya confirmada, se deja escrito el razonamiento):**
    `getDetails()` puede funcionar aunque la app no se haya instalado desde Play (Play
    reconoce el paquete y el producto publicado igual), pero el **cobro** sí exige que la
    app haya llegado desde Play Store y que la cuenta del celular sea tester. En la
@@ -646,18 +663,18 @@ Node ni JDK. Pasos:
    el del 19/8 (versión 1), entonces la instalada vino de Play y esta hipótesis se cae
    sola. No está chequeado cuál de los dos casos es.
 
-   **Próximos pasos concretos para retomar:** (a) confirmar en el celular si la app
-   figura como instalada desde Play Store (Play Store → foto de perfil → Administrar apps
-   y dispositivos → Administrar → buscar "Agenda Docente"), y si ofrece actualización;
-   (b) si no figura ahí, desinstalar y reinstalar desde el link de prueba interna —
-   **antes de desinstalar, que baje "Guardar copia en un archivo" del menú ⋯**, por las
-   dudas; (c) confirmar que la cuenta de Google que tiene puesta ESE celular en Play
-   Store está en la lista de testers de la prueba interna y en la de prueba de licencias
-   ("Verificadores Agenda Docente") — si el celu tiene otra cuenta que la anotada, no
-   alcanza; (d) probar en un segundo celular Android; (e) si nada destraba, escalar con
-   el error exacto, los datos del `.aab` verificados arriba y este diagnóstico al
-   repositorio `GoogleChrome/android-browser-helper` en GitHub, que es donde vive el
-   puente y donde contestan quienes lo mantienen.
+   **Próximos pasos concretos (pendientes al cierre del 29/8/2026):** reinstalar la app
+   desde Play Store con la cuenta `englishbeatsclasesyrecursos@gmail.com` y repetir la
+   compra. En orden: (a) que la dueña baje "Guardar copia en un archivo" del menú ⋯ antes
+   de tocar nada; (b) confirmar que esa cuenta esté en la lista de **testers de la prueba
+   interna** (es una lista distinta de la de prueba de licencias — está confirmada solo en
+   la segunda), y sacar de ahí el link de invitación para testers; (c) aceptar la
+   invitación con esa cuenta; (d) desinstalar la app instalada a mano; (e) instalarla
+   desde Play Store; (f) repetir la compra del plan mensual.
+   Si aun así fallara —no es lo esperable—, quedan como plan B: probar en un segundo
+   celular Android, y escalar con el error exacto, los datos del `.aab` verificados arriba
+   y este diagnóstico al repositorio `GoogleChrome/android-browser-helper` en GitHub, que
+   es donde vive el puente y donde contestan quienes lo mantienen.
    - `LIC_ENFORCE` **sigue en `false`** a propósito — no lo enciendas hasta resolver
      este bloqueo y completar una compra de punta a punta de verdad. La cuenta de
      Estudio AM no sirve para probar porque está en `LIC_REGALADAS`. Ya hay una lista de
