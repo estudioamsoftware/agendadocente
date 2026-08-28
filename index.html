@@ -732,7 +732,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v0828d';
+const APP_VER='v0828e';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1339,13 +1339,16 @@ async function playComprar(itemId){
   let response;
   try{
     const request=new PaymentRequest(
-      [{supportedMethods:"https://play.google.com/billing", data:{itemId}}],
+      // La documentación de Chrome para Play Billing pide la clave "sku",
+      // no "itemId" (aunque el resto de la Digital Goods API sí usa
+      // "itemId") — con la clave equivocada, Play rechaza el pedido.
+      [{supportedMethods:"https://play.google.com/billing", data:{sku:itemId}}],
       {total:{label:"Total", amount:{currency:"USD", value:"0"}}}
     );
     response=await request.show();
   }catch(e){
     if(e&&e.name==="AbortError") return; // canceló el cuadro de pago
-    toast("No se pudo iniciar la compra");
+    toast("No se pudo iniciar la compra: "+describeError(e));
     return;
   }
   const purchaseToken=response.details&&(response.details.purchaseToken||response.details.token);
