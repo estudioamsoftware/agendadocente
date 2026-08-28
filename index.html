@@ -733,7 +733,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.28-2';
+const APP_VER='v2026.08.28-3';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1343,6 +1343,32 @@ async function playGetPlanDetails(service){
   return {byPlan, error};
 }
 
+function playSleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+// El puente con Google Play no queda listo en el mismo instante en que abre la
+// app: Chrome tiene que atarse a un servicio de la app empaquetada, y eso tarda
+// un momento. Si le preguntamos antes de tiempo, Play contesta
+// "clientAppUnavailable" (= "todavía no puedo hablar con esa app"). Es un error
+// conocido y sin arreglo publicado del lado de Google, así que lo tratamos como
+// lo que parece ser: una carrera contra el reloj. Reintentamos unas cuantas
+// veces, espaciado, antes de darnos por vencidas.
+async function playFetchPlans(onRetry){
+  let serviceError=null, detailsError=null, byPlan={};
+  for(let intento=1; intento<=5; intento++){
+    const r=await playGetService();
+    serviceError=r.error;
+    if(r.service){
+      const d=await playGetPlanDetails(r.service);
+      byPlan=d.byPlan; detailsError=d.error;
+      if(byPlan.mensual||byPlan.anual) return {byPlan, serviceError:null, detailsError:null};
+    }
+    // Solo tiene sentido reintentar si el puente todavía no estaba listo.
+    if(!/clientAppUnavailable/i.test(serviceError||detailsError||"")) break;
+    if(intento<5){ if(onRetry) onRetry(intento); await playSleep(1500); }
+  }
+  return {byPlan, serviceError, detailsError};
+}
+
 function playFormatPrice(item){
   if(!item||!item.price) return "";
   try{ return new Intl.NumberFormat("es-AR",{style:"currency",currency:item.price.currency}).format(Number(item.price.value)); }
@@ -1449,9 +1475,10 @@ async function licPaywall(){
   $("#lic_cancel").onclick=closeDlg;
 
   if(enTWA){
-    const {service, error:serviceError}=await playGetService();
-    let byPlan={}, detailsError=null;
-    if(service){ ({byPlan, error:detailsError}=await playGetPlanDetails(service)); }
+    const {byPlan, serviceError, detailsError}=await playFetchPlans(intento=>{
+      const a=$("#lic_plans_area");
+      if(a) a.innerHTML=`<p style="font-size:13px;color:var(--muted);margin:0;">Conectando con Google Play… (intento ${intento+1})</p>`;
+    });
     const area=$("#lic_plans_area");
     if(!area) return; // cerró el cuadro mientras esperábamos la respuesta de Play
 

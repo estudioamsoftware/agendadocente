@@ -739,7 +739,40 @@ Node ni JDK. Pasos:
    el del 19/8 (versión 1), entonces la instalada vino de Play y esta hipótesis se cae
    sola. No está chequeado cuál de los dos casos es.
 
-   **Próximos pasos concretos (pendientes al cierre del 29/8/2026):** reinstalar la app
+   **AVANCE GRANDE DEL 29/8/2026 (noche): dos causas encontradas y arregladas, queda una.**
+   Con la app ya bajada de Play Store (no del `.apk`) y el `assetlinks.json` corregido con
+   la huella de la clave de firma de Play, la app **abre como app de verdad, sin la barra
+   de dirección del navegador**, y el error cambió: ya no dice `unsupported context`.
+   Ahora `getDetails()` falla con **`OperationError: clientAppUnavailable`** para todas
+   las variantes de id probadas (`agenda_completa`, `agenda_completa:mensual`, `mensual`,
+   `agenda_completa:anual`, `anual`).
+
+   `clientAppUnavailable` quiere decir que Chrome no consigue hablar con el servicio de
+   facturación que vive dentro de la app empaquetada. **Es un bug conocido y SIN arreglo
+   publicado**: hay dos reportes abiertos y sin resolver de otros desarrolladores
+   (`GoogleChrome/android-browser-helper` #431 y `GoogleChromeLabs/bubblewrap` #805),
+   ambos en Android 13+, donde el "Delegation Service" de la app no llega a arrancar.
+   Cosas que esos reportes ya probaron **sin éxito**: limpiar la caché de Play Store,
+   subir el `targetSdkVersion`, revisar el permiso `BILLING`, actualizar Google Play
+   Services. Ojo que esos reportes usaban `androidbrowserhelper 2.4.0` y nuestro `.aab`
+   trae `2.7.0-alpha02`, bastante más nuevo.
+
+   **Lo que se probó de nuestro lado (en `v2026.08.28-3`):** como el síntoma parece una
+   carrera contra el reloj —el puente tarda en quedar atado después de abrir la app—, se
+   agregó `playFetchPlans()`, que reintenta hasta 5 veces con 1,5 s de espera y va
+   mostrando "Conectando con Google Play… (intento N)". Si el problema era solo que
+   preguntábamos demasiado pronto, esto lo resuelve. **Falta confirmarlo en el celular.**
+
+   **Si el reintento no alcanza, ideas en orden para la próxima sesión:** (a) reiniciar el
+   celular y probar de nuevo (el atado del servicio es cosa del sistema, y es gratis
+   probarlo); (b) probar en otro celular Android, preferentemente con otra versión de
+   Android, para ver si es específico de ese equipo; (c) revisar si `androidbrowserhelper`
+   sacó una versión estable posterior a `2.7.0-alpha02` y regenerar el `.aab` con esa;
+   (d) sumar nuestro caso a los reportes #431 / #805, que siguen abiertos — con los datos
+   del `.aab` ya verificados en este documento, que son bastante más completos que los de
+   esos hilos.
+
+   **Próximos pasos concretos (ya hechos el 29/8, se dejan por si hay que rehacerlos):** reinstalar la app
    desde Play Store con la cuenta `englishbeatsclasesyrecursos@gmail.com` y repetir la
    compra. En orden: (a) que la dueña baje "Guardar copia en un archivo" del menú ⋯ antes
    de tocar nada; (b) confirmar que esa cuenta esté en la lista de **testers de la prueba
