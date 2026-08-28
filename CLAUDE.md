@@ -427,20 +427,26 @@ Node ni JDK. Pasos:
    agenda-docente-8c53d`). Las dos funciones están corriendo:
    - `verifyPurchase`: callable, sin URL pública.
    - `playRtdn`: `https://us-central1-agenda-docente-8c53d.cloudfunctions.net/playRtdn`
-   Falta todavía: **configurar RTDN en Play Console** — esto no es tan directo como decía
-   antes esta nota. Play no manda las notificaciones directo a la URL de la función: hace
-   falta un tema de **Pub/Sub** en el medio. Pasos (sin hacer todavía):
-   1. Crear un tema de Pub/Sub en el proyecto `agenda-docente-8c53d` (ej. `play-rtdn`).
-   2. Darle permiso de publicar en ese tema a la cuenta de servicio de Google Play:
-      `google-play-developer-notifications@system.gserviceaccount.com` (rol "Publicador
-      de Pub/Sub").
-   3. Crear una **suscripción de tipo push** sobre ese tema, con el extremo de push
-      apuntando a la URL de `playRtdn` de arriba — recién ahí las notificaciones de Play
-      llegan a la función (el código de `playRtdn` ya espera exactamente el formato que
-      manda una suscripción push de Pub/Sub).
-   4. En Play Console → Monetizar → Configuración de monetización → notificaciones en
-      tiempo real, cargar el nombre completo del tema:
-      `projects/agenda-docente-8c53d/topics/play-rtdn`.
+   ~~Configurar RTDN~~ ✅ hecho (28/8/2026), armado entero desde Cloud Shell con `gcloud`
+   (no hizo falta la pantalla de Pub/Sub en la consola web):
+   1. Tema de Pub/Sub creado: `projects/agenda-docente-8c53d/topics/play-rtdn`
+      (`gcloud pubsub topics create play-rtdn`).
+   2. Permiso de publicar en ese tema otorgado a la cuenta de servicio de Google Play
+      (`google-play-developer-notifications@system.gserviceaccount.com`, rol
+      `roles/pubsub.publisher`).
+   3. Suscripción push creada (`play-rtdn-sub`) apuntando a la URL de `playRtdn`.
+   4. Probado a mano con `gcloud pubsub topics publish` + `curl` directo a la función
+      (devolvió `HTTP/2 400 Falta message.data`, lo esperado sin `purchaseToken` real —
+      confirma que la función está pública y responde bien, sin bloqueo de permisos).
+   5. Cargado en Play Console → Monetiza con Play → Configuración de monetización →
+      "Notificaciones en tiempo real": tildado "Habilitar", nombre del tema
+      `projects/agenda-docente-8c53d/topics/play-rtdn`, contenido "Solo suscripciones y
+      compras anuladas" (correcto, esta app no vende productos únicos). Guardado, y se
+      mandó la "notificación de prueba" desde el botón de Play Console — confirmó "Se
+      envió la notificación de prueba". **Pendiente para la próxima sesión:** confirmar
+      en los logs de Cloud Functions (`gcloud functions logs read playRtdn --gen2
+      --region=us-central1 --limit=10`) que esa notificación de prueba de Play realmente
+      llegó a la función — se cortó la sesión antes de revisar ese último log.
    Ojo con el cruce de cuentas (ver "Ojo con las cuentas").
 7. Integrar en `index.html` el flujo de compra con la Digital Goods API
    (`getDigitalGoodsService('https://play.google.com/billing')`), usando el ID de producto
