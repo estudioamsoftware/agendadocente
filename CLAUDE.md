@@ -14,6 +14,17 @@
   pantalla por pantalla de una, sin esperar a que ella pida "el link y la guía" — ya
   pasó más de una vez que hubo que pedirlo explícitamente porque quedó descripto en
   general nomás. Esto vale en cualquier chat nuevo, no solo en el que quedó anotado.
+- **La guía tiene que venir completa de entrada, no a cuentagotas.** No alcanza con
+  describir el paso en general ("completá las opciones de firma") — hay que anotar cada
+  valor exacto que tiene que cargar (Package ID, versión, alias, etc.), comparándolo
+  contra los datos ya confirmados en este documento, **antes** de decirle que siga. Si
+  una pantalla tiene un campo con un valor por default que no coincide con lo
+  documentado acá (como el Package ID de PWABuilder, que trae uno genérico tipo
+  `io.github...` en vez de `com.estudioam.agendadocente`), avisarlo de una en el mismo
+  mensaje que la guía — no esperar a que ella mande una captura y lo note. Pedirle
+  capturas de pantalla en cada paso para chequear es válido y bienvenido, pero no como
+  sustituto de anticipar los valores correctos: es un chequeo extra, no la primera
+  línea de defensa.
 - Trabaja desde el celular y desde la compu, alternando. Respuestas cortas.
 
 ## Qué es esto
