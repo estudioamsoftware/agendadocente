@@ -788,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-48';
+const APP_VER='v2026.08.29-49';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1040,6 +1040,17 @@ function migrate(st){
         T.exams.filter(ex=>ex.recuOf).forEach(recu=>{
           const parent=T.exams.find(x=>x.id===recu.recuOf);
           if(parent&&parent.recuDate!==recu.date) parent.recuDate=recu.date;
+          // Recuperatorios creados antes de que la recu heredara las notas de su
+          // evaluación: se las pasamos, pero sólo si todavía no tienen ninguna nota
+          // cargada — si ya las tiene, cambiarle la forma escondería lo cargado.
+          if(parent&&Array.isArray(parent.parts)&&parent.parts.length>=2
+             &&!(Array.isArray(recu.parts)&&recu.parts.length>=2)){
+            const tieneNotas=Object.keys(T.grades||{}).some(sid=>{
+              const c=((T.grades||{})[sid]||{})[recu.id]||{};
+              return Object.keys(c).some(k=>c[k]!=null&&c[k]!==false);
+            });
+            if(!tieneNotas) recu.parts=parent.parts.slice();
+          }
         });
       }
       if(Array.isArray(T.sessions)) markFeriadosAuto(T);
@@ -5192,6 +5203,11 @@ function renderExamEntry(g,t,e,body){
   // myRecu: esta evaluación TIENE un recuperatorio cargado como examen aparte.
   const parentEx=e.recuOf?(t.exams.find(x=>x.id===e.recuOf)||null):null;
   const myRecu=linkedRecuExam(t,e.id);
+  // Evaluación con varias notas + recuperatorio con las mismas notas: la columna RECUP.
+  // se abre en una por parte, así se ve qué recuperó de cada cosa.
+  const recuParts=(hasParts&&myRecu&&Array.isArray(myRecu.parts)&&myRecu.parts.length===e.parts.length)?myRecu.parts:null;
+  // Y al revés: esta pantalla ES el recuperatorio de una evaluación partida en notas.
+  const soyRecuPorPartes=hasParts&&parentEx&&Array.isArray(parentEx.parts)&&parentEx.parts.length===e.parts.length;
   const noRecu=isCarpeta||(!isTP&&!e.recuDate&&!myRecu);
   const typeMetaHere=examTypeMeta(e.type);
   const typeLabel=`${typeMetaHere.icon} ${typeMetaHere.label}`;
@@ -5208,16 +5224,24 @@ function renderExamEntry(g,t,e,body){
       <span>🔁</span><span style="flex:1;min-width:0;">Recupera <b>${esc(parentEx.name)}</b> (${fmtShort(parentEx.date)}) · sólo los que no aprobaron</span></div>`:""}
     ${contPanel}
     <div class="examgrid-wrap"><div class="examgrid">
-      <div class="eg-row eg-head"><span class="eg-nm">Alumno</span>${hasParts?e.parts.map(label=>`<span class="eg-col eg-col-nota">${esc(label.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-nota">NOTA</span>`}${!noRecu?`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`:""}</div>
+      <div class="eg-row eg-head"><span class="eg-nm">Alumno</span>${hasParts?e.parts.map(label=>`<span class="eg-col eg-col-nota">${esc(label.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-nota">NOTA</span>`}${!noRecu?(recuParts?recuParts.map(l=>`<span class="eg-col eg-col-recu">RECUP.<br>${esc(l.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`):""}</div>
       <div id="rows"></div></div></div>
     <div class="tally" style="margin-top:10px;"><div class="pill" style="background:var(--present-tint);color:var(--present-ink);">Aprobados <span id="cOk">0</span></div><div class="pill" style="background:var(--absent-tint);color:var(--absent-ink);">Desaprobados <span id="cBad">0</span></div></div>
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <div class="pagefoot">${hasParts?`La nota final es el promedio de las partes, y se completa sola apenas están todas cargadas. `:""}Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
-      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos.`:""}`
       :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
+  // En un recuperatorio por partes, la parte que ya aprobó en la evaluación no se
+  // vuelve a rendir: va con "–" y no se puede escribir.
+  const partYaAprobada=(sid,pi)=>{
+    if(!soyRecuPorPartes) return false;
+    const v=getGrade(t,sid,parentEx.id)["p"+pi];
+    return typeof v==="number"&&v>=pm;
+  };
+  const rayita=`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`;
   const rows=$("#rows");
   const dis=locked?"disabled":"";
   // Celda genérica de nota (usada para "nota", "recu" y, si la eval se divide en
@@ -5237,7 +5261,9 @@ function renderExamEntry(g,t,e,body){
     const approved=!isTP&&(hasParts?examPartsAllPassed(t,s.id,e,pm):(typeof c.nota==="number"&&c.nota>=pm));
     const seMarcado=isTP&&c.se&&typeof c.nota!=="number";
     const notaCell=hasParts
-      ?e.parts.map((label,pi)=>`<div class="eg-col eg-col-nota">${fieldCellHTML(s,c,"p"+pi,e.date)}</div>`).join("")
+      ?e.parts.map((label,pi)=>`<div class="eg-col eg-col-nota">${partYaAprobada(s.id,pi)
+        ?`<div class="grade-cell">${rayita}</div>`
+        :fieldCellHTML(s,c,"p"+pi,e.date)}</div>`).join("")
       :`<div class="eg-col eg-col-nota">${seMarcado
         ?`<div class="grade-cell"><span class="numin" style="background:var(--line-soft);color:var(--faint);display:inline-flex;align-items:center;justify-content:center;">–</span></div>`
         :fieldCellHTML(s,c,"nota",e.date)}</div>`;
@@ -5262,9 +5288,20 @@ function renderExamEntry(g,t,e,body){
       :(approved?`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`
         :(myRecu?linkedRecuCell()
           :fieldCellHTML(s,c,"recu",e.recuDate,"recu")));
+    // Una columna RECUP. por parte: "–" si esa parte ya la tenía aprobada, la nota del
+    // recuperatorio si la rindió, "A" si faltó.
+    const recuPartCell=(pi)=>{
+      const orig=c["p"+pi];
+      if(typeof orig==="number"&&orig>=pm) return rayita;
+      const rv=getGrade(t,s.id,myRecu.id)["p"+pi];
+      if(typeof rv==="number") return `<span class="numin ${gradeTierClass(rv,pm)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`;
+      return gradeAusenteEffective(t,g,s.id,myRecu.id,"p"+pi,myRecu.date)
+        ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;">A</span>`
+        :`<span class="eg-na">–</span>`;
+    };
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}</span>
       ${notaCell}
-      ${!noRecu?`<div class="eg-col eg-col-recu">${recuCol}</div>`:""}`;
+      ${!noRecu?(recuParts?recuParts.map((l,pi)=>`<div class="eg-col eg-col-recu">${recuPartCell(pi)}</div>`).join(""):`<div class="eg-col eg-col-recu">${recuCol}</div>`):""}`;
   }
   // Con partes (ej. Gramática/Vocabulario), "nota" no se toca a mano: es el promedio
   // de las partes ya resueltas (con número o marcadas ausente), recién cuando están
@@ -5274,7 +5311,11 @@ function renderExamEntry(g,t,e,body){
     const c=getGrade(t,sid,e.id);
     const vals=[]; let allResolved=true;
     e.parts.forEach((_,pi)=>{
-      const f="p"+pi; const v=c[f];
+      const f="p"+pi;
+      // Parte que ya venía aprobada: cuenta con la nota que sacó en la evaluación, así
+      // la nota del recuperatorio refleja el examen entero y no sólo lo que rindió hoy.
+      if(partYaAprobada(sid,pi)){ vals.push(getGrade(t,sid,parentEx.id)[f]); return; }
+      const v=c[f];
       if(typeof v==="number") vals.push(v);
       else if(!gradeAusenteEffective(t,g,sid,e.id,f,e.date)) allResolved=false;
     });
@@ -6264,9 +6305,19 @@ function promptNewExam(t,g,type){
     ? t.exams.filter(x=>!String(x.type||"").startsWith("recu_")&&!x.recuOf&&!linkedRecuExam(t,x.id)).sort((a,b)=>a.date<b.date?1:-1)
     : [];
   const guessedParent=((recuCandidates.filter(x=>x.date<=todayISO())[0])||recuCandidates[0]||{}).id||null;
+  // Un recuperatorio no elige sus propias partes: lleva las mismas que la evaluación que
+  // recupera (si esa tenía Gramática y Vocabulario, la recu también). Lo que ya aprobaron
+  // aparece con "–" y sólo se carga lo que se llevaron.
+  const partsNoteHTML=(pid)=>{
+    const par=pid?recuCandidates.find(x=>x.id===pid):null;
+    const ps=(par&&Array.isArray(par.parts)&&par.parts.length>=2)?par.parts:null;
+    if(!ps) return "";
+    return `<div style="font-size:11.5px;color:var(--primary);background:var(--primary-tint);border-radius:9px;padding:8px 11px;margin-top:8px;line-height:1.45;">Este recuperatorio va a tener las mismas notas que esa evaluación: <b>${ps.map(x=>esc(x)).join(" · ")}</b>. Lo que cada alumno ya aprobó aparece con "–".</div>`;
+  };
   const parentPanel=isRecu?`<div class="dlg-field"><label>¿De qué evaluación es este recuperatorio?</label>
     ${recuCandidates.length?`<div class="chiprow" id="e_recuof_row" style="flex-wrap:wrap;">${recuCandidates.map(x=>`<button class="mchip ${guessedParent===x.id?"on":""}" data-recuof="${x.id}">${examTypeMeta(x.type).icon} ${esc(x.name)} · ${fmtShort(x.date)}</button>`).join("")}</div>
-      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Acá sólo van a aparecer los que no aprobaron esa evaluación y los que faltaron. Las notas que cargues se ven al lado de la original.</div>`
+      <div style="font-size:11px;color:var(--faint);margin-top:4px;">Acá sólo van a aparecer los que no aprobaron esa evaluación y los que faltaron. Las notas que cargues se ven al lado de la original.</div>
+      <div id="e_recuparts_note">${partsNoteHTML(guessedParent)}</div>`
       :`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:9px 11px;">Primero cargá la evaluación: un recuperatorio siempre sale de una evaluación anterior.</div>`}
     </div>`:"";
   const partsPanel=!isRecu?`<div class="dlg-field"><label>¿Necesitás poner varias notas en este examen? <span style="font-weight:500;color:var(--faint);">(opcional — ej.: Gramática, Vocabulario)</span></label><input id="e_parts" placeholder="Separadas por coma" autocomplete="off"><div style="font-size:11px;color:var(--faint);margin-top:4px;">Cada parte se carga aparte y la nota final sale sola, como promedio.</div></div>`:"";
@@ -6306,6 +6357,7 @@ function promptNewExam(t,g,type){
     recuOfRow.querySelectorAll("[data-recuof]").forEach(b=>b.onclick=()=>{
       selRecuOf=b.dataset.recuof||null;
       recuOfRow.querySelectorAll("[data-recuof]").forEach(x=>x.classList.toggle("on",x===b));
+      const noteEl=$("#e_recuparts_note"); if(noteEl) noteEl.innerHTML=partsNoteHTML(selRecuOf);
     });
   }
   $("#e_back").onclick=()=>{ closeDlg(); promptExamTypePicker(t,g); };
@@ -6330,7 +6382,12 @@ function promptNewExam(t,g,type){
       e.recuOf=selRecuOf;
       // La evaluación pasa a mostrar la columna de recuperatorio con estas notas.
       const parent=t.exams.find(x=>x.id===selRecuOf);
-      if(parent) parent.recuDate=e.date;
+      if(parent){
+        parent.recuDate=e.date;
+        // Misma cantidad de notas que la evaluación: si tenía Gramática y Vocabulario,
+        // la recu también, para poder recuperar sólo la parte que se llevaron.
+        if(Array.isArray(parent.parts)&&parent.parts.length>=2) e.parts=parent.parts.slice();
+      }
     }
     save(); closeDlg(); view.examId=e.id; render();
   };
@@ -6389,6 +6446,9 @@ function promptEditExam(t,e){
       const partsRaw=eePartsInp.value.trim();
       const partsList=partsRaw?partsRaw.split(",").map(x=>x.trim()).filter(Boolean):[];
       if(partsList.length>=2) e.parts=partsList; else delete e.parts;
+      // El recuperatorio atado lleva siempre las mismas notas que su evaluación.
+      const miRecu=linkedRecuExam(t,e.id);
+      if(miRecu){ if(partsList.length>=2) miRecu.parts=partsList.slice(); else delete miRecu.parts; }
       save();
     }
     if(e.recuOf){

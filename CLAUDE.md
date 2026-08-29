@@ -119,6 +119,35 @@ Detalles técnicos de la conversión, por si se toca:
 - `countValoraciones()` cuenta solo las notas que usan la escala actual — es el número
   que se le muestra a la docente.
 
+## Exámenes con varias notas y su recuperatorio (29/8/2026)
+
+Una evaluación puede partirse en varias notas (ej.: Vocabulary y Grammar) — eso ya existía
+(`e.parts` en `index.html`). Lo que se agregó el 29/8, a pedido de la dueña, es que **el
+recuperatorio lleve las mismas notas que la evaluación que recupera**:
+
+- Al crear un recuperatorio se elige de qué evaluación es (eso ya estaba). Si esa
+  evaluación tiene partes, **la recu las hereda solas** y el cuadro lo avisa antes de
+  crearla. Si después se editan las partes de la evaluación, la recu las sigue.
+- En la pantalla del recuperatorio, **cada alumno sólo puede cargar las partes que se
+  llevó**: las que ya aprobó (≥ nota de aprobación en la evaluación) salen con "–" y no se
+  pueden escribir (`partYaAprobada()` en `renderExam`).
+- **La nota final del recuperatorio combina las dos cosas**: para las partes ya aprobadas
+  usa la nota vieja de la evaluación, y para las recuperadas la nueva
+  (`recomputePartsNota()`). Esa nota es la que reemplaza a la original.
+- En la evaluación, la columna RECUP. **se abre en una columna por parte** (RECUP.
+  VOCABULARY, RECUP. GRAMMAR), en modo lectura: "–" si esa parte ya estaba aprobada o no la
+  rindió, la nota si la recuperó, "A" si faltó.
+- Migración: a un recuperatorio viejo sin partes se le pasan las de su evaluación **sólo si
+  todavía no tiene ninguna nota cargada** — si ya tiene, cambiarle la forma escondería lo
+  cargado (las notas se guardan en `nota` y pasarían a `p0`/`p1`).
+
+**Por qué se había perdido:** con dos partes + recu no entraban las columnas en el celular
+y la columna de nombres se achicaba hasta partir cada apellido letra por letra. Se resolvió
+haciendo que la tabla de Exámenes funcione como la de Resumen: **la columna de alumnos
+queda fija (`position:sticky`) y las de notas corren al costado**. El borde y el redondeo
+viven en `.examgrid-wrap` (el que scrollea), no en `.examgrid`, porque si no el sticky no
+funciona.
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
