@@ -125,18 +125,13 @@
   .feat p{margin:8px 0 0;font-size:15px;color:var(--muted);}
 
   /* ---------- galeria ---------- */
-  /* Una captura grande y completa por vez: en el celular la tarjeta ocupa casi
-     todo el ancho (con scroll-padding para que arranque pegada al borde), y
-     apenas se asoma un pedacito de la siguiente para insinuar que hay más. */
-  .shots{display:flex;gap:14px;overflow-x:auto;padding:34px 16px 8px;
-    scroll-snap-type:x mandatory;scroll-padding-left:16px;-webkit-overflow-scrolling:touch;}
-  .shots::-webkit-scrollbar{height:8px;}
-  .shots::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
-  .shot{flex:0 0 78%;max-width:270px;scroll-snap-align:start;}
-  @media(min-width:640px){.shot{flex-basis:240px;}}
-  .shot .cap{margin:14px 2px 0;font-size:14px;font-weight:600;color:var(--muted);text-align:center;}
-  .shot .cap b{display:block;color:var(--ink);font-size:15px;font-weight:700;margin-bottom:2px;}
-  .swipe-hint{text-align:center;font-size:13px;color:var(--faint);font-weight:600;margin:6px 0 0;}
+  /* De a pares, en fila, bajando la página — nada para deslizar ni recortar. */
+  .shots{display:grid;grid-template-columns:1fr 1fr;gap:28px 14px;padding-top:34px;padding-bottom:8px;}
+  .shot{text-align:center;}
+  .shot .cap{margin:12px 2px 0;font-size:13px;font-weight:600;color:var(--muted);text-align:center;}
+  .shot .cap b{display:block;color:var(--ink);font-size:14.5px;font-weight:700;margin-bottom:1px;}
+  @media(min-width:700px){.shots{grid-template-columns:repeat(3,1fr);gap:32px 20px;}
+    .shot .cap{font-size:14px;} .shot .cap b{font-size:15.5px;}}
 
   /* ---------- privacidad ---------- */
   .privacy{display:grid;gap:14px;margin-top:34px;}
@@ -325,7 +320,7 @@
       <p class="eyebrow">Así se ve</p>
       <h2>Pantallas de verdad, no dibujitos</h2>
     </div>
-    <div class="shots">
+    <div class="shots wrap">
       <figure class="shot" style="margin:0">
         <div class="phone"><img src="landing-assets/shot-bienvenida.webp" width="460" height="817" alt="Pantalla de bienvenida de Agenda Docente."></div>
         <figcaption class="cap"><b>Bienvenida</b>Ella organiza. Vos enseñás.</figcaption>
@@ -351,7 +346,6 @@
         <figcaption class="cap"><b>Documentos</b>Los papeles de cada curso</figcaption>
       </figure>
     </div>
-    <p class="swipe-hint">← deslizá para ver más →</p>
   </section>
 
   <!-- ============ PRIVACIDAD ============ -->
