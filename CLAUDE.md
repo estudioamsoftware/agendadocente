@@ -226,14 +226,26 @@ mudanza de arriba.
 
 ### Ojo con las cuentas (CORREGIDO 29/8/2026 por la dueña — leer esto antes de nombrar ninguna cuenta)
 
-🚨 **`mullerana@hotmail.com` NO EXISTE y no tiene nada que ver con este proyecto.** Estuvo
-escrito acá por error desde el commit `f2b0b99` y **hay que borrarlo de la cabeza**: no es
-la cuenta de Play Console, ni de Google Play, ni de nada. La dueña ya lo había corregido en
-una sesión anterior, pero **esa corrección se dijo en el chat y nunca se guardó en este
-archivo**, así que al cerrarse esa conversación se perdió y el dato viejo volvió a salir.
-Por eso terminó teniendo que explicarlo de nuevo, a los gritos y con razón. **Moraleja para
-cualquier sesión futura: una corrección que no se commitea, no existe.** Si la dueña corrige
-un dato, se escribe acá y se pushea a `main` en el momento, antes de seguir con nada.
+🚨 **`mullerana@hotmail.com` (sin el 2) NO es la cuenta de Play Console ni la que administra
+nada de este proyecto.** Estuvo escrito acá por error desde el commit `f2b0b99`
+presentándolo como la dueña de Play Console, cuando en realidad Play Console se administra
+con `estudioam.dev@gmail.com`. La dueña ya lo había corregido en una sesión anterior, pero
+**esa corrección se dijo en el chat y nunca se guardó en este archivo**, así que al cerrarse
+esa conversación se perdió y el dato viejo volvió a salir. Por eso terminó teniendo que
+explicarlo de nuevo, a los gritos y con razón. **Moraleja para cualquier sesión futura: una
+corrección que no se commitea, no existe.** Si la dueña corrige un dato, se escribe acá y se
+pushea a `main` en el momento, antes de seguir con nada.
+
+⚠️ **MATIZ (29/8/2026, más tarde la misma noche): `mullerana@hotmail.com` sí es una cuenta
+real de la dueña** (ella lo confirmó) — lo que sigue siendo cierto es que **no es con la que
+se administra Play Console día a día** (eso es `estudioam.dev@gmail.com`). Apareció en la
+pantalla de Play Console → Cuentas de desarrollador asociadas → "Inscribirse en el programa
+de cargos del servicio del 15%", como **"Cuenta principal"** del grupo de cuentas "Estudio
+AM". La dueña no recuerda haber creado la cuenta de desarrollador con ese mail — puede haber
+quedado como mail de recuperación en algún momento. **Investigar con "Usuarios y permisos"
+de Play Console** (`https://play.google.com/console/u/0/developers/6208089129841152998/users-and-permissions`)
+para confirmar si aparece ahí con algún rol, y actualizar esta nota con lo que se encuentre —
+no dejar esto sin resolver ni volver a borrarlo de un plumazo sin chequear.
 
 **Cómo es de verdad — todo el lado Google de estas apps es `estudioam.dev@gmail.com`:**
 
