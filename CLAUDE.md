@@ -890,9 +890,25 @@ Node ni JDK. Pasos:
    `.../app/4974565274805185721/main-store-listing`). Ese texto vive solo en Play Console,
    no está guardado en este repo — si se vuelve a tocar, convendría copiarlo acá también
    para no depender de una sola fuente. Las capturas también están, en `play-store-assets/`.
-   **Lo único que falta: la clasificación de contenido** (cuestionario en Play Console
-   sobre violencia/lenguaje/etc. — para esta app va a ser todo "No", es una app de gestión
-   docente sin contenido sensible).
+   **Corrección (29/8/2026): no era solo la clasificación de contenido — el panel real
+   (`.../app/4974565274805185721/app-dashboard`) tiene 11 tareas en total**, de las cuales
+   3 ya estaban hechas (política de privacidad, categoría/contacto, ficha de Play Store).
+   Yendo una por una:
+   - **Categoría de app** → se completó en esta sesión: "Educación".
+   - **Anuncios** → "No, mi app no contiene anuncios".
+   - **Apps gubernamentales**, **Funciones financieras**, **Salud** → las tres "no aplica".
+   - **Detalles de acceso** → se marcó **"No"** (ninguna parte restringida): correcto
+     mientras `LIC_ENFORCE=false`, porque hoy nada de la app pide cuenta ni pago.
+     🚨 **Volver a tocar esto el día que se prenda el candado de pago de verdad** — ahí sí
+     va a haber contenido pago y hay que marcar "Sí" y darle a Google una cuenta de
+     prueba para revisar esas partes.
+   - Quedan por hacer: **Clasificación de contenido**, **Público objetivo**, **Seguridad
+     de los datos** (esta última importa: hay que declarar que se usa Google Drive/Firebase
+     y qué datos se comparten).
+   - Al terminar las 11, falta ir a "Descripción general de la publicación" y mandar todo
+     a revisión junto — no hace falta enviarlo después de cada tarea individual (los
+     carteles de "¿Ir a Descripción general?" que aparecen en cada paso se pueden
+     contestar "Ahora no" tranquilamente, uno por uno).
 9. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
 10. ~~Armar una landing page para promocionar la app por fuera de Google Play~~ ✅ hecha
     el 29/8/2026. Vive en **`landing.html`** (más las imágenes livianas de
