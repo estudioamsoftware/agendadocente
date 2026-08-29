@@ -59,12 +59,33 @@ descartó (además complicaría la tabla de Resumen, que muestra los dos cuatrim
 con una sola escala y un solo pie de página).
 
 Dónde se elige, después del cambio del 29/8:
-- **La ficha del curso → Escuela y horarios → tarjeta "Valoraciones"** (debajo de Ciclo
-  lectivo): muestra la escala actual con sus niveles de colores y un lápiz para cambiarla.
-  Es la casa principal, porque es una decisión del alta del curso.
+- **La ficha del curso → Ciclo lectivo → tarjeta "Valoraciones"**: muestra la escala
+  actual con sus niveles de colores y un lápiz para cambiarla. Es la casa principal,
+  porque es una decisión del alta del curso.
 - El atajo chico **"Valoraciones"** que ya estaba en Clases, al lado del selector de
   cuatrimestre — se dejó igual, sin tocar (venía de reubicarse a mano en commits previos).
 - El cuadro que salta solo la primera vez que se generan las clases del curso.
+
+### "Ciclo lectivo" es una sección aparte de "Escuela y horarios" (29/8/2026)
+
+Otra corrección de la dueña, misma sesión: **en "Escuela y horarios" tiene que ir solo lo
+que es de la escuela y del horario.** El ciclo lectivo no pinta nada ahí — es su propio
+tema, y es adentro de él donde se dividen los cuatrimestres y se elige la escala de
+valoraciones. Así quedó "La ficha del curso":
+
+- **Escuela y horarios**: escuela, equipo directivo, días y horario de cursada, notas
+  internas, situación de revista, archivar/eliminar el curso.
+- **Ciclo lectivo** (`cicloSectionHTML` / `wireCicloSection` en `index.html`): fechas del
+  año + "Generar clases", el resumen de los dos cuatrimestres (rango de fechas y cantidad
+  de clases de cada uno, con el recordatorio de que el corte lo marca el receso invernal
+  que se carga en Calendario), y la tarjeta de Valoraciones.
+- Después: Alumnos, Contenidos, Documentos (sin cambios).
+
+Ojo si se toca esto: **"Generar clases" usa los días de clase guardados** (`g.diasClase`),
+que se cargan en la otra sección. Si el curso todavía no tiene días, la pantalla muestra un
+aviso con un botón para ir a cargarlos, en vez de dejar generar sin nada. Y las pantallas
+que antes mandaban a "Escuela y horarios" cuando faltaban clases (Asistencia, Clases,
+Resumen) ahora mandan a **Ciclo lectivo**, que es donde se generan.
 
 Si la docente ya eligió una escala en otro curso, los dos cuadros ofrecen arriba un botón
 **"Usar la misma que en <curso>"**, para no hacerla buscar de nuevo en cada curso nuevo.
