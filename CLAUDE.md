@@ -243,14 +243,27 @@ pantalla de Play Console → Cuentas de desarrollador asociadas → "Inscribirse
 de cargos del servicio del 15%", como **"Cuenta principal"** del grupo de cuentas "Estudio
 AM".
 
-**Chequeado en "Usuarios y permisos" el mismo 29/8/2026:** `mullerana@hotmail.com` **no
-figura en ningún lado** de esa lista — solo aparecen `estudioam.dev@gmail.com` (nombre de
-Google asociado: "Annie Muller") y la cuenta de servicio técnica
-(`play-store-api@agenda-docente-8c53d...`). Osea que **no tiene ningún permiso ni acceso
-real a Play Console**, cero riesgo de seguridad. Lo de "Cuenta principal" en la pantalla del
-15% debe salir de algún dato interno de verificación de identidad que Google guardó al
-crear la cuenta hace tiempo (o un mail de recuperación viejo), separado de qué cuenta
-administra el día a día. No hace falta seguir investigando esto — quedó resuelto.
+**RESUELTO DEL TODO (29/8/2026), con la fuente exacta encontrada.** Chequeado en tres
+pantallas seguidas de Play Console:
+
+1. **"Usuarios y permisos"**: `mullerana@hotmail.com` no figura en la lista. Solo tienen
+   acceso `estudioam.dev@gmail.com` (Propietaria — el nombre de perfil de Google es "Annie
+   Muller", un apodo, no el nombre legal) y la cuenta de servicio técnica.
+2. **"Cuenta de desarrollador"**: el **nombre legal** registrado (el que se comparó contra
+   el DNI) es **"Ana Teresa Catalina Müller"** — no hay ningún problema con que el perfil de
+   Gmail diga "Annie", son campos distintos. Y ahí mismo, bajo "Datos de contacto", está la
+   explicación completa: **`mullerana@hotmail.com` es la "Dirección de correo electrónico de
+   contacto"** — el mail que usa Google para mandar avisos administrativos, un campo
+   totalmente separado de con qué cuenta se entra a la consola.
+3. **"Cuentas de desarrollador asociadas"** (en esa misma pantalla): dice literal **"No
+   asociaste esta cuenta a ninguna otra"** — confirma que no hay ninguna otra cuenta de
+   desarrollador de por medio.
+
+**Conclusión: `mullerana@hotmail.com` no tiene ningún permiso ni acceso a Play Console —
+es simplemente el mail de contacto administrativo.** Por eso aparecía como "Cuenta
+principal" en la pantalla del programa del 15%: esa pantalla usa el mail de contacto como
+etiqueta para identificar el grupo de cuentas, no como usuario con acceso. Cero riesgo de
+seguridad, cero misterio. No hace falta volver a tocar este tema.
 
 **Cómo es de verdad — todo el lado Google de estas apps es `estudioam.dev@gmail.com`:**
 
