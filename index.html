@@ -784,7 +784,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-45';
+const APP_VER='v2026.08.29-46';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -852,7 +852,7 @@ const VAL_SCHEME_PRESETS={
   num10:{id:"num10",name:"Numérica (1 a 10)",short:"1-10",levels:Array.from({length:10},(_,i)=>{
     const n=i+1; const tier=n>=8?VTIER.green:n>=5?VTIER.grey:VTIER.red;
     return {key:String(n),label:String(n),symbol:String(n),...tier};
-  }),footNote:"Nota numérica de 1 (más bajo) a 10 (más alto) · sin marcar = S/C."},
+  }),asc:true,footNote:"Nota numérica de 1 (más bajo) a 10 (más alto) · sin marcar = S/C."},
   semaforo:{id:"semaforo",name:"Semáforo 🟢🟡🔴",short:"🟢🟡🔴",levels:[
     {key:"VER",label:"Muy bien",symbol:"🟢",...VTIER.green},
     {key:"AMA",label:"Regular",symbol:"🟡",...VTIER.amber},
@@ -886,15 +886,10 @@ function getValScheme(g){
 function setValSchemePreset(g,id){ g.valScheme={id}; save(); }
 function setValSchemeCustom(g,levels){ g.valScheme={id:"custom",levels}; save(); }
 // Cada escala usa claves distintas para guardar la nota (ej: "VG" vs "8" vs
-// "🟡"), así que cambiar de escala después de haber calificado deja las notas
-// viejas guardadas pero invisibles (ninguna clave coincide con la escala
-// nueva). Por eso se bloquea apenas hay una sola calificación cargada.
-function hasAnyValoracion(g){
-  return ["1","2"].some(k=>{
-    const work=(g.terms[k]&&g.terms[k].work)||{};
-    return Object.keys(work).some(sid=>Object.keys(work[sid]||{}).length>0);
-  });
-}
+// "🟡"), así que cambiar de escala después de haber calificado dejaría las notas
+// viejas guardadas pero invisibles (ninguna clave coincide con la escala nueva).
+// Antes eso se resolvía bloqueando el cambio; ahora se resuelve avisando y, cuando
+// se puede, traduciendo las notas — ver aplicarValScheme().
 function levelBtnSizeStyle(lv){
   const len=(lv&&(lv.symbol||lv.label)||"").length;
   if(len>4) return "width:auto;min-width:36px;padding:0 8px;white-space:nowrap;font-size:11px;";
@@ -918,6 +913,41 @@ function suggestValScheme(g){
 function applyValScheme(g,vs){
   if(vs.id==="custom") setValSchemeCustom(g,vs.levels.map(lv=>({...lv})));
   else setValSchemePreset(g,vs.id);
+}
+// Casi todas las escalas van de mejor a peor (E, VG, G, R); la numérica va al revés
+// (1 es lo más bajo). Para traducir notas de una escala a otra hay que compararlas
+// siempre desde el mejor nivel, no desde el primero de la lista.
+function levelsBestFirst(scheme){ return scheme.asc?scheme.levels.slice().reverse():scheme.levels; }
+function resolveValScheme(vs){
+  if(vs.id==="custom") return {id:"custom",levels:vs.levels};
+  return VAL_SCHEME_PRESETS[vs.id]||VAL_SCHEME_PRESETS.evgr;
+}
+// Cuántas notas ya cargadas usan la escala actual: es lo que se perdería de vista si
+// se cambia de escala sin convertirlas.
+function countValoraciones(g){
+  const keys=new Set(getValScheme(g).levels.map(l=>l.key));
+  let n=0;
+  ["1","2"].forEach(k=>{ const w=(g.terms[k]&&g.terms[k].work)||{};
+    Object.keys(w).forEach(sid=>{ const m=w[sid]||{}; Object.keys(m).forEach(d=>{ if(keys.has(m[d])) n++; }); });
+  });
+  return n;
+}
+// Traducción nivel por nivel entre dos escalas del mismo tamaño (E→E, VG→MB, …).
+// Con distinta cantidad de niveles no se hace: cualquier equivalencia sería inventada.
+function valSchemeMap(oldScheme,newScheme){
+  const a=levelsBestFirst(oldScheme), b=levelsBestFirst(newScheme);
+  if(a.length!==b.length) return null;
+  const map={}; a.forEach((lv,i)=>{ map[lv.key]=b[i].key; });
+  return map;
+}
+function remapValoraciones(g,map){
+  let n=0;
+  ["1","2"].forEach(k=>{ const w=(g.terms[k]&&g.terms[k].work)||{};
+    Object.keys(w).forEach(sid=>{ const m=w[sid]||{};
+      Object.keys(m).forEach(d=>{ const nv=map[m[d]]; if(nv&&nv!==m[d]){ m[d]=nv; n++; } });
+    });
+  });
+  return n;
 }
 function schemeFootNote(scheme){
   if(scheme.footNote) return scheme.footNote;
@@ -3896,7 +3926,7 @@ function cicloSectionHTML(g){
   // que da cada docente), no algo del día a día: por eso vive acá, junto con el resto
   // de cómo se arma el ciclo, además del atajo que ya existe en Clases.
   const valSc=getValScheme(g);
-  const valLocked=hasAnyValoracion(g);
+  const valYaHay=countValoraciones(g);
   const valChips=valSc.levels.map(lv=>`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:7px;font-size:11.5px;font-weight:700;background:${lv.bg};color:${lv.ink};border:1px solid ${lv.border};">${esc(lv.symbol||lv.label)}</span>`).join("");
   const valHTML=`<div class="card pad" style="margin-top:16px;">
       <div class="cardtitle">${I.star}Valoraciones</div>
@@ -3906,11 +3936,11 @@ function cicloSectionHTML(g){
           <div class="kv-val">${esc(valSchemeName(g))}</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">${valChips}</div>
         </div>
-        ${valLocked?"":`<button class="iconbtn" id="valsch_edit" aria-label="Cambiar la escala de valoración">${I.pencil}</button>`}
+        <button class="iconbtn" id="valsch_edit" aria-label="Cambiar la escala de valoración">${I.pencil}</button>
       </div>
-      <div style="font-size:11.5px;color:var(--faint);margin-top:12px;line-height:1.45;">${valLocked
-        ?`🔒 Ya cargaste notas con esta escala, así que queda fija: si la cambiaras, esas notas quedarían guardadas pero escondidas.`
-        :`💡 Es con lo que calificás cada clase en <b>Clases</b>. Elegí la que uses en esta materia — en cuanto cargues la primera nota queda fija.`}</div>
+      <div style="font-size:11.5px;color:var(--faint);margin-top:12px;line-height:1.45;">${valYaHay
+        ?`💡 Es con lo que calificás cada clase en <b>Clases</b>. La podés cambiar cuando quieras con el lápiz: como ya tenés ${valYaHay} nota${valYaHay===1?"":"s"} cargada${valYaHay===1?"":"s"}, antes te avisamos qué pasa con ellas.`
+        :`💡 Es con lo que calificás cada clase en <b>Clases</b>. Elegí la que uses en esta materia; después la vas a poder cambiar igual.`}</div>
     </div>`;
 
   return fechasHTML + cuatriHTML + valHTML;
@@ -4828,15 +4858,16 @@ function renderClase(g,t,body){
 }
 
 /* ---- Selector de escala de valoración (Clase a clase) ---- */
+// Se puede cambiar siempre, aunque ya haya notas cargadas: obligar a una docente a
+// quedarse con la escala que eligió en marzo no es opción. Lo que sí se hace es
+// avisarle qué va a pasar con esas notas y, cuando las dos escalas tienen la misma
+// cantidad de niveles, ofrecerle traducirlas solas.
 function promptValScheme(g){
-  if(hasAnyValoracion(g)){
-    const curName=getValScheme(g).name||"tu escala personalizada";
-    openDlg("Escala de valoración",`<p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0;">Ya cargaste calificaciones con <b>${esc(curName)}</b>, así que no se puede cambiar: las notas viejas quedarían guardadas pero "escondidas", porque no coinciden con ninguna clave de otra escala.</p>
-      <div class="dlg-actions" style="margin-top:16px;"><button class="btn" id="vs_ok">Entendido</button></div>`);
-    $("#vs_ok").onclick=closeDlg;
-    return;
-  }
   const curId=(g.valScheme&&g.valScheme.id)||"evgr";
+  const yaHay=countValoraciones(g);
+  const avisoHTML=yaHay?`<div style="font-size:12.5px;color:var(--absent-ink);background:var(--absent-tint);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5;">⚠️ Ya cargaste <b>${yaHay} ${yaHay===1?"valoración":"valoraciones"}</b> con <b>${esc(valSchemeName(g))}</b>. Podés cambiar igual: en el paso siguiente elegís qué hacer con esas notas.</div>`:"";
+  const sug=g.valScheme?null:suggestValScheme(g);
+  const sugHTML=sug?`<button type="button" class="btn ghost sm" id="vs_same" style="width:100%;margin-bottom:14px;">Usar la misma que en ${esc(sug.groupName)}: ${esc(sug.short)}</button>`:"";
   const cardsHtml=VAL_SCHEME_ORDER.map(id=>{
     const p=VAL_SCHEME_PRESETS[id]; const on=curId===id;
     return `<button type="button" class="typecard" data-scheme="${id}" style="${on?"border-color:var(--primary);background:var(--primary-tint);color:var(--primary);":""}">
@@ -4844,18 +4875,56 @@ function promptValScheme(g){
   }).join("")
   + `<button type="button" class="typecard" data-scheme="custom" style="${curId==="custom"?"border-color:var(--primary);background:var(--primary-tint);color:var(--primary);":""}">
       <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
-  const sug=g.valScheme?null:suggestValScheme(g);
-  const sugHTML=sug?`<button type="button" class="btn ghost sm" id="vs_same" style="width:100%;margin-bottom:14px;">Usar la misma que en ${esc(sug.groupName)}: ${esc(sug.short)}</button>`:"";
-  openDlg("Escala de valoración",`${sugHTML}<div class="typegrid">${cardsHtml}</div>
+  openDlg("Escala de valoración",`${avisoHTML}${sugHTML}<div class="typegrid">${cardsHtml}</div>
     <div class="dlg-actions"><button class="btn subtle" id="vs_cancel">Cerrar</button></div>`,
-    "Elegí cómo registrar la valoración de cada clase en este curso. Una vez que cargues la primera nota, la escala queda fija — ya no se va a poder cambiar.");
+    "Elegí cómo registrar la valoración de cada clase en este curso.");
   $("#vs_cancel").onclick=closeDlg;
-  const sameBtn=$("#vs_same"); if(sameBtn) sameBtn.onclick=()=>{ applyValScheme(g,sug.vs); closeDlg(); toastSuccess("✓ Escala actualizada","#A9500A"); render(); };
+  const sameBtn=$("#vs_same"); if(sameBtn) sameBtn.onclick=()=>aplicarValScheme(g,sug.vs,"✓ Escala actualizada");
   $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.scheme;
     if(id==="custom"){ promptValSchemeCustom(g); return; }
-    setValSchemePreset(g,id); closeDlg(); toastSuccess("✓ Escala actualizada","#A9500A"); render();
+    aplicarValScheme(g,{id},"✓ Escala actualizada");
   });
+}
+// Punto único por donde pasan todos los cambios de escala. Si no hay notas cargadas
+// aplica derecho; si las hay, primero muestra el cartel de aviso.
+function aplicarValScheme(g,vs,okMsg){
+  const antes=getValScheme(g);
+  const ahora=resolveValScheme(vs);
+  const yaHay=countValoraciones(g);
+  const hacerlo=(convertir)=>{
+    if(convertir){ const map=valSchemeMap(antes,ahora); if(map) remapValoraciones(g,map); }
+    applyValScheme(g,vs);
+    closeDlg(); toastSuccess(okMsg||"✓ Escala actualizada","#A9500A"); render();
+  };
+  if(!yaHay){ hacerlo(false); return; }
+  const map=valSchemeMap(antes,ahora);
+  const chip=(lv)=>`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 6px;border-radius:6px;font-size:11px;font-weight:700;background:${lv.bg};color:${lv.ink};border:1px solid ${lv.border};">${esc(lv.symbol||lv.label)}</span>`;
+  const bfA=levelsBestFirst(antes), bfB=levelsBestFirst(ahora);
+  const equivHTML=map?`<div style="background:var(--line-soft);border-radius:10px;padding:10px 12px;margin:12px 0;display:flex;flex-wrap:wrap;gap:8px 14px;">
+      ${bfA.map((lv,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);">${chip(lv)}→${chip(bfB[i])}</span>`).join("")}
+    </div>`:"";
+  const cuerpo=map
+    ? `<p style="font-size:13.5px;color:var(--ink);line-height:1.6;margin:0;">Ya cargaste <b>${yaHay} ${yaHay===1?"valoración":"valoraciones"}</b> con <b>${esc(valSchemeName(g))}</b>, desde que arrancó el ciclo.</p>
+       <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:10px 0 0;">Las dos escalas tienen la misma cantidad de niveles, así que se pueden pasar solas:</p>
+       ${equivHTML}
+       <p style="font-size:12px;color:var(--faint);line-height:1.5;margin:0;">Si preferís no tocarlas, las notas viejas quedan guardadas igual, pero dejan de verse en Clases hasta que vuelvas a elegir ${esc(valSchemeName(g))}.</p>
+       <div class="dlg-actions" style="margin-top:16px;flex-direction:column;gap:8px;">
+         <button class="btn" id="vsw_conv" style="width:100%;">Convertir las notas y cambiar</button>
+         <button class="btn subtle sm" id="vsw_plain" style="width:100%;">Cambiar sin convertir</button>
+         <button class="btn subtle sm" id="vsw_no" style="width:100%;">Mejor no</button>
+       </div>`
+    : `<p style="font-size:13.5px;color:var(--ink);line-height:1.6;margin:0;">Ya cargaste <b>${yaHay} ${yaHay===1?"valoración":"valoraciones"}</b> con <b>${esc(valSchemeName(g))}</b>, desde que arrancó el ciclo.</p>
+       <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:10px 0 0;">Las dos escalas tienen distinta cantidad de niveles (${antes.levels.length} y ${ahora.levels.length}), así que no se pueden pasar solas: cualquier equivalencia sería inventada.</p>
+       <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:10px 0 0;">Si cambiás igual, <b>esas notas no se borran</b>: quedan guardadas, pero dejan de verse en Clases. Vuelven a aparecer si más adelante elegís de nuevo ${esc(valSchemeName(g))}.</p>
+       <div class="dlg-actions" style="margin-top:16px;flex-direction:column;gap:8px;">
+         <button class="btn" id="vsw_plain" style="width:100%;">Cambiar igual</button>
+         <button class="btn subtle sm" id="vsw_no" style="width:100%;">Mejor no</button>
+       </div>`;
+  openDlg("Ojo con las notas que ya cargaste",cuerpo);
+  const conv=$("#vsw_conv"); if(conv) conv.onclick=()=>hacerlo(true);
+  $("#vsw_plain").onclick=()=>hacerlo(false);
+  $("#vsw_no").onclick=()=>promptValScheme(g);
 }
 // Se dispara sola la primera vez que se generan clases para un curso, para que
 // elegir la escala sea parte del alta y no algo que se descubre después por las
@@ -4878,11 +4947,11 @@ function promptFirstValScheme(g){
     <p style="font-size:12px;color:var(--faint);line-height:1.5;margin:14px 0 0;">💡 Si ya diste clases este cuatrimestre antes de empezar a usar la app, cargalas retroactivamente en Asistencia y Clases — así las estadísticas dan bien desde el principio.</p>
     <div class="dlg-actions" style="margin-top:14px;"><button class="btn subtle" id="vs_skip">Elijo después</button></div>`);
   $("#vs_skip").onclick=closeDlg;
-  const sameBtn=$("#vs_same"); if(sameBtn) sameBtn.onclick=()=>{ applyValScheme(g,sug.vs); closeDlg(); toastSuccess("✓ Escala elegida","#A9500A"); render(); };
+  const sameBtn=$("#vs_same"); if(sameBtn) sameBtn.onclick=()=>aplicarValScheme(g,sug.vs,"✓ Escala elegida");
   $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.scheme;
     if(id==="custom"){ promptValSchemeCustom(g); return; }
-    setValSchemePreset(g,id); closeDlg(); toastSuccess("✓ Escala elegida","#A9500A"); render();
+    aplicarValScheme(g,{id},"✓ Escala elegida");
   });
 }
 function promptValSchemeCustom(g){
@@ -4919,7 +4988,7 @@ function promptValSchemeCustom(g){
       if(clean.length<2){ toast("Cargá al menos 2 niveles con texto."); return; }
       const finalLevels=clean.map((lv,i)=>{ const c=lv.colorIdx>=0?VAL_CUSTOM_COLORS[lv.colorIdx]:VTIER.grey;
         return {key:"c"+i+"_"+uid().slice(0,4),label:lv.label,symbol:lv.label,bg:c.bg,ink:c.ink,border:c.border}; });
-      setValSchemeCustom(g,finalLevels); closeDlg(); toastSuccess("✓ Escala personalizada guardada","#A9500A"); render();
+      aplicarValScheme(g,{id:"custom",levels:finalLevels},"✓ Escala personalizada guardada");
     };
   }
 }

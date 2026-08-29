@@ -90,9 +90,33 @@ Resumen) ahora mandan a **Ciclo lectivo**, que es donde se generan.
 Si la docente ya eligió una escala en otro curso, los dos cuadros ofrecen arriba un botón
 **"Usar la misma que en <curso>"**, para no hacerla buscar de nuevo en cada curso nuevo.
 
-Sigue valiendo: **la escala queda fija apenas se carga la primera nota** del curso (cada
-escala guarda con claves distintas, así que cambiarla escondería las notas viejas). Con
-notas cargadas, la tarjeta de la ficha muestra el candado y no ofrece el lápiz.
+**La escala se puede cambiar SIEMPRE, aunque ya haya notas cargadas** (corregido el
+29/8/2026 por la dueña: "no puedo obligar a un profesor a quedarse con lo que eligió").
+Antes se bloqueaba; ahora el lápiz está siempre y lo que hay es un aviso. Cómo funciona
+(`aplicarValScheme()` en `index.html`, único punto por donde pasan todos los cambios):
+
+- Sin notas cargadas: cambia derecho.
+- Con notas cargadas, primero sale el cartel **"Ojo con las notas que ya cargaste"**, que
+  dice cuántas son y con qué escala:
+  - **Si las dos escalas tienen la misma cantidad de niveles** (el caso típico: pasar de
+    E-VG-G-R inglés a E-MB-B-R español), ofrece **convertirlas solas**, mostrando la
+    equivalencia nivel por nivel (E→E, VG→MB, G→B, R→R). Botones: "Convertir las notas y
+    cambiar" / "Cambiar sin convertir" / "Mejor no".
+  - **Si tienen distinta cantidad de niveles**, no ofrece convertir (cualquier
+    equivalencia sería inventada): avisa que las notas viejas **no se borran** pero dejan
+    de verse hasta que vuelva a elegir la escala anterior. Botones: "Cambiar igual" /
+    "Mejor no".
+
+Detalles técnicos de la conversión, por si se toca:
+- La traducción es nivel por nivel **desde el mejor**, no desde el primero de la lista:
+  la escala numérica va al revés (1 es lo más bajo), por eso el preset `num10` lleva
+  `asc:true` y `levelsBestFirst()` la da vuelta antes de comparar. Si se agrega otra
+  escala ascendente, hay que marcarla igual o la conversión sale invertida.
+- Las claves de niveles no se repiten entre escalas, así que el remapeo se puede hacer en
+  una sola pasada sin pisarse (`remapValoraciones()`).
+- El "Ausente" (`A`) no se toca nunca: no es parte de la escala.
+- `countValoraciones()` cuenta solo las notas que usan la escala actual — es el número
+  que se le muestra a la docente.
 
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
