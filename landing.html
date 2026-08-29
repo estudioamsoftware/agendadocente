@@ -98,7 +98,14 @@
     box-shadow:var(--shadow-lg);}
   .phone::after{content:"";position:absolute;top:16px;left:50%;transform:translateX(-50%);
     width:66px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);}
-  .phone img{border-radius:30px;background:var(--paper);}
+  /* Todas las capturas al mismo alto, aunque el archivo original sea más largo
+     (las de notas y documentos son 460x1005 y el resto 460x817): se recortan
+     desde arriba, así en la grilla ninguna queda más alta que su vecina. */
+  /* height:auto es imprescindible: sin eso el atributo height="817" del HTML
+     se aplica como alto literal y le gana a aspect-ratio, dejando la imagen
+     estirada y recortada de costado. */
+  .phone img{border-radius:30px;background:var(--paper);
+    width:100%;height:auto;aspect-ratio:460/817;object-fit:cover;object-position:top;}
   .phone-big{max-width:330px;}
 
   /* ---------- bandas ---------- */
@@ -126,7 +133,7 @@
 
   /* ---------- galeria ---------- */
   /* De a pares, en fila, bajando la página — nada para deslizar ni recortar. */
-  .shots{display:grid;grid-template-columns:1fr 1fr;gap:28px 14px;padding-top:34px;padding-bottom:8px;}
+  .shots{display:grid;grid-template-columns:1fr 1fr;gap:28px 14px;padding-top:34px;padding-bottom:8px;align-items:start;}
   .shot{text-align:center;}
   .shot .cap{margin:12px 2px 0;font-size:13px;font-weight:600;color:var(--muted);text-align:center;}
   .shot .cap b{display:block;color:var(--ink);font-size:14.5px;font-weight:700;margin-bottom:1px;}
@@ -334,7 +341,7 @@
         <figcaption class="cap"><b>Tu semana</b>Todos los cursos de un vistazo</figcaption>
       </figure>
       <figure class="shot" style="margin:0">
-        <div class="phone"><img src="landing-assets/shot-notas.webp" width="460" height="1005" alt="Carga de notas de una evaluación, alumno por alumno."></div>
+        <div class="phone"><img src="landing-assets/shot-notas.webp" width="460" height="817" alt="Carga de notas de una evaluación, alumno por alumno."></div>
         <figcaption class="cap"><b>Notas</b>Evaluaciones y recuperatorios</figcaption>
       </figure>
       <figure class="shot" style="margin:0">
@@ -342,7 +349,7 @@
         <figcaption class="cap"><b>Licencias y paros</b>Anulá clases de una vez</figcaption>
       </figure>
       <figure class="shot" style="margin:0">
-        <div class="phone"><img src="landing-assets/shot-documentos.webp" width="460" height="1005" alt="Lista de documentos del curso con fecha y adjunto."></div>
+        <div class="phone"><img src="landing-assets/shot-documentos.webp" width="460" height="817" alt="Lista de documentos del curso con fecha y adjunto."></div>
         <figcaption class="cap"><b>Documentos</b>Los papeles de cada curso</figcaption>
       </figure>
     </div>
