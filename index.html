@@ -108,11 +108,66 @@
   .tab.sel-tab{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-bd);font-weight:700;}
   .tab:not([aria-selected="true"]):active{background:var(--line-soft);}
 
-  .subtabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;margin-bottom:16px;scrollbar-width:none;}
-  .subtabs::-webkit-scrollbar{display:none;}
-  .subtab{flex:0 0 auto;height:38px;padding:0 14px;border-radius:10px;font-weight:600;font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--line);white-space:nowrap;}
-  .subtab[aria-selected="true"]{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-bd);font-weight:700;}
-  .subtab:not([aria-selected="true"]):active{background:var(--line-soft);}
+
+  /* ===== Índice del curso ===== */
+  .ghead2{padding:14px 0 12px;}
+  .ghead2 h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:24px;margin:0;letter-spacing:-.01em;line-height:1.15;word-break:break-word;}
+  .gh-bits{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:9px;}
+  .gh-bit{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);min-width:0;}
+  .gh-bit svg{width:14px;height:14px;flex:none;color:var(--primary);opacity:.75;}
+
+  .todaycta{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:16px;border:1.5px solid var(--primary-bd);background:var(--primary-tint);margin-bottom:20px;}
+  .todaycta.pend{border-color:var(--amber-bd);background:var(--amber-tint);}
+  .tc-ic{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--primary);color:#fff;}
+  .todaycta.pend .tc-ic{background:var(--amber);}
+  .tc-ic svg{width:20px;height:20px;}
+  .tc-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .tc-t{font-size:15px;font-weight:700;color:var(--ink);}
+  .tc-s{font-size:12.5px;color:var(--muted);font-weight:500;}
+  .tc-go{flex:none;display:inline-flex;align-items:center;gap:2px;font-size:13px;font-weight:700;color:var(--primary);}
+  .todaycta.pend .tc-go{color:var(--amber-ink,#8C4108);}
+  .tc-go svg{width:16px;height:16px;}
+
+  .famblock{margin-bottom:22px;}
+  .fam-head{display:flex;align-items:center;gap:11px;padding:0 4px 10px;}
+  .fam-ic{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary-bd);}
+  .famblock.dia .fam-ic{background:#EAF2EC;color:#2F6B44;border-color:#CDE3D4;}
+  .fam-ic svg{width:17px;height:17px;}
+  .fam-t{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;color:var(--ink);line-height:1.2;}
+  .fam-s{font-size:12px;color:var(--faint);font-weight:500;margin-top:2px;}
+  .fam-rows{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  .secrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 14px;background:transparent;border:0;border-top:1px solid var(--line-soft);}
+  .secrow:first-child{border-top:0;}
+  .secrow:active{background:var(--line-soft);}
+  .sr-ic{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--primary-tint);color:var(--primary);}
+  .famblock.dia .sr-ic{background:#EAF2EC;color:#2F6B44;}
+  .sr-ic svg{width:17px;height:17px;}
+  .sr-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .sr-t{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .sr-d{font-size:12px;color:var(--muted);font-weight:500;line-height:1.35;}
+  .sr-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--line-soft);color:var(--muted);letter-spacing:.01em;}
+  .sr-badge.ok{background:var(--present-tint);color:var(--present-ink);}
+  .sr-badge.warn{background:var(--amber-tint);color:#8C4108;}
+  .sr-chev{flex:none;color:var(--faint);display:grid;place-items:center;}
+  .sr-chev svg{width:17px;height:17px;}
+
+  .gh-top{display:flex;align-items:flex-start;gap:10px;}
+  .gh-top h1{flex:1;min-width:0;}
+
+  .secnav{padding:12px 0 0;margin-bottom:14px;}
+  .secnav-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+  .secnav-back{display:inline-flex;align-items:center;gap:2px;height:30px;padding:0 11px 0 7px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:700;color:var(--muted);flex:none;}
+  .secnav-back svg{width:14px;height:14px;}
+  .secnav-course{flex:1;min-width:0;font-family:"Fraunces",Georgia,serif;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .secnav-fam{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--primary);margin-bottom:8px;}
+  .secnav-fam.dia{color:#2F6B44;}
+  .secnav-fam svg{width:13px;height:13px;flex:none;}
+  .secnav-chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .secchip{display:inline-flex;align-items:center;gap:5px;height:33px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:600;color:var(--muted);}
+  .secchip svg{width:13px;height:13px;flex:none;opacity:.65;}
+  .secchip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700;}
+  .secnav-fam.dia ~ .secnav-chips .secchip.on{background:#2F6B44;border-color:#2F6B44;}
+  .secchip.on svg{opacity:1;}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);}
   .pad{padding:16px;} .muted{color:var(--muted);}
@@ -287,17 +342,12 @@
   .gc-G{background:var(--blue-tint);color:var(--blue-ink);font-weight:800;} .gc-R{background:var(--present-tint);color:var(--present-ink);font-weight:800;}
   .gc-num{font-weight:800;background:var(--line-soft);}
   .gnum-blue{background:var(--blue-tint);color:var(--blue-ink);} .gnum-green{background:var(--present-tint);color:var(--present-ink);} .gnum-red{background:var(--absent-tint);color:var(--absent-ink);}
-  .nav-switcher{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;width:100%;}
-  .nav-sw-group{display:flex;gap:12px;flex:1;justify-content:center;flex-wrap:wrap;}
   .undoredo{display:flex;gap:6px;margin-left:auto;}
   .ur-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:36px;width:46px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--ink);flex:none;}
   .ur-btn svg{width:16px;height:16px;}
   .ur-btn span{font-size:8px;font-weight:700;color:var(--muted);line-height:1;}
   .ur-btn:active{background:var(--line-soft);}
   .undoredo-strip{justify-content:flex-end;margin:0 0 10px;}
-  .nav-sw{height:48px;padding:0 30px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:14px;font-weight:600;color:var(--muted);}
-  .nav-sw.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-  .nav-sw:active{opacity:.85;}
   .gh-sep{background:var(--primary-tint);color:var(--primary);font-weight:800;width:18px;min-width:18px;text-align:center;padding:0 2px;}
   .gc-sep{background:var(--primary-tint);width:18px;min-width:18px;}
   .av-opt{height:32px;padding:0 10px;border-radius:8px;font-weight:700;font-size:12px;border:none;cursor:pointer;}
@@ -739,7 +789,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-13';
+const APP_VER='v2026.08.29-14';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2835,11 +2885,12 @@ function renderHome(){
   // Listeners para configuración rápida de horas (ver más abajo)
   // Listeners para archivados
   $("#newGroup").onclick=promptNewGroup;
-  app.querySelectorAll("[data-setup]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.setup,term:"1",tab:"datos",datosSub:"alumnos"}));
+  app.querySelectorAll("[data-setup]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.setup,term:"1",tab:"alumnos"}));
   const sa=$("#showAyuda"); if(sa) sa.onclick=()=>promptAyuda();
   const ta=$("#toggleArch"); if(ta) ta.onclick=()=>{ view.showArchived=!view.showArchived; render(); };
-  // Las tarjetas de archivados se abren en Datos, donde están "Desarchivar" y "Eliminar"
-  app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:"1",tab:"datos"}));
+  // Las tarjetas de archivados se abren en el índice del curso, desde donde se llega a
+  // "Escuela y horarios", que es donde están "Desarchivar" y "Eliminar"
+  app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:"1",tab:"indice"}));
 }
 
 /* ---- EVENTOS GENERALES (pantalla propia) ---- */
@@ -3240,51 +3291,138 @@ function renderPapelera(){
 }
 
 /* ---- GROUP ---- */
+const GRP_SEC={
+  info:      {fam:"ficha",label:"Escuela y horarios", ic:"school", desc:"Dirección, directivos, días de clase y ciclo lectivo"},
+  alumnos:   {fam:"ficha",label:"Alumnos",           ic:"users",  desc:"El listado del curso"},
+  contenidos:{fam:"ficha",label:"Contenidos",        ic:"book",   desc:"Programa y temas de cada cuatrimestre"},
+  documentos:{fam:"ficha",label:"Documentos",        ic:"clip",   desc:"Planificación, programa, evaluaciones…"},
+  asist:     {fam:"dia",  label:"Asistencia",        ic:"check",  desc:"Presentes, ausentes y tardanzas, clase por clase"},
+  clase:     {fam:"dia",  label:"Clases",            ic:"cal",    desc:"Los temas y las páginas que diste cada día"},
+  exam:      {fam:"dia",  label:"Exámenes y notas",  ic:"star",   desc:"Evaluaciones, TP, carpetas y recuperatorios"},
+  grilla:    {fam:"dia",  label:"Resumen",           ic:"table",  desc:"Todo el curso en una tabla y las notas finales"},
+  intens:    {fam:"dia",  label:"Intensificación",   ic:"doc",    desc:"Los alumnos que adeudan la materia"}
+};
+const GRP_FAM={
+  ficha:{title:"La ficha del curso", sub:"Se carga una vez y queda", ic:"school"},
+  dia:  {title:"El día a día",       sub:"Lo que vas cargando clase por clase", ic:"pencil"}
+};
+const I_check='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+function secIcon(k){ return k==="check"?I_check:I[k]; }
+function docCount(g){ const d=ensureDocs(g); return Object.keys(d).reduce((n,k)=>n+(d[k]||[]).length,0); }
+function pendCount(g){
+  let n=0;
+  ["1","2"].forEach(k=>{ const t=g.terms[k];
+    t.sessions.filter(s=>!isFuture(s.date)).forEach(s=>{ if(!hasCompleteAttendance(t,s.date,g)) n++; });
+  });
+  return n;
+}
+function secBadge(g,key){
+  if(key==="alumnos") return g.students.length?{txt:String(g.students.length),tone:"neutral"}:{txt:"Vacío",tone:"warn"};
+  if(key==="documentos"){ const n=docCount(g); return n?{txt:String(n),tone:"neutral"}:null; }
+  if(key==="contenidos"){ const p=g.programa||{c1:[],c2:[]}; const n=(p.c1||[]).length+(p.c2||[]).length; return n?{txt:String(n),tone:"neutral"}:null; }
+  if(key==="asist"){ const n=pendCount(g); return n?{txt:n+" pendiente"+(n===1?"":"s"),tone:"warn"}:{txt:"Al día",tone:"ok"}; }
+  if(key==="exam"){ const n=(g.terms["1"].exams||[]).length+(g.terms["2"].exams||[]).length; return n?{txt:String(n),tone:"neutral"}:null; }
+  return null;
+}
+function groupHeadHTML(g){
+  const dias=(g.diasClase||[]).map(d=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d]).join(" y ");
+  const esc_=g.escuelaId?state.escuelas.find(s=>s.id===g.escuelaId):null;
+  const bits=[];
+  if(esc_&&esc_.nombre) bits.push(`<span class="gh-bit">${I.school}${esc(esc_.nombre)}</span>`);
+  bits.push(`<span class="gh-bit">${I.users}${g.students.length} ${g.students.length===1?"alumno":"alumnos"}</span>`);
+  if(dias||g.horario) bits.push(`<span class="gh-bit">${I.clock}${esc([dias,g.horario].filter(Boolean).join(" · "))}</span>`);
+  return `<div class="ghead2">
+    <div class="gh-top"><h1>${esc(g.name)} <button class="titleEdit" id="renameHdr" aria-label="Editar nombre">${I.pencil}</button></h1>
+      <div class="undoredo" id="undoRedoSlot"></div></div>
+    <div class="gh-bits">${bits.join("")}</div>
+  </div>`;
+}
+function famNavHTML(g,tab){
+  const fam=GRP_SEC[tab].fam; const F=GRP_FAM[fam];
+  const keys=Object.keys(GRP_SEC).filter(k=>GRP_SEC[k].fam===fam);
+  return `<div class="secnav">
+    <div class="secnav-top">
+      <button class="secnav-back" id="toIndice">${I.back}<span>Índice</span></button>
+      <span class="secnav-course">${esc(g.name)}</span>
+      <div class="undoredo" id="undoRedoSlot"></div>
+    </div>
+    <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}</div>
+    <div class="secnav-chips">${keys.map(k=>`<button class="secchip ${k===tab?"on":""}" data-tab="${k}">${secIcon(GRP_SEC[k].ic)}<span>${GRP_SEC[k].label}</span></button>`).join("")}</div>
+  </div>`;
+}
+function famBlockHTML(g,fam){
+  const F=GRP_FAM[fam];
+  const keys=Object.keys(GRP_SEC).filter(k=>GRP_SEC[k].fam===fam);
+  return `<section class="famblock ${fam}">
+    <div class="fam-head"><span class="fam-ic">${secIcon(F.ic)}</span>
+      <div><div class="fam-t">${F.title}</div><div class="fam-s">${F.sub}</div></div></div>
+    <div class="fam-rows">${keys.map(k=>{
+      const S=GRP_SEC[k]; const b=secBadge(g,k);
+      return `<button class="secrow" data-tab="${k}">
+        <span class="sr-ic">${secIcon(S.ic)}</span>
+        <span class="sr-txt"><span class="sr-t">${S.label}${b?`<span class="sr-badge ${b.tone}">${esc(b.txt)}</span>`:""}</span>
+        <span class="sr-d">${S.desc}</span></span>
+        <span class="sr-chev">${I.chev}</span></button>`;
+    }).join("")}</div>
+  </section>`;
+}
+function todayCtaHTML(g){
+  const iso=todayISO();
+  let hit=null;
+  ["1","2"].forEach(k=>{ const s=g.terms[k].sessions.find(s=>s.date===iso&&!s.cancelled); if(s) hit={k:k,date:iso}; });
+  if(!hit){
+    let last=null,lk="1";
+    ["1","2"].forEach(k=>{ g.terms[k].sessions.filter(s=>!isFuture(s.date)&&!s.cancelled).forEach(s=>{ if(!hasCompleteAttendance(g.terms[k],s.date,g)&&(!last||s.date>last)){ last=s.date; lk=k; } }); });
+    if(!last) return "";
+    return `<button class="todaycta pend" data-cta="${lk}"><span class="tc-ic">${I_check}</span>
+      <span class="tc-txt"><span class="tc-t">Te falta pasar lista</span><span class="tc-s">Última clase sin tomar: ${fmtItemDate(last)}</span></span>
+      <span class="tc-go">Ir${I.chev}</span></button>`;
+  }
+  return `<button class="todaycta hoy" data-cta="${hit.k}"><span class="tc-ic">${I_check}</span>
+    <span class="tc-txt"><span class="tc-t">Hoy tenés clase</span><span class="tc-s">${fmtItemDate(iso)} · pasá lista acá</span></span>
+    <span class="tc-go">Ir${I.chev}</span></button>`;
+}
 function renderGroup(g){
   app.classList.remove("app-home");
   setTopBack(()=>go({screen:"home"}));
-  const tk=view.term||"1"; const tab=view.tab||"datos";
-  const enCursada=["asist","clase","grilla","exam","cuatri","intens"].includes(tab);
-  const dias=(g.diasClase||[]).map(d=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d]).join(" · ");
-  const h=g.horario||"";
-  const metaExtra=(dias||h)?` · <span style="font-weight:500;color:var(--muted);">${[dias,h].filter(Boolean).join("  ")}</span>`:"";
+  let tab=view.tab||"indice";
+  // "datos" es el nombre viejo de la pantalla de entrada: con datosSub va derecho a esa
+  // sección (los atajos de Inicio siguen andando), y sin datosSub cae en el índice.
+  if(tab==="datos") tab=(view.datosSub&&GRP_SEC[view.datosSub])?view.datosSub:"indice";
+  if(tab==="cuatri") tab="grilla";
+  if(tab!=="indice"&&!GRP_SEC[tab]) tab="indice";
+  view.tab=tab; delete view.datosSub;
 
-  if(!enCursada){
-    // DATOS DEL CURSO
-    app.innerHTML=`<div class="ghead"><div style="flex:1;min-width:0;">
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
-        <h1 style="margin:0;">${esc(g.name)} <button class="titleEdit" id="renameHdr" aria-label="Editar nombre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></h1>
-        <span class="count" style="margin:0;">${g.students.length} ${g.students.length===1?"alumno":"alumnos"}${metaExtra}</span>
-      </div>
-      <div class="nav-switcher"><div class="nav-sw-group"><button class="nav-sw active" style="font-size:18px;font-weight:700;letter-spacing:.02em;">DATOS</button><button class="nav-sw" id="toCursada" style="font-size:18px;font-weight:700;letter-spacing:.02em;">CURSADA</button></div><div class="undoredo" id="undoRedoSlot"></div></div>
-      </div></div>
-      <div id="tabBody"></div>`;
+  if(tab==="indice"){
+    app.innerHTML=groupHeadHTML(g)
+      +todayCtaHTML(g)
+      +famBlockHTML(g,"ficha")
+      +famBlockHTML(g,"dia")
+      +`<div class="pagefoot">Tocá cualquier fila para entrar. Desde adentro volvés a este índice con “← Índice”.</div>`;
     $("#renameHdr").onclick=()=>promptRenameGroup(g);
-    $("#toCursada").onclick=()=>{ view.tab="asist"; render(); };
-    renderInfo(g,$("#tabBody"));
-  } else {
-    // CURSADA
-    const tabs=[["asist","Asistencia"],["clase","Clases"],["exam","Exámenes y recup"],["grilla","Resumen"],["intens","Intensificación"]];
-    app.innerHTML=`<div class="ghead"><div style="flex:1;min-width:0;">
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
-        <h1 style="margin:0;">${esc(g.name)} <button class="titleEdit" id="renameHdr" aria-label="Editar nombre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></h1>
-        <span class="count" style="margin:0;">${g.students.length} ${g.students.length===1?"alumno":"alumnos"}${metaExtra}</span>
-      </div>
-      <div class="nav-switcher"><div class="nav-sw-group"><button class="nav-sw" id="toDatos" style="font-size:18px;font-weight:700;letter-spacing:.02em;">DATOS</button><button class="nav-sw active" style="font-size:18px;font-weight:700;letter-spacing:.02em;">CURSADA</button></div><div class="undoredo" id="undoRedoSlot"></div></div>
-      </div></div>
-      <div class="tabs" role="tablist">${tabs.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${k===tab}" data-tab="${k}">${l}</button>`).join("")}</div>
-      <div id="tabBody"></div>`;
-    app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); });
-    $("#renameHdr").onclick=()=>promptRenameGroup(g);
-    $("#toDatos").onclick=()=>{ view.tab="datos"; render(); };
-    const body=$("#tabBody"); const t=term(g);
-    if(tab==="asist") renderAsist(g,t,body);
-    else if(tab==="clase") renderClase(g,t,body);
-    else if(tab==="grilla"||tab==="cuatri") renderGrid(g,t,body);
-    else if(tab==="exam") renderExam(g,t,body);
-    else renderIntens(g,t,body);
+    app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); window.scrollTo(0,0); });
+    const cta=app.querySelector("[data-cta]");
+    if(cta) cta.onclick=()=>{ view.term=cta.dataset.cta; view.tab="asist"; render(); window.scrollTo(0,0); };
+    return;
   }
+
+  app.innerHTML=famNavHTML(g,tab)+`<div id="tabBody"></div>`;
+  $("#toIndice").onclick=()=>{ view.tab="indice"; render(); window.scrollTo(0,0); };
+  app.querySelectorAll(".secchip[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); window.scrollTo(0,0); });
+  const body=$("#tabBody"); const t=term(g);
+  if(GRP_SEC[tab].fam==="ficha"){
+    if(tab==="alumnos"){ body.innerHTML=alumnosSectionHTML(g); wireAlumnosSection(g,body); }
+    else if(tab==="info"){ body.innerHTML=infoSectionHTML(g); wireInfoSection(g,body); }
+    else if(tab==="contenidos"){ body.innerHTML=programaSectionHTML(g); wireProgramaSection(g,body); }
+    else { body.innerHTML=documentosSectionHTML(g); wireDocumentosSection(g,body); }
+  }
+  else if(tab==="asist") renderAsist(g,t,body);
+  else if(tab==="clase") renderClase(g,t,body);
+  else if(tab==="grilla") renderGrid(g,t,body);
+  else if(tab==="exam") renderExam(g,t,body);
+  else renderIntens(g,t,body);
 }
+
 
 const DOC_CATS=[
   {key:'tomaPosesion',label:'Toma de posesión'},
@@ -3431,7 +3569,7 @@ function infoSectionHTML(g){
           ${i===rv.prorrogas.length-1?`<button class="xbtn" data-rev-prox="${i}">${I.trash}</button>`:""}
         </div>`).join("")}
         ${rv.cese?`<button class="btn ghost sm" id="rev_prorroga" style="width:100%;margin-top:10px;">＋ La suplencia se extendió (agregar prórroga)</button>`:""}
-        ${ceseVigente?`<div style="font-size:12px;color:var(--muted);background:var(--line-soft);border-radius:9px;padding:8px 10px;margin-top:10px;"><b>Cese vigente: ${fmtItemDate(ceseVigente)}.</b> 💡 Si la suplencia se extiende más allá del fin de ciclo que cargaste en Cursada, cambiá ahí la fecha de "Fin" y tocá "Generar clases" para que se agreguen las clases nuevas.</div>`:""}
+        ${ceseVigente?`<div style="font-size:12px;color:var(--muted);background:var(--line-soft);border-radius:9px;padding:8px 10px;margin-top:10px;"><b>Cese vigente: ${fmtItemDate(ceseVigente)}.</b> 💡 Si la suplencia se extiende más allá del fin de ciclo que cargaste más abajo, cambiá ahí la fecha de "Fin" y tocá "Generar clases" para que se agreguen las clases nuevas.</div>`:""}
         `:""}
       </div>`:""}
     </div>`;
@@ -3754,24 +3892,6 @@ function wireFechasSection(g,body){
   const inf=ensureInfo(g); const fechas=inf.fechas||{};
   body.querySelectorAll(".fecha-btn").forEach(b=>b.onclick=()=>{ const k=b.dataset.fk; const cur=fechas[k]||""; pickDate(cur||todayISO(),iso=>{ setInfoFecha(g,k,iso); render(); }); });
   body.querySelectorAll(".fecha-clear").forEach(b=>b.onclick=()=>{ setInfoFecha(g,b.dataset.fk,""); render(); });
-}
-
-function renderInfo(g,body){
-  const SUBS=[["info","Info escuela y curso"],["contenidos","Contenidos"],["documentos","Documentos"],["alumnos","Listado de alumnos"]];
-  const sub=view.datosSub||"info";
-  let content="";
-  if(sub==="alumnos") content=alumnosSectionHTML(g);
-  else if(sub==="info") content=infoSectionHTML(g);
-  else if(sub==="contenidos") content=programaSectionHTML(g);
-  else if(sub==="documentos") content=documentosSectionHTML(g);
-  body.innerHTML=`<div class="subtabs">${SUBS.map(([k,l])=>`<button class="subtab" data-subtab="${k}" aria-selected="${sub===k}">${l}</button>`).join("")}</div>
-    <div id="subBody">${content}</div>
-    <div class="pagefoot">Esta es la pantalla de inicio del curso.</div>`;
-  body.querySelectorAll("[data-subtab]").forEach(b=>b.onclick=()=>{ view.datosSub=b.dataset.subtab; render(); });
-  if(sub==="alumnos") wireAlumnosSection(g,body);
-  else if(sub==="info") wireInfoSection(g,body);
-  else if(sub==="contenidos"){ wireProgramaSection(g,body); }
-  else if(sub==="documentos") wireDocumentosSection(g,body);
 }
 
 /* ---- date header pieces ---- */
@@ -4390,13 +4510,13 @@ function promptTecnicaPicker(g,k){ promptContentPicker(g,k,DC_TECNICA,"dcNivel",
 
 /* ---- ASISTENCIA setup ---- */
 function renderAsistSetup(g,t,body){
-  body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Configurá los días y las fechas del cuatrimestre en Datos → Info.","Ir a Info","toHorario");
-  $("#toHorario").onclick=()=>{ view.tab="datos"; view.datosSub="info"; render(); };
+  body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Configurá los días y las fechas del cuatrimestre en Escuela y horarios.","Ir a Escuela y horarios","toHorario");
+  $("#toHorario").onclick=()=>{ view.tab="info"; render(); };
 }
 
 function renderAsist(g,t,body){
   if(t.sessions.length===0){ return renderAsistSetup(g,t,body); }
-  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para pasar lista.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
+  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos desde la ficha del curso para poder pasar lista.","Ir a Alumnos","toAl"); $("#toAl").onclick=()=>{view.tab="alumnos";render();}; return; }
   let date=defaultDate(t); view.date=date;
   const ses=getSession(t,date)||{}; const canc=!!ses.cancelled; const locked=!!ses.attLocked;
   const mod=g.modulos||2;
@@ -4422,7 +4542,7 @@ function renderAsist(g,t,body){
     <div class="actionsrow">
       <button class="btn ${canc?"subtle":"warn"} sm" id="cancelBtn">${canc?I.cal+" Reactivar clase":I.calx+" Anular clase"}</button></div>
     <div class="pagefoot">${canc?"Esta clase no cuenta para asistencia ni notas.":(locked?"Volvé a tocar el check si necesitás editar.":"Marcá los ausentes y después tocá el check cuando ya hayas tomado asistencia.")}
-      · Para modificar días u horarios del cuatrimestre, andá a Datos → Info.</div>`;
+      · Para modificar días u horarios del cuatrimestre, andá a Escuela y horarios.</div>`;
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
   const clearDayBtn=$("#clearDayBtn");
   if(clearDayBtn) clearDayBtn.onclick=()=>{
@@ -4486,8 +4606,8 @@ function renderAsist(g,t,body){
 
 /* ---- CLASE A CLASE (E/VG/G/R) ---- */
 function renderClase(g,t,body){
-  if(t.sessions.length===0){ body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Generá las clases del cuatrimestre en Datos → Info.","Ir a Info","toHor"); $("#toHor").onclick=()=>{view.tab="datos";view.datosSub="info";render();}; return; }
-  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para registrar las valoraciones.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
+  if(t.sessions.length===0){ body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Generá las clases del cuatrimestre en Escuela y horarios.","Ir a Escuela y horarios","toHor"); $("#toHor").onclick=()=>{view.tab="info";render();}; return; }
+  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos desde la ficha del curso para registrar las valoraciones.","Ir a Alumnos","toAl"); $("#toAl").onclick=()=>{view.tab="alumnos";render();}; return; }
   const k=view.term||"1";
   const scheme=getValScheme(g);
   // La escala de valoración se elige una sola vez para todo el cuatrimestre, no clase a
@@ -4755,7 +4875,7 @@ function wireExamTermSeg(body){
 }
 function renderExam(g,t,body){
   if(view.examId){ const e=t.exams.find(x=>x.id===view.examId); if(!e){ delete view.examId; renderExam(g,t,body); return; } return renderExamEntry(g,t,e,body); }
-  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos en Datos para cargar exámenes.","Ir a Datos","toAl"); $("#toAl").onclick=()=>{view.tab="datos";view.datosSub="alumnos";render();}; return; }
+  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos desde la ficha del curso para cargar exámenes.","Ir a Alumnos","toAl"); $("#toAl").onclick=()=>{view.tab="alumnos";render();}; return; }
   const termSeg=examTermSegHTML();
   const examsSorted=t.exams.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
   const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id,g.passMark||7)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
@@ -5260,7 +5380,7 @@ function renderGrid(g,t,body){
   const t1=g.terms["1"]; const t2=g.terms["2"];
   const pm=g.passMark||7;
   const hasSes=t1.sessions.length||t2.sessions.length;
-  if(!hasSes){ body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Generá las clases en Datos → Info.","Ir a Info","toHor"); $("#toHor").onclick=()=>{view.tab="datos";view.datosSub="info";render();}; return; }
+  if(!hasSes){ body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Generá las clases en Escuela y horarios.","Ir a Escuela y horarios","toHor"); $("#toHor").onclick=()=>{view.tab="info";render();}; return; }
   if(g.students.length===0){ body.innerHTML=emptyInline(I.users,"Agregá alumnos para ver la grilla."); return; }
   const mode=view.gridMode==="calif"?"calif":(view.gridMode==="final"?"final":"asist");
 
@@ -5515,7 +5635,7 @@ function renderIntens(g,t,body){
     const anyFinal=g.students.some(s=>finalOf(t,s.id,pm)!=null);
     body.innerHTML=termSeg+passbar+moduloBanner+emptyInline(I.star,anyFinal?"No hay alumnos debajo de "+pm+" en el "+tk+"° cuatrimestre.":"Cargá notas finales del "+tk+"° cuatrimestre en General → Notas finales.");
     wireIntens(g,t); body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; render(); });
-    const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"datos",datosSub:"documentos"});
+    const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"documentos"});
     return;
   }
   const cards=failing.map(s=>{
@@ -5526,7 +5646,7 @@ function renderIntens(g,t,body){
     const passedIdx=passedAt?PERIODOS.findIndex(p=>p.id===passedAt):-1;
     const chipsArr=owedIds.map(tid=>`<span class="topicchk on" style="cursor:default;">${esc(topicMap[tid]||tid)}<button class="pc-x" data-rm-topic-sid="${s.id}" data-rm-topic-tid="${tid}" aria-label="Quitar">×</button></span>`);
     if(debeCarpeta) chipsArr.push(`<span class="topicchk on" style="cursor:default;background:var(--blue-tint);color:var(--blue-ink);">📓 Carpeta / TP<button class="pc-x" data-carpeta-clear-sid="${s.id}" aria-label="Quitar">×</button></span>`);
-    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">Sin contenidos pendientes (${allTopics.length?"ya sacaste todos":"no cargaste contenidos en Datos → Contenidos"}).</div>`;
+    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">Sin contenidos pendientes (${allTopics.length?"ya sacaste todos":"no cargaste contenidos en la ficha del curso"}).</div>`;
     const moduloCompleto=d.moduloEstado==="completo";
     const estadoBtns=`<div class="seg" style="margin:0;"><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="1" aria-pressed="${moduloCompleto}">Sí</button><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="0" aria-pressed="${!moduloCompleto}">No</button></div>`;
     const periodsHTML=PERIODOS.map((p,i)=>{
@@ -5556,7 +5676,7 @@ function renderIntens(g,t,body){
   body.innerHTML=termSeg+passbar+moduloBanner+`<div id="intensCards">${cards}</div>
     <div class="pagefoot">Con una nota que llegue al mínimo de ese período (arriba de todo), ese alumno queda aprobado y el resto de los períodos se bloquea. Julio, Noviembre y Diciembre piden 7 por defecto; Febrero y Marzo piden 4 — ajustable si tu escuela usa otro criterio.</div>`;
   wireIntens(g,t);
-  const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"datos",datosSub:"documentos"});
+  const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"documentos"});
   body.querySelectorAll("[data-modulo-completo-sid]").forEach(b=>b.onclick=()=>{
     const sid=b.dataset.moduloCompletoSid, val=b.dataset.moduloCompletoVal==="1";
     setModuloCompleto(t,sid,val);
@@ -5596,7 +5716,7 @@ function promptChooseTopics(g,t,sid,allTopics){
   const sel=new Set(d.topics||[]);
   const s=g.students.find(x=>x.id===sid);
   openDlg("Contenidos pendientes — "+dispName(s),
-    `<div class="topicchecks" id="ct_topics">${allTopics.length?allTopics.map(tp=>`<button class="topicchk ${sel.has(tp.id)?"on":""}" data-tid="${tp.id}">${esc(tp.text)}</button>`).join(""):`<div style="font-size:12px;color:var(--faint);">Este curso no tiene contenidos cargados todavía. Cargálos en Datos → Contenidos.</div>`}</div>
+    `<div class="topicchecks" id="ct_topics">${allTopics.length?allTopics.map(tp=>`<button class="topicchk ${sel.has(tp.id)?"on":""}" data-tid="${tp.id}">${esc(tp.text)}</button>`).join(""):`<div style="font-size:12px;color:var(--faint);">Este curso no tiene contenidos cargados todavía. Cargálos en la ficha del curso, en Contenidos.</div>`}</div>
      <div class="dlg-actions"><button class="btn subtle" id="ct_cancel">Cancelar</button><button class="btn" id="ct_ok">Guardar</button></div>`,
     "Marcá los contenidos de este cuatrimestre que este alumno todavía no aprobó.");
   $("#dlgBody").querySelectorAll("[data-tid]").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
@@ -5753,7 +5873,7 @@ function promptNewGroup(){
   let selColor=state.groups.length%PAL.length;
   let selDias=[];
   const swatches=PAL.map((p,i)=>`<button class="swatch ${selColor===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
-  // Escuelas ya cargadas: se eligen con chips (botones), igual que en Datos → Info.
+  // Escuelas ya cargadas: se eligen con chips (botones), igual que en Escuela y horarios.
   // Antes había un datalist nativo con una flechita que en Android no respondía bien al toque.
   const escuelasUnicas=[...new Set(state.escuelas.map(s=>s.nombre).filter(Boolean))];
   const escChips=escuelasUnicas.length?`<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">¿Ya la cargaste? Tocá para elegirla:</div>
@@ -5764,7 +5884,7 @@ function promptNewGroup(){
     </div>
     <div class="dlg-field"><label>Año y curso</label><input id="f_name" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="f_swatches">${swatches}</div></div>
-    <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Datos → Info)</span></label>
+    <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Escuela y horarios)</span></label>
       <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
       <input id="f_horario" class="sched-inp" placeholder="Ej: 8:00 a 9:30" style="margin-top:8px;" autocomplete="off">
       <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div></div>
@@ -5792,7 +5912,7 @@ function promptNewGroup(){
     }
     save(); closeDlg();
     if(selDias.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
-    else { go({screen:"group",groupId:g.id,term:"1",tab:"datos"}); }
+    else { go({screen:"group",groupId:g.id,term:"1",tab:"indice"}); }
   };
   $("#f_ok").onclick=ok;
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); });
@@ -5865,7 +5985,7 @@ function promptNewExam(t,g,type){
   const topicsPanel=examTopics.length?`<div class="dlg-field"><label>Contenidos a evaluar <span style="font-size:11px;color:var(--muted);">(Gramática y Vocabulario)</span></label>
     <div class="topicchecks" id="e_topics">${examTopics.map(tp=>{ const cat=PROG_CATS.find(c=>c.id===(tp.cls||"gram"))||PROG_CATS[0]; return `<button class="topicchk" data-etid="${tp.id}" style="border-color:${cat.ink}30;">${esc(tp.text)}</button>`; }).join("")}</div>
     <input id="e_extra" placeholder="Agregar contenido extra (opcional)" autocomplete="off" style="margin-top:8px;width:100%;height:40px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;font-size:14px;"></div>`
-    :`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Cargá contenidos de Gramática o Vocabulario en Datos para elegirlos acá.</div>`;
+    :`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Cargá contenidos de Gramática o Vocabulario en la ficha del curso para elegirlos acá.</div>`;
   const quickDates=upcomingClassDates(t);
   // Un recuperatorio se ata a la evaluación que recupera: así sólo se listan los alumnos
   // que no aprobaron y las notas vuelven a verse al lado de la nota original.
@@ -6571,11 +6691,11 @@ function promptAyuda(startTab){
         <div style="font-weight:700;margin-bottom:10px;">Para empezar con un curso nuevo:</div>
         <div class="onboard-steps" style="margin-bottom:16px;">
           <div class="onboard-step"><span class="step-n">1</span><span>Creá el curso con <b>+ Agregar curso</b></span></div>
-          <div class="onboard-step"><span class="step-n">2</span><span>En <b>Datos → Alumnos</b>: cargá la lista (podés pegar texto o subir Excel)</span></div>
-          <div class="onboard-step"><span class="step-n">3</span><span>En <b>Datos → Info</b>: elegí los días, el horario y generá las clases del cuatrimestre</span></div>
-          <div class="onboard-step"><span class="step-n">4</span><span>En <b>Cursada → Asistencia</b>: pasá lista cada clase. La fecha de hoy aparece sola.</span></div>
-          <div class="onboard-step"><span class="step-n">5</span><span>En <b>Cursada → Exámenes y recup</b>: tocá "+ Agregar", elegí qué es (Evaluación, Recuperatorio, TP, Carpeta, Proyecto, etc.) y la fecha. Después entrá a esa entrada y cargá la nota de cada alumno.</span></div>
-          <div class="onboard-step"><span class="step-n">6</span><span>En <b>Cursada → Resumen → Notas finales</b>: tocá la celda de "Notas de avance" para asignar TEA/TEP/TED, y la celda de "Nota C1°/C2°" para cargar la nota de cierre de cada cuatrimestre.</span></div>
+          <div class="onboard-step"><span class="step-n">2</span><span>En <b>La ficha del curso → Alumnos</b>: cargá la lista (podés pegar texto o subir Excel)</span></div>
+          <div class="onboard-step"><span class="step-n">3</span><span>En <b>La ficha del curso → Escuela y horarios</b>: elegí los días, el horario y generá las clases del cuatrimestre</span></div>
+          <div class="onboard-step"><span class="step-n">4</span><span>En <b>El día a día → Asistencia</b>: pasá lista cada clase. La fecha de hoy aparece sola.</span></div>
+          <div class="onboard-step"><span class="step-n">5</span><span>En <b>El día a día → Exámenes y notas</b>: tocá "+ Agregar", elegí qué es (Evaluación, Recuperatorio, TP, Carpeta, Proyecto, etc.) y la fecha. Después entrá a esa entrada y cargá la nota de cada alumno.</span></div>
+          <div class="onboard-step"><span class="step-n">6</span><span>En <b>El día a día → Resumen → Notas finales</b>: tocá la celda de "Notas de avance" para asignar TEA/TEP/TED, y la celda de "Nota C1°/C2°" para cargar la nota de cierre de cada cuatrimestre.</span></div>
         </div>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
         <div style="font-weight:700;margin-bottom:8px;">Cómo fluyen las notas:</div>
@@ -6591,8 +6711,8 @@ function promptAyuda(startTab){
       <div id="ayuda-tips" class="ayuda-tab" style="display:none;">
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:7px;">
           <div><b>📅 Calendario académico</b><br>Licencias, paros, suspensiones y vacaciones</div>
-          <div><b>📄 Datos → PDFs</b><br>Subí diagnóstico, planificación y programa; marcá si ya los entregaste</div>
-          <div><b>📚 Datos → Contenidos</b><br>Cargá del DC PBA o agregá vocabulario extra; aparecen al crear exámenes</div>
+          <div><b>📄 La ficha del curso → Documentos</b><br>Subí diagnóstico, planificación y programa; marcá si ya los entregaste</div>
+          <div><b>📚 La ficha del curso → Contenidos</b><br>Cargá del DC PBA o agregá vocabulario extra; aparecen al crear exámenes</div>
           <div><b>✓ Tildes en Notas finales</b><br>Solo para marcarte que ya pasaste la nota al cuaderno. No afecta cálculos</div>
           <div><b>1 · Motivo (Faltó / NQ / IA)</b><br>Aparece cuando cargás un 1 en evaluación. Ahí marcás el motivo. Se ve como marquita en General</div>
           <div><b>Actualizar Drive</b><br>Todo se sube solo al cargarlo. Este botón es para reintentar si algo quedó pendiente — por ejemplo, después de estar sin internet</div>
