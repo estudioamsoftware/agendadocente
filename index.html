@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-30';
+const APP_VER='v2026.08.29-31';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -881,6 +881,16 @@ function getValScheme(g){
 }
 function setValSchemePreset(g,id){ g.valScheme={id}; save(); }
 function setValSchemeCustom(g,levels){ g.valScheme={id:"custom",levels}; save(); }
+// Cada escala usa claves distintas para guardar la nota (ej: "VG" vs "8" vs
+// "🟡"), así que cambiar de escala después de haber calificado deja las notas
+// viejas guardadas pero invisibles (ninguna clave coincide con la escala
+// nueva). Por eso se bloquea apenas hay una sola calificación cargada.
+function hasAnyValoracion(g){
+  return ["1","2"].some(k=>{
+    const work=(g.terms[k]&&g.terms[k].work)||{};
+    return Object.keys(work).some(sid=>Object.keys(work[sid]||{}).length>0);
+  });
+}
 function levelBtnSizeStyle(lv){
   const len=(lv&&(lv.symbol||lv.label)||"").length;
   if(len>4) return "width:auto;min-width:36px;padding:0 8px;white-space:nowrap;font-size:11px;";
@@ -3839,6 +3849,10 @@ function wireInfoSection(g,body){
       const n1=g.terms["1"].sessions.length, n2=g.terms["2"].sessions.length;
       delete view.editCiclo;
       render(); flashSuccess("#cicloForm","#FCEBDA");
+      // Primera vez que este curso genera clases: la escala de valoración
+      // todavía no se puede haber elegido, así que se la pedimos de una vez
+      // (en vez de dejar que la descubra después por un link chico).
+      if(!anyExisting&&!g.valScheme) setTimeout(()=>promptFirstValScheme(g),700);
     };
     if(anyExisting){
       confirmDlg("¿Volver a generar clases?","Esto va a borrar todas las fechas actuales (1° y 2° cuatrimestre) y crearlas de nuevo.\n\nLas asistencias ya guardadas se conservan si la fecha sigue existiendo.","Generar clases",doGenerar);
@@ -4706,6 +4720,13 @@ function renderClase(g,t,body){
 
 /* ---- Selector de escala de valoración (Clase a clase) ---- */
 function promptValScheme(g){
+  if(hasAnyValoracion(g)){
+    const curName=getValScheme(g).name||"tu escala personalizada";
+    openDlg("Escala de valoración",`<p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0;">Ya cargaste calificaciones con <b>${esc(curName)}</b>, así que no se puede cambiar: las notas viejas quedarían guardadas pero "escondidas", porque no coinciden con ninguna clave de otra escala.</p>
+      <div class="dlg-actions" style="margin-top:16px;"><button class="btn" id="vs_ok">Entendido</button></div>`);
+    $("#vs_ok").onclick=closeDlg;
+    return;
+  }
   const curId=(g.valScheme&&g.valScheme.id)||"evgr";
   const cardsHtml=VAL_SCHEME_ORDER.map(id=>{
     const p=VAL_SCHEME_PRESETS[id]; const on=curId===id;
@@ -4716,12 +4737,36 @@ function promptValScheme(g){
       <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
   openDlg("Escala de valoración",`<div class="typegrid">${cardsHtml}</div>
     <div class="dlg-actions"><button class="btn subtle" id="vs_cancel">Cerrar</button></div>`,
-    "Elegí cómo registrar la valoración de cada clase en este curso. Si cambiás de escala, las marcas cargadas con la anterior no se borran: quedan guardadas por si volvés a usarla.");
+    "Elegí cómo registrar la valoración de cada clase en este curso. Una vez que cargues la primera nota, la escala queda fija — ya no se va a poder cambiar.");
   $("#vs_cancel").onclick=closeDlg;
   $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.scheme;
     if(id==="custom"){ promptValSchemeCustom(g); return; }
     setValSchemePreset(g,id); closeDlg(); toastSuccess("✓ Escala actualizada","#A9500A"); render();
+  });
+}
+// Se dispara sola la primera vez que se generan clases para un curso, para que
+// elegir la escala sea parte del alta y no algo que se descubre después por las
+// dudas (antes era un link chico, fácil de no ver). Incluye el aviso de cargar
+// clases retroactivas si ya arrancó el cuatrimestre.
+function promptFirstValScheme(g){
+  const cardsHtml=VAL_SCHEME_ORDER.map(id=>{
+    const p=VAL_SCHEME_PRESETS[id];
+    return `<button type="button" class="typecard" data-scheme="${id}">
+      <span class="typecard-ic" style="font-size:16px;">${p.short}</span><span class="typecard-lbl">${esc(p.name)}</span></button>`;
+  }).join("")
+  + `<button type="button" class="typecard" data-scheme="custom">
+      <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
+  openDlg("Elegí tu escala de valoración",`
+    <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 14px;">La vas a usar para calificar cada clase de este curso. <b>Conviene elegirla ahora y no cambiarla después</b>: en cuanto cargues la primera nota, queda fija.</p>
+    <div class="typegrid">${cardsHtml}</div>
+    <p style="font-size:12px;color:var(--faint);line-height:1.5;margin:14px 0 0;">💡 Si ya diste clases este cuatrimestre antes de empezar a usar la app, cargalas retroactivamente en Asistencia y Clases — así las estadísticas dan bien desde el principio.</p>
+    <div class="dlg-actions" style="margin-top:14px;"><button class="btn subtle" id="vs_skip">Elijo después</button></div>`);
+  $("#vs_skip").onclick=closeDlg;
+  $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.scheme;
+    if(id==="custom"){ promptValSchemeCustom(g); return; }
+    setValSchemePreset(g,id); closeDlg(); toastSuccess("✓ Escala elegida","#A9500A"); render();
   });
 }
 function promptValSchemeCustom(g){
