@@ -245,8 +245,6 @@
   .tbtn.on{background:#BFEACB;color:var(--present-ink);border-color:#8FD1A3;}
   .tbtn.locked{cursor:default;}
   .tbtn:not(.locked):active,.pa-seg:not(.locked) button:active{transform:scale(.96);}
-  .abschip{height:36px;padding:0 11px;border-radius:10px;display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;background:var(--line-soft);color:var(--muted);flex:none;}
-  .abschip.abs-red{background:var(--absent-tint);color:var(--absent-ink);font-weight:800;min-width:36px;justify-content:center;padding:0;}
   /* Puntito de asistencia: sólo aparece si ya se tomó asistencia de esa clase.
      Verde encendido = presente (aunque haya llegado tarde) · Rojo con A = ausente. */
   .attdot{width:18px;height:18px;border-radius:50%;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;line-height:1;vertical-align:middle;}
@@ -357,16 +355,6 @@
   .gridkey{font-size:11.5px;color:var(--muted);margin:10px 2px 0;line-height:1.5;}
   .gridblk{margin-top:16px;} .gridblk-t{font-family:"Fraunces",serif;font-weight:600;font-size:15px;margin:0 2px 8px;}
   .gridblk .tl{font-size:13px;color:var(--muted);margin-bottom:4px;word-break:break-word;line-height:1.4;} .gridblk .tl b{color:var(--ink);}
-
-  .valseg{display:flex;gap:4px;flex:none;flex-wrap:wrap;justify-content:flex-end;}
-  .valseg.compact button{width:29px;height:34px;font-size:10px;}
-  .valseg button{width:36px;height:38px;border-radius:9px;border:1.5px solid var(--line);background:#fff;font-weight:800;font-size:11.5px;color:var(--muted);display:grid;place-items:center;}
-  .valseg:not(.locked) button:active{transform:scale(.95);}
-  .valseg button[aria-pressed="true"][data-v="E"]{background:var(--blue-tint);color:var(--blue-ink);border-color:var(--blue-bd);}
-  .valseg button[aria-pressed="true"][data-v="VG"]{background:var(--blue-tint);color:var(--blue-ink);border-color:var(--blue-bd);}
-  .valseg button[aria-pressed="true"][data-v="G"]{background:var(--blue-tint);color:var(--blue-ink);border-color:var(--blue-bd);}
-  .valseg button[aria-pressed="true"][data-v="R"]{background:var(--present-tint);color:var(--present-ink);border-color:var(--present-bd);}
-  .valseg.locked{opacity:.92;} .valseg.locked button{cursor:default;}
 
   .savedbar{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#E8EAED;border:1px solid #D0D3D7;border-radius:13px;padding:8px 8px 8px 14px;margin-bottom:8px;}
   .attcheck{display:flex;align-items:center;gap:10px;width:100%;height:50px;padding:0 16px;border-radius:13px;background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow);font-weight:600;font-size:15px;color:var(--ink);margin-top:8px;margin-bottom:6px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -784,7 +772,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-38';
+const APP_VER='v2026.08.29-39';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -825,10 +813,12 @@ function getFeriadosArgentina(year){
   return F;
 }
 
-/* ============ Esquemas de valoración de "Clase a clase" ============
-   Cada curso elige cómo registrar la valoración diaria de cada alumno.
-   Colores en hex plano (no var(--...)) porque también se usan en la
-   ventana de impresión, que es un documento aparte sin las CSS vars. */
+/* ============ Esquemas de valoración ============
+   Ya no se cargan desde la app (se cargan por otro lado); esto queda solo
+   para mostrar en Resumen y en la ventana de impresión las valoraciones que
+   ya existan guardadas. Colores en hex plano (no var(--...)) porque también
+   se usan en esa ventana de impresión, que es un documento aparte sin las
+   CSS vars. */
 const VTIER={
   blue:{bg:"#E3EAFC",ink:"#1E40AF",border:"#BDD0F8"},
   green:{bg:"#E3F1E5",ink:"#22633C",border:"#BCDCC3"},
@@ -869,37 +859,11 @@ const VAL_SCHEME_PRESETS={
     {key:"NO",label:"No cumplió",symbol:"✕",...VTIER.red}
   ],footNote:"✓ Cumplió · ✕ No cumplió · sin marcar = S/C."}
 };
-const VAL_SCHEME_ORDER=["evgr","embbr","num10","semaforo","cruces","cumplio"];
-// Botón extra de "Ausente", siempre al final del segmento de valoraciones en Clases —
-// se marca solo según la asistencia del día, pero se puede pisar con otra valoración
-// si el alumno trae la tarea más tarde.
-const AUSENTE_LEVEL={key:"A",label:"Ausente",symbol:"A",...VTIER.red};
-// Paleta reducida para elegir color por nivel en una escala Personalizada.
-const VAL_CUSTOM_COLORS=[VTIER.blue,VTIER.green,VTIER.amber,VTIER.red,VTIER.grey,
-  {bg:"#F0E9FE",ink:"#6D28D9",border:"#D9C7FB"},{bg:"#FCE5F0",ink:"#BE185D",border:"#F7C6DD"},{bg:"#DCF0F5",ink:"#0E7490",border:"#B9E3EC"}];
 function getValScheme(g){
   const vs=g&&g.valScheme;
   if(vs&&vs.id==="custom"&&Array.isArray(vs.levels)&&vs.levels.length) return vs;
   if(vs&&VAL_SCHEME_PRESETS[vs.id]) return VAL_SCHEME_PRESETS[vs.id];
   return VAL_SCHEME_PRESETS.evgr;
-}
-function setValSchemePreset(g,id){ g.valScheme={id}; save(); }
-function setValSchemeCustom(g,levels){ g.valScheme={id:"custom",levels}; save(); }
-// Cada escala usa claves distintas para guardar la nota (ej: "VG" vs "8" vs
-// "🟡"), así que cambiar de escala después de haber calificado deja las notas
-// viejas guardadas pero invisibles (ninguna clave coincide con la escala
-// nueva). Por eso se bloquea apenas hay una sola calificación cargada.
-function hasAnyValoracion(g){
-  return ["1","2"].some(k=>{
-    const work=(g.terms[k]&&g.terms[k].work)||{};
-    return Object.keys(work).some(sid=>Object.keys(work[sid]||{}).length>0);
-  });
-}
-function levelBtnSizeStyle(lv){
-  const len=(lv&&(lv.symbol||lv.label)||"").length;
-  if(len>4) return "width:auto;min-width:36px;padding:0 8px;white-space:nowrap;font-size:11px;";
-  if(len>2) return "font-size:9.5px;";
-  return "";
 }
 function schemeFootNote(scheme){
   if(scheme.footNote) return scheme.footNote;
@@ -1749,7 +1713,6 @@ function generateByDays(t,firstISO,endISO,dias){
 function setCancelled(t,iso,motivo,docente){ const s=getSession(t,iso); if(s){ s.cancelled=true; s.motivo=motivo||""; if(docente) s.docente=true; else delete s.docente; save(); } }
 function uncancel(t,iso){ const s=getSession(t,iso); if(s){ delete s.cancelled; delete s.motivo; delete s.docente; save(); } }
 function setAttLocked(t,iso,v){ const s=getSession(t,iso); if(s){ if(v) s.attLocked=true; else delete s.attLocked; save(); } }
-function setWorkLocked(t,iso,v){ const s=getSession(t,iso); if(s){ if(v) s.workLocked=true; else delete s.workLocked; save(); } }
 
 function isFuture(iso){ return iso>todayISO(); }
 function parseHorario(horario){
@@ -1834,9 +1797,6 @@ function getIncompleteAttendanceDates(t,g){
   return incomplete;
 }
 function workOf(t,sid,iso){ const v=t.work[sid]&&t.work[sid][iso]; return v||""; }
-function setWork(t,sid,iso,v){ t.work[sid]=t.work[sid]||{}; if(v==null||v==="") delete t.work[sid][iso]; else t.work[sid][iso]=v; save(); }
-// Si no se cargó una valoración a mano, y el alumno faltó ese día, se ve como "Ausente" sola.
-function effectiveWork(t,sid,iso,g){ const w=workOf(t,sid,iso); if(w) return w; return attOf(t,sid,iso,g)==="A"?"A":""; }
 
 function addExam(t,name,date,recuDate,type){ const e={id:uid(),name:name.trim(),date:date||todayISO(),type:type||"eval_escrita",topicIds:[]}; if(recuDate) e.recuDate=recuDate; t.exams.push(e); save(); return e; }
 function setExamMeta(t,eid,name,date,recuDate,topicIds){ const e=t.exams.find(x=>x.id===eid); if(e){ e.name=(name||"").trim()||e.name; e.date=date||e.date; if(recuDate) e.recuDate=recuDate; else delete e.recuDate; if(topicIds) e.topicIds=topicIds; save(); } }
@@ -3872,10 +3832,6 @@ function wireInfoSection(g,body){
       const n1=g.terms["1"].sessions.length, n2=g.terms["2"].sessions.length;
       delete view.editCiclo;
       render(); flashSuccess("#cicloForm","#FCEBDA");
-      // Primera vez que este curso genera clases: la escala de valoración
-      // todavía no se puede haber elegido, así que se la pedimos de una vez
-      // (en vez de dejar que la descubra después por un link chico).
-      if(!anyExisting&&!g.valScheme) setTimeout(()=>promptFirstValScheme(g),700);
     };
     if(anyExisting){
       confirmDlg("¿Volver a generar clases?","Esto va a borrar todas las fechas actuales (1° y 2° cuatrimestre) y crearlas de nuevo.\n\nLas asistencias ya guardadas se conservan si la fecha sigue existiendo.","Generar clases",doGenerar);
@@ -4681,19 +4637,15 @@ function renderAsist(g,t,body){
   $("#cancelBtn").onclick=()=>{ if(canc){ confirmDlg("¿Reactivar esta clase?","La clase del "+fmtShort(date)+" vuelve a contar para asistencia.","Reactivar",()=>{ uncancel(t,date); render(); }); } else { promptCancel(t,date); } };
 }
 
-/* ---- CLASE A CLASE (E/VG/G/R) ---- */
+/* ---- CLASE A CLASE (temas y páginas dictadas) ----
+   Ya no se tocan valoraciones acá: se cargan por otro lado, así que esta
+   pantalla quedó solo para registrar qué se dio cada día. ---- */
 function renderClase(g,t,body){
   if(t.sessions.length===0){ body.innerHTML=emptyBox(I.cal,"Sin clases todavía","Generá las clases del cuatrimestre en Escuela y horarios.","Ir a Escuela y horarios","toHor"); $("#toHor").onclick=()=>{view.tab="info";render();}; return; }
-  if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos desde la ficha del curso para registrar las valoraciones.","Ir a Alumnos","toAl"); $("#toAl").onclick=()=>{view.tab="alumnos";render();}; return; }
   const k=view.term||"1";
-  const scheme=getValScheme(g);
-  // La escala de valoración se elige una sola vez para todo el cuatrimestre, no clase a
-  // clase: por eso va como un enlace chico a la derecha y no como botón en cada hoja.
-  const termSegInner=`<div class="seg" role="group" aria-label="Cuatrimestre" style="margin-bottom:4px;justify-content:center;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
-  const schemeLink=`<div style="display:flex;justify-content:flex-end;margin:0 2px 10px;"><button type="button" class="link" id="valSchemeBtn" style="font-size:12px;">Valoraciones</button></div>`;
-  const termSeg=`${termSegInner}${schemeLink}`;
+  const termSeg=`<div class="seg" role="group" aria-label="Cuatrimestre" style="margin-bottom:10px;justify-content:center;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
   let date=defaultDate(t); view.date=date;
-  const ses=getSession(t,date)||{}; const canc=!!ses.cancelled; const locked=!!ses.workLocked;
+  const ses=getSession(t,date)||{}; const canc=!!ses.cancelled;
   if(canc){
     body.innerHTML=`${termSeg}${dateBarHTML(t,date,false)}${cancelledCardHTML(ses)}
       <div class="actionsrow">
@@ -4704,7 +4656,6 @@ function renderClase(g,t,body){
     wireDateNav(g,t,date);
     const ce=$("#ccEdit"); if(ce) ce.onclick=()=>{ promptCancel(t,date); };
     const rb=$("#reactivarBtn"); if(rb) rb.onclick=()=>{ confirmDlg("¿Reactivar esta clase?","La clase del "+fmtShort(date)+" vuelve a contar para asistencia y notas.","Reactivar",()=>{ uncancel(t,date); render(); }); };
-    const vsb=$("#valSchemeBtn"); if(vsb) vsb.onclick=()=>promptValScheme(g);
     return;
   }
   // Puede haber más de una evaluación el mismo día (ej. dos TP, o un TP y una eval):
@@ -4712,137 +4663,10 @@ function renderClase(g,t,body){
   const examsToday=t.exams.filter(e=>e.date===date).map(e=>({ex:e,field:"nota"}))
     .concat(t.exams.filter(e=>e.recuDate===date&&e.date!==date).map(e=>({ex:e,field:"recu"})));
   if(examsToday.length){ return renderClaseExam(g,t,body,date,ses,examsToday); }
-  body.innerHTML=`${termSeg}${dateBarHTML(t,date,locked)}${temasHTML(ses,false)}
-    <div class="rows" id="rows"></div>
-    <div class="tally" style="margin-top:8px;"><div class="pill tp">Calificados <span id="cCal">0</span></div><div class="pill ta">Ausentes <span id="cAu">0</span></div></div>
-    ${locked?`<div class="savedbar"><span class="savedtag">🔒 Lista bloqueada</span><button class="btn subtle sm" id="editDay">Editar</button></div>`
-            :`<button class="btn" id="saveDay" style="margin-bottom:6px;">Guardar notas</button>`}
-    <div class="pagefoot">${schemeFootNote(scheme)}</div>`;
-  const rows=$("#rows");
-  const levels=scheme.levels.concat([AUSENTE_LEVEL]);
-  const compactCls=levels.length>4?"compact":"";
-  rows.innerHTML=g.students.map((s,i)=>{
-    if(!studentExistedOn(g,s.id,date)) return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span><span class="abschip" style="background:var(--line-soft);color:var(--faint);">– Pendiente</span></div>`;
-    const w=effectiveWork(t,s.id,date,g);
-    // El botón "Ausente" se marca solo si faltó ese día, pero sigue siendo un botón más:
-    // si después trae la tarea, se pisa tocando otra valoración.
-    const levelBtns=levels.map(lv=>{
-      const pressed=w===lv.key;
-      const sizeStyle=levelBtnSizeStyle(lv);
-      const pressStyle=pressed?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"";
-      return `<button data-v="${esc(lv.key)}" aria-pressed="${pressed}" style="${sizeStyle}${pressStyle}">${esc(lv.symbol||lv.label)}</button>`;
-    }).join("");
-    return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>
-      <div class="valseg ${locked?"locked":""} ${compactCls}" data-sid="${s.id}">${levelBtns}</div></div>`;}).join("");
-  function tally(){ let cal=0,au=0; g.students.forEach(s=>{ if(!studentExistedOn(g,s.id,date)) return; if(attOf(t,s.id,date,g)==="A") au++; const w=effectiveWork(t,s.id,date,g); if(w&&levels.some(l=>l.key===w)) cal++; }); $("#cCal").textContent=cal; $("#cAu").textContent=au; }
-  tally();
-  if(!locked){
-    rows.querySelectorAll(".valseg button").forEach(b=>b.onclick=()=>{ const seg=b.closest(".valseg"); const sid=seg.dataset.sid; const v=b.dataset.v; const cur=effectiveWork(t,sid,date,g);
-      const nv=cur===v?null:v; setWork(t,sid,date,nv);
-      const eff=effectiveWork(t,sid,date,g);
-      seg.querySelectorAll("button").forEach(x=>{
-        const isOn=x.dataset.v===eff; x.setAttribute("aria-pressed", isOn?"true":"false");
-        const lv=levels.find(l=>l.key===x.dataset.v);
-        const sizeStyle=levelBtnSizeStyle(lv);
-        x.style.cssText= sizeStyle+(isOn&&lv?`background:${lv.bg};color:${lv.ink};border-color:${lv.border};`:"");
-      });
-      tally(); });
-    $("#saveDay").onclick=()=>{ setWorkLocked(t,date,true); render(); toast("Lista bloqueada"); };
-  } else { $("#editDay").onclick=()=>{ setWorkLocked(t,date,false); render(); }; }
+  body.innerHTML=`${termSeg}${dateBarHTML(t,date,false)}${temasHTML(ses,false)}`;
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
   wireTemas(t,date);
   wireDateNav(g,t,date);
-  const vsb=$("#valSchemeBtn"); if(vsb) vsb.onclick=()=>promptValScheme(g);
-}
-
-/* ---- Selector de escala de valoración (Clase a clase) ---- */
-function promptValScheme(g){
-  if(hasAnyValoracion(g)){
-    const curName=getValScheme(g).name||"tu escala personalizada";
-    openDlg("Escala de valoración",`<p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0;">Ya cargaste calificaciones con <b>${esc(curName)}</b>, así que no se puede cambiar: las notas viejas quedarían guardadas pero "escondidas", porque no coinciden con ninguna clave de otra escala.</p>
-      <div class="dlg-actions" style="margin-top:16px;"><button class="btn" id="vs_ok">Entendido</button></div>`);
-    $("#vs_ok").onclick=closeDlg;
-    return;
-  }
-  const curId=(g.valScheme&&g.valScheme.id)||"evgr";
-  const cardsHtml=VAL_SCHEME_ORDER.map(id=>{
-    const p=VAL_SCHEME_PRESETS[id]; const on=curId===id;
-    return `<button type="button" class="typecard" data-scheme="${id}" style="${on?"border-color:var(--primary);background:var(--primary-tint);color:var(--primary);":""}">
-      <span class="typecard-ic" style="font-size:16px;">${p.short}</span><span class="typecard-lbl">${esc(p.name)}</span></button>`;
-  }).join("")
-  + `<button type="button" class="typecard" data-scheme="custom" style="${curId==="custom"?"border-color:var(--primary);background:var(--primary-tint);color:var(--primary);":""}">
-      <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
-  openDlg("Escala de valoración",`<div class="typegrid">${cardsHtml}</div>
-    <div class="dlg-actions"><button class="btn subtle" id="vs_cancel">Cerrar</button></div>`,
-    "Elegí cómo registrar la valoración de cada clase en este curso. Una vez que cargues la primera nota, la escala queda fija — ya no se va a poder cambiar.");
-  $("#vs_cancel").onclick=closeDlg;
-  $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
-    const id=b.dataset.scheme;
-    if(id==="custom"){ promptValSchemeCustom(g); return; }
-    setValSchemePreset(g,id); closeDlg(); toastSuccess("✓ Escala actualizada","#A9500A"); render();
-  });
-}
-// Se dispara sola la primera vez que se generan clases para un curso, para que
-// elegir la escala sea parte del alta y no algo que se descubre después por las
-// dudas (antes era un link chico, fácil de no ver). Incluye el aviso de cargar
-// clases retroactivas si ya arrancó el cuatrimestre.
-function promptFirstValScheme(g){
-  const cardsHtml=VAL_SCHEME_ORDER.map(id=>{
-    const p=VAL_SCHEME_PRESETS[id];
-    return `<button type="button" class="typecard" data-scheme="${id}">
-      <span class="typecard-ic" style="font-size:16px;">${p.short}</span><span class="typecard-lbl">${esc(p.name)}</span></button>`;
-  }).join("")
-  + `<button type="button" class="typecard" data-scheme="custom">
-      <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
-  openDlg("Elegí tu escala de valoración",`
-    <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 14px;">La vas a usar para calificar cada clase de este curso. <b>Conviene elegirla ahora y no cambiarla después</b>: en cuanto cargues la primera nota, queda fija.</p>
-    <div class="typegrid">${cardsHtml}</div>
-    <p style="font-size:12px;color:var(--faint);line-height:1.5;margin:14px 0 0;">💡 Si ya diste clases este cuatrimestre antes de empezar a usar la app, cargalas retroactivamente en Asistencia y Clases — así las estadísticas dan bien desde el principio.</p>
-    <div class="dlg-actions" style="margin-top:14px;"><button class="btn subtle" id="vs_skip">Elijo después</button></div>`);
-  $("#vs_skip").onclick=closeDlg;
-  $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
-    const id=b.dataset.scheme;
-    if(id==="custom"){ promptValSchemeCustom(g); return; }
-    setValSchemePreset(g,id); closeDlg(); toastSuccess("✓ Escala elegida","#A9500A"); render();
-  });
-}
-function promptValSchemeCustom(g){
-  const existing=(g.valScheme&&g.valScheme.id==="custom"&&Array.isArray(g.valScheme.levels)&&g.valScheme.levels.length)?g.valScheme.levels:null;
-  let levels=existing?existing.map(lv=>({label:lv.label||lv.symbol||"",colorIdx:VAL_CUSTOM_COLORS.findIndex(c=>c.bg===lv.bg&&c.ink===lv.ink)})):[{label:"",colorIdx:-1},{label:"",colorIdx:-1},{label:"",colorIdx:-1}];
-  renderEditor();
-  function renderEditor(){
-    const rowsHtml=levels.map((lv,i)=>{
-      const swatches=VAL_CUSTOM_COLORS.map((c,ci)=>`<button type="button" class="swatch" data-ci="${i}" data-color="${ci}" style="width:30px;height:30px;background:${c.bg};border-color:${lv.colorIdx===ci?c.ink:"transparent"};" aria-label="Color ${ci+1}"></button>`).join("")
-        + `<button type="button" class="swatch" data-ci="${i}" data-color="-1" style="width:30px;height:30px;background:#fff;border-color:${lv.colorIdx===-1?"var(--muted)":"var(--line)"};color:var(--muted);font-size:10px;display:flex;align-items:center;justify-content:center;" aria-label="Sin color">–</button>`;
-      return `<div class="sched-card" style="margin-bottom:10px;">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-          <input class="sched-inp vsc-label" data-li="${i}" placeholder="Ej: Excelente, 🌟, ✕✕" value="${esc(lv.label)}" style="flex:1;">
-          ${levels.length>2?`<button type="button" class="iconbtn" data-rm="${i}" aria-label="Quitar nivel">${I.trash}</button>`:""}
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">${swatches}</div>
-      </div>`;
-    }).join("");
-    openDlg("Escala personalizada",`${rowsHtml}
-      ${levels.length<6?`<button type="button" class="btn subtle sm" id="vsc_add" style="width:100%;margin-bottom:12px;">+ Agregar nivel</button>`:""}
-      <button class="btn" id="vsc_save" style="width:100%;">✓ Guardar escala</button>
-      <button class="btn subtle sm" id="vsc_back" style="width:100%;margin-top:8px;">Atrás</button>`,
-      "Escribí el texto, letra o emoji de cada nivel (ej: 🌟, ✕✕, MB) y, si querés, elegí un color para identificarlo más rápido.");
-    wire();
-  }
-  function wire(){
-    $("#dlgBody").querySelectorAll(".vsc-label").forEach(inp=>inp.addEventListener("input",()=>{ levels[parseInt(inp.dataset.li,10)].label=inp.value; }));
-    $("#dlgBody").querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ const i=parseInt(b.dataset.rm,10); if(levels.length>2){ levels.splice(i,1); renderEditor(); } });
-    $("#dlgBody").querySelectorAll(".swatch[data-ci]").forEach(b=>b.onclick=()=>{ const i=parseInt(b.dataset.ci,10); levels[i].colorIdx=parseInt(b.dataset.color,10); renderEditor(); });
-    const addBtn=$("#vsc_add"); if(addBtn) addBtn.onclick=()=>{ levels.push({label:"",colorIdx:-1}); renderEditor(); };
-    $("#vsc_back").onclick=()=>promptValScheme(g);
-    $("#vsc_save").onclick=()=>{
-      const clean=levels.map(lv=>({label:(lv.label||"").trim(),colorIdx:lv.colorIdx})).filter(lv=>lv.label);
-      if(clean.length<2){ toast("Cargá al menos 2 niveles con texto."); return; }
-      const finalLevels=clean.map((lv,i)=>{ const c=lv.colorIdx>=0?VAL_CUSTOM_COLORS[lv.colorIdx]:VTIER.grey;
-        return {key:"c"+i+"_"+uid().slice(0,4),label:lv.label,symbol:lv.label,bg:c.bg,ink:c.ink,border:c.border}; });
-      setValSchemeCustom(g,finalLevels); closeDlg(); toastSuccess("✓ Escala personalizada guardada","#A9500A"); render();
-    };
-  }
 }
 
 /* ---- Motivo de nota baja (No quiso hacerla / Usó IA) ---- */
