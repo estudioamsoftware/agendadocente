@@ -62,9 +62,10 @@
 
   .gd-banner{display:flex;align-items:center;gap:8px;max-width:calc(100vw - 32px);margin:0 16px;position:sticky;top:75px;z-index:29;padding:8px 12px;border:none;border-radius:10px;text-align:left;font-family:inherit;font-size:13px;}
   .gd-banner.warn{background:var(--canc-bg);color:var(--ink);border:1px solid var(--canc-bd);animation:gdPulse 2.2s ease-in-out infinite;}
+  .sheet-item.gd-needs{animation:gdPulse 2.2s ease-in-out infinite;}
   @keyframes gdPulse{
-    0%,100%{background:var(--canc-bg);color:var(--ink);border-color:var(--canc-bd);}
-    50%{background:var(--primary);color:#fff;border-color:var(--primary);}
+    0%,100%{background:var(--canc-bg);border-color:var(--canc-bd);}
+    50%{background:var(--primary-tint);border-color:var(--primary-bd);}
   }
   .gd-banner.err{background:var(--absent-tint);color:var(--absent-ink);border:1px solid var(--absent-bd);}
   .gd-banner .gdb-ic{flex:none;width:18px;height:18px;}
@@ -738,7 +739,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-4';
+const APP_VER='v2026.08.29-5';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -6995,7 +6996,8 @@ function gdUI(){
   const siStyle=bg?`style="background:${bg};color:${ink};"`:'';
   el.innerHTML=`<span class="si" ${siStyle}>${ic}</span><span>${label}<small>${sub}</small></span>`;
   el.style.background=rowBg||'';
-  el.style.borderRadius=rowBg?'12px':'';
+  el.style.borderRadius=rowBg?'12px':(needsReconnect?'12px':'');
+  el.classList.toggle('gd-needs',needsReconnect);
   el.onclick=action;
   const syncBtn=$("#actSyncNow"); if(syncBtn) syncBtn.style.display=(on&&!err)?'flex':'none';
   updateGdBanner(needsReconnect,on&&err);
