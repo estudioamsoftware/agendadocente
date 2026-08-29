@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-28';
+const APP_VER='v2026.08.29-29';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2114,8 +2114,8 @@ function documentosProximosAVencer(groups){
 const GLOBAL_PRESETS=[
   {label:"🤒 Licencia",motivo:"Licencia docente",docente:true,licencia:true},
   {label:"✊ Paro",motivo:"Paro docente",docente:true,licencia:false},
-  {label:"⛈️ Suspensión por clima",motivo:"Suspensión por condiciones climáticas",docente:false,single:true,clima:true},
   {label:"📅 Feriado",motivo:"Feriado",docente:false,single:true},
+  {label:"⛈️ Suspensión por clima",motivo:"Suspensión por condiciones climáticas",docente:false,single:true,clima:true},
 ];
 function geventIcon(ev){
   if(ev.isFeriado) return "🗓";
@@ -2336,7 +2336,7 @@ function removeGlobalEventEffect(ev){
 function promptGlobalEvent(){
   const today=todayISO();
   openDlg("Evento general",`
-    <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;">Anulá de una sola vez las clases de <b>todos los grupos</b>.</p>
+    <p style="font-size:13.5px;color:var(--muted);margin:0 0 14px;line-height:1.5;">Anulá de una sola vez las clases de <b>todos los grupos</b>. Se anulan automáticamente todas las clases de los días que dure la licencia, el paro o lo que sea.</p>
     <div class="chiprow" style="margin-bottom:14px;" id="ge_presets">${GLOBAL_PRESETS.map((p,i)=>`<button class="mchip" data-i="${i}">${p.label}</button>`).join("")}</div>
     <div class="dlg-field"><label>Motivo</label><input id="ge_motivo" placeholder="Ej: Paro docente" autocomplete="off"></div>
     <div class="dlg-field" id="ge_tipo_field"><label>Tipo de licencia <span style="font-size:11px;color:var(--faint);">(para el conteo anual)</span></label>
@@ -2981,7 +2981,6 @@ function renderEventos(){
       ${tallyRows.length?tallyRows.map(tallyRowHTML).join(""):`<div style="font-size:12.5px;color:var(--faint);">Todavía no cargaste licencias este año.</div>`}
       ${paroRowHTML?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);"><label class="fieldlbl" style="margin-bottom:8px;">✊ PAROS EN ${yr}</label>${paroRowHTML}</div>`:""}
       <div style="font-size:11px;color:var(--faint);margin-top:12px;">Tocá un tipo para ver el detalle de fechas. Los paros no cuentan para tu tope de licencias; quedan aparte, solo para el registro de clases dadas.</div>
-      <div style="font-size:11px;color:var(--faint);margin-top:8px;">💡 <b>Suspensiones de escuela</b> (por clima del municipio o por decisión de la institución): usá "Agregar licencia, paro o suspensión" arriba, no estas categorías. Aparecerán como eventos generales si afectan a todos los cursos.</div>
       <button class="link" id="toggleLegalInfo" style="display:block;margin-top:12px;font-size:12.5px;">${view.showLegalInfo?"▴ Ocultar":"▾ ¿Cuántos días te corresponden por ley?"}</button>
       ${view.showLegalInfo?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
           ${LICENCIA_TIPOS.filter(lt=>LICENCIA_INFO[lt.id]).map(lt=>`<div style="margin-bottom:9px;"><b style="font-size:12.5px;">${lt.label}</b><div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:1px;">${LICENCIA_INFO[lt.id]}</div></div>`).join("")}
@@ -3024,7 +3023,6 @@ function renderEventos(){
   app.innerHTML=`<div class="ghead" style="align-items:center;"><div style="flex:1;min-width:0;"><h1 style="margin:0;">📅 Calendario académico</h1>
       <span class="count" style="margin:0;">Licencias, paros, suspensiones y vacaciones</span></div></div>
     <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin:-6px 0 16px;">📍 Feriados y licencias configurados para <b>Argentina</b> (Provincia de Buenos Aires). Si sos de otra provincia o país, <a href="mailto:${FB_MAIL}?subject=${encodeURIComponent("Agenda Docente — Ajustar a mi ciudad/país")}" style="color:var(--primary);font-weight:600;">escribinos</a> y vemos de ajustarlo.</div>
-    ${vacInvCardHTML}
     ${listadosHTML}
     <button class="btn" id="addGlobalEvent2" style="width:100%;margin-bottom:16px;">${I.plus} Agregar licencia, paro o suspensión</button>
     ${tallyHTML}
@@ -3032,7 +3030,8 @@ function renderEventos(){
     <div class="gevents-list">${proximosHTML}</div>
     ${pastToggleHTML}
     ${archToggleHTML}
-    ${archBtnHTML}`;
+    ${archBtnHTML}
+    ${vacInvCardHTML}`;
   const vacinvEdit=$("#vacinv_edit"); if(vacinvEdit) vacinvEdit.onclick=()=>{ view.editVacInv=true; render(); };
   const vacinvCancel=$("#vacinv_cancel"); if(vacinvCancel) vacinvCancel.onclick=()=>{ delete view.editVacInv; render(); };
   const vacinvActivaChk=$("#vacinv_activa");
