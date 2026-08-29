@@ -819,12 +819,36 @@ Node ni JDK. Pasos:
    Por eso Play Store le ofrece "Cambiar a Play Store (personal)". Al limpiar caché hay que
    hacerlo en las dos. Si alguna vez algo se comporta distinto entre "la app que veo" y "la
    cuenta que paga", mirar esto antes que nada.
-   Lo siguiente a probar, en orden: (a) borrar la caché de Google Play Store en el celular
-   (Ajustes → Aplicaciones → Google Play Store → Almacenamiento → Borrar caché), y si no
-   alcanza, "Borrar datos"; (b) esperar — lo de probadores de licencia puede tardar en
-   propagarse; (c) si aun así no aparece la tarjeta de prueba, evaluar hacer una compra
-   real y pedir el reembolso desde Play Console, que es plata de verdad pero destraba la
-   verificación de punta a punta.
+   **Se probó borrar la caché de Google Play Store (29/8, las dos —el celular tiene dos
+   perfiles, personal y de trabajo, ver más abajo) y no alcanzó:** sigue sin aparecer la
+   tarjeta de prueba, solo el alta de una tarjeta real.
+
+   **Investigado (29/8/2026): no hay una solución oficial documentada para esto.** Se
+   buscó en la documentación de Android para desarrolladores y en la comunidad de Google
+   Play Developer — la única explicación es que "los probadores de licencia tienen acceso
+   a métodos de pago de prueba", sin detallar por qué a veces Google muestra el alta de
+   una tarjeta real en su lugar. Hay un hilo de otro desarrollador con el mismo síntoma
+   exacto (comunidad de Google Play Developer, "Test subscription is asking for my real
+   payment method instead of showing a test card") pero no se pudo leer su resolución
+   (`support.google.com` está bloqueado desde este entorno). **Descartada la idea de
+   "canjear código"**: es para tarjetas de regalo de Play compradas con plata real, no
+   tiene que ver con ser probador de licencia — no sirve para esto.
+
+   **Hipótesis más probable, sin confirmar:** la pantalla de alta aparece cuando la cuenta
+   nunca tuvo ningún historial de pago en Google (ni siquiera fallido) — parece un tema de
+   "cuenta en cero", no específico de esta app. Probar con una cuenta que tenga algo de
+   movimiento en Play (otra app, un juego) en vez de una cuenta nueva/vacía.
+
+   **Próximo a probar, en orden:** (a) repetir la compra logueada con
+   `marcelodanielcordoba74@gmail.com` (otro tester de la lista) en vez de englishbeats,
+   por si esa cuenta ya tiene algo de historial en Play; (b) dejarlo unos días — puede
+   que la condición de probador tarde en propagarse del todo pese a estar bien cargada;
+   (c) si nada de esto destraba y hay apuro por confirmar la compra de punta a punta,
+   evaluar una compra real + pedir el reembolso desde Play Console (plata real por un
+   rato, decisión de la dueña, no urgente).
+   **Importante: esto NO afecta a ninguna profe real** — una cuenta real con su propia
+   tarjeta jamás ve esta pantalla rara, paga y ya. Es puramente un artefacto de la cuenta
+   de prueba.
 
    **Otros arreglos de esta sesión (28/8/2026), no relacionados con la compra en sí
    pero encontrados mientras se probaba, todos ya en `main`:**
