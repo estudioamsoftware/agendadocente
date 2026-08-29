@@ -784,7 +784,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-42';
+const APP_VER='v2026.08.29-43';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -4688,16 +4688,11 @@ function renderClase(g,t,body){
   const k=view.term||"1";
   const scheme=getValScheme(g);
   // La escala de valoración se elige una sola vez para todo el cuatrimestre, no clase a
-  // clase: por eso va como un enlace chico al lado del selector de cuatrimestre, no como
-  // botón en cada hoja. Tocarlo lleva (con scroll) hasta la lista de alumnos más abajo,
-  // que es donde se cargan de verdad.
+  // clase: por eso va como un enlace chico al lado del selector de cuatrimestre (antes
+  // estaba en su propia línea, más abajo), y sigue abriendo el mismo cuadro de siempre.
   const termSegInner=`<div class="seg" role="group" aria-label="Cuatrimestre" style="justify-content:center;flex:1;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
   const schemeLink=`<button type="button" class="link" id="valSchemeBtn" style="font-size:12px;flex:none;">Valoraciones</button>`;
   const termSeg=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">${termSegInner}${schemeLink}</div>`;
-  function wireValSchemeLink(){
-    const vsb=$("#valSchemeBtn"); if(!vsb) return;
-    vsb.onclick=()=>{ const rowsEl=$("#rows"); if(rowsEl){ rowsEl.scrollIntoView({behavior:"smooth",block:"start"}); } else { promptValScheme(g); } };
-  }
   let date=defaultDate(t); view.date=date;
   const ses=getSession(t,date)||{}; const canc=!!ses.cancelled; const locked=!!ses.workLocked;
   if(canc){
@@ -4710,7 +4705,7 @@ function renderClase(g,t,body){
     wireDateNav(g,t,date);
     const ce=$("#ccEdit"); if(ce) ce.onclick=()=>{ promptCancel(t,date); };
     const rb=$("#reactivarBtn"); if(rb) rb.onclick=()=>{ confirmDlg("¿Reactivar esta clase?","La clase del "+fmtShort(date)+" vuelve a contar para asistencia y notas.","Reactivar",()=>{ uncancel(t,date); render(); }); };
-    wireValSchemeLink();
+    const vsb=$("#valSchemeBtn"); if(vsb) vsb.onclick=()=>promptValScheme(g);
     return;
   }
   // Puede haber más de una evaluación el mismo día (ej. dos TP, o un TP y una eval):
@@ -4758,7 +4753,7 @@ function renderClase(g,t,body){
   body.querySelectorAll("[data-term]").forEach(b=>b.onclick=()=>{ view.term=b.dataset.term; delete view.date; render(); });
   wireTemas(t,date);
   wireDateNav(g,t,date);
-  wireValSchemeLink();
+  const vsb=$("#valSchemeBtn"); if(vsb) vsb.onclick=()=>promptValScheme(g);
 }
 
 /* ---- Selector de escala de valoración (Clase a clase) ---- */
