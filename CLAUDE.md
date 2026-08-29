@@ -100,7 +100,8 @@ Antes se bloqueaba; ahora el lápiz está siempre y lo que hay es un aviso. Cóm
   dice cuántas son y con qué escala:
   - **Si las dos escalas tienen la misma cantidad de niveles** (el caso típico: pasar de
     E-VG-G-R inglés a E-MB-B-R español), ofrece **convertirlas solas**, mostrando la
-    equivalencia nivel por nivel (E→E, VG→MB, G→B, R→R). Botones: "Convertir las notas y
+    equivalencia como **dos listas, una arriba de la otra y alineadas en columnas** (la
+    escala de ahora arriba, la que queda abajo), para poder compararlas de un vistazo. Botones: "Convertir las notas y
     cambiar" / "Cambiar sin convertir" / "Mejor no".
   - **Si tienen distinta cantidad de niveles**, no ofrece convertir (cualquier
     equivalencia sería inventada): avisa que las notas viejas **no se borran** pero dejan
