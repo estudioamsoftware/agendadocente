@@ -839,13 +839,29 @@ Node ni JDK. Pasos:
    "cuenta en cero", no específico de esta app. Probar con una cuenta que tenga algo de
    movimiento en Play (otra app, un juego) en vez de una cuenta nueva/vacía.
 
+   **Se probó con `mullerana2@hotmail.com` (29/8/2026, mismo Motorola) y dio un cuadro
+   distinto y sin explicar todavía:** esa cuenta es la principal del celular de la dueña,
+   con uso real de Play Store (bajó apps, juega juegos) — o sea que la teoría de "cuenta
+   en cero" no aplica acá. Al abrir el link de invitación, Google **sí la reconoce como
+   tester** ("You're a tester for com.estudioam.agendadocente"), pero al tocar "Download
+   test app" tira **"No se encontró el elemento"**. Y buscando "agenda docente" a mano en
+   Play Store con esa cuenta, la nuestra **no aparece en absoluto** (solo apps de otros
+   desarrolladores con nombre parecido). Se descartó de entrada la idea de restricción de
+   país: la dueña confirmó que en la pista de prueba interna ya está tildado "todos los
+   países". Causa real sin identificar todavía — no es la misma familia de problemas que
+   la de englishbeats (que si aparece y se puede bajar, solo falla en el pago).
+
    **Próximo a probar, en orden:** (a) repetir la compra logueada con
-   `marcelodanielcordoba74@gmail.com` (otro tester de la lista) en vez de englishbeats,
-   por si esa cuenta ya tiene algo de historial en Play; (b) dejarlo unos días — puede
-   que la condición de probador tarde en propagarse del todo pese a estar bien cargada;
-   (c) si nada de esto destraba y hay apuro por confirmar la compra de punta a punta,
-   evaluar una compra real + pedir el reembolso desde Play Console (plata real por un
-   rato, decisión de la dueña, no urgente).
+   `marcelodanielcordoba74@gmail.com` (otro tester de la lista, en el celular del marido
+   de la dueña, no disponible el 29/8 a la noche) por si esa cuenta muestra la tarjeta de
+   prueba sin el problema de "item not found" que dio mullerana2; (b) si hay tiempo,
+   investigar por separado por qué mullerana2 ni aparece en la búsqueda de Play Store
+   pese a que Google la reconoce como tester — no se investigó a fondo, se dejó de lado
+   por prioridad (esto es solo para probar la tarjeta, no bloquea nada real); (c) dejarlo
+   unos días — puede que la condición de probador tarde en propagarse del todo pese a
+   estar bien cargada; (d) si nada de esto destraba y hay apuro por confirmar la compra
+   de punta a punta, evaluar una compra real + pedir el reembolso desde Play Console
+   (plata real por un rato, decisión de la dueña, no urgente).
    **Importante: esto NO afecta a ninguna profe real** — una cuenta real con su propia
    tarjeta jamás ve esta pantalla rara, paga y ya. Es puramente un artefacto de la cuenta
    de prueba.
