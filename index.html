@@ -788,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-51';
+const APP_VER='v2026.08.29-52';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2045,9 +2045,12 @@ function recuRoster(g,t,parentId,recuId){
 function examEffective(t,sid,eid,pm){
   pm=pm||((getGroup(view.groupId)||{}).passMark)||7;
   const c=getGrade(t,sid,eid);
-  if(c.recu!=null) return c.recu;
+  // El recuperatorio nunca baja la nota: si le fue peor que en la evaluación, vale la
+  // original. Si no, nadie querría presentarse a rendirlo.
+  const conRecu=(rv)=>typeof c.nota==="number"?Math.max(rv,c.nota):rv;
+  if(c.recu!=null) return conRecu(c.recu);
   const lr=linkedRecuNota(t,sid,eid);
-  if(lr!=null) return lr;
+  if(lr!=null) return conRecu(lr);
   if(c.nota==null) return null;
   const e=t.exams.find(x=>x.id===eid);
   const hasParts=e&&Array.isArray(e.parts)&&e.parts.length>=2;
@@ -5258,9 +5261,9 @@ function renderExamEntry(g,t,e,body){
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <div class="pagefoot">${hasParts?`La nota final es el promedio de las partes, y se completa sola apenas están todas cargadas. `:""}Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
-      :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
-      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos. Acá el que faltó no recuperó, así que esa parte cuenta 1 en el promedio.`:""}`
-      :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
+      :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota sólo si la mejora: nunca se la baja.`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos. Acá el que faltó no recuperó, así que esa parte cuenta 1 en el promedio — igual, si le fue peor que en la evaluación, le queda la nota original.`:""}`
+      :"La recu reemplaza a la nota sólo si la mejora: nunca se la baja. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   // En un recuperatorio por partes, la parte que ya aprobó en la evaluación no se
   // vuelve a rendir: va con "–" y no se puede escribir.

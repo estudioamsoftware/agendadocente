@@ -145,9 +145,12 @@ recuperatorio lleve las mismas notas que la evaluación que recupera**:
 - **En el recuperatorio, faltar cuenta 1 en el promedio** (decisión de la dueña, 29/8:
   "si faltó por lógica es un 1, y el promedio no le da"). Es a propósito distinto de una
   evaluación común, donde un "Ausente" no pesa en el promedio de las partes: ahí todavía
-  queda el recuperatorio por delante, acá ya no hay red. Ojo con la consecuencia: la nota
-  final del recu puede quedar **más baja que la original** (ej.: 3 en Vocabulary y 9 en
-  Grammar da 6; si falta al recu queda (1+9)/2 = 5).
+  queda el recuperatorio por delante, acá ya no hay red.
+- **Pero el recuperatorio NUNCA baja la nota** (misma sesión, la dueña: "si no, no quieren
+  rendir"). En `examEffective()` la nota efectiva es la mejor de las dos: si en la recu le
+  fue peor que en la evaluación, vale la original. Vale para las dos formas de recu (el
+  examen aparte con `recuOf` y la columna vieja `c.recu`). Ej.: 3 en Vocabulary y 9 en
+  Grammar da 6; si falta al recu, la recu calcula (1+9)/2 = 5 pero le queda su 6.
 
 **Por qué se había perdido:** con dos partes + recu no entraban las columnas en el celular
 y la columna de nombres se achicaba hasta partir cada apellido letra por letra. Se resolvió
