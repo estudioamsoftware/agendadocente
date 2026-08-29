@@ -786,7 +786,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-17';
+const APP_VER='v2026.08.29-18';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3341,7 +3341,7 @@ function famNavHTML(g,tab){
   const S=GRP_SEC[tab]; const fam=S.fam; const F=GRP_FAM[fam];
   return `<div class="secnav">
     <div class="secnav-top">
-      <button class="secnav-back ${fam}" id="toIndice">${I.back}<span>Volver al índice</span></button>
+      <button class="secnav-back ${fam}" id="toIndice">${I.back}<span>Atrás</span></button>
       <div class="undoredo" id="undoRedoSlot"></div>
     </div>
     <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}<span class="secnav-course">· ${esc(g.name)}</span></div>
@@ -3389,17 +3389,22 @@ function renderGroup(g){
   if(tab==="cuatri") tab="grilla";
   if(tab!=="indice"&&!GRP_SEC[tab]) tab="indice";
   view.tab=tab; delete view.datosSub;
-  // El "Atrás" de la barra de arriba acompaña el mismo camino: de una sección
-  // se vuelve al índice, y del índice a Inicio.
-  setTopBack(tab==="indice"?(()=>go({screen:"home"})):(()=>{ view.tab="indice"; render(); window.scrollTo(0,0); }));
+  // El "Atrás" ya no va en la barra de arriba (quedaba pegado al logo, lejos
+  // de dónde se está mirando). Ahora vive más abajo, justo antes de "La
+  // ficha del curso": en el índice es este link de texto, y adentro de una
+  // sección ya cumple el mismo lugar el botón "Atrás" (antes decía "Volver
+  // al índice", pero es el mismo botón).
+  setTopBack(null);
 
   if(tab==="indice"){
     app.innerHTML=groupHeadHTML(g)
       +todayCtaHTML(g)
+      +`<button class="topback-link" id="idxBack" style="margin:0 0 10px 2px;"><span style="width:16px;height:16px;display:inline-flex;flex:none;">${I.back}</span>Atrás</button>`
       +famBlockHTML(g,"ficha")
       +famBlockHTML(g,"dia")
-      +`<div class="pagefoot">Tocá cualquier fila para entrar. Para pasar a otra, volvé acá con “Volver al índice”.</div>`;
+      +`<div class="pagefoot">Tocá cualquier fila para entrar. Para pasar a otra, volvé acá con “Atrás”.</div>`;
     $("#renameHdr").onclick=()=>promptRenameGroup(g);
+    $("#idxBack").onclick=()=>go({screen:"home"});
     app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); window.scrollTo(0,0); });
     const cta=app.querySelector("[data-cta]");
     if(cta) cta.onclick=()=>{ view.term=cta.dataset.cta; view.tab="asist"; render(); window.scrollTo(0,0); };
