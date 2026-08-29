@@ -403,6 +403,16 @@ unificar los dos enfoques:
   (otras docentes, familia, conocidos con Android) — no bloquea nada del trabajo técnico
   mientras tanto. El reloj de los 14 días arranca recién cuando los 12 ya hayan aceptado
   la invitación, así que conviene sumar gente cuanto antes.
+  **Ojo, esto NO es un trámite de una sola vez para toda la cuenta de desarrollador — se
+  repite con CADA app nueva** que se quiera sacar de prueba a producción (confirmado
+  investigando, 29/8/2026: aplica a toda cuenta personal creada después del 13/11/2023, que
+  es el caso de esta cuenta "Estudio AM"). Vale la pena tenerlo presente para las demás apps
+  de la dueña (ej. Che Taxi), no es específico de Agenda Docente. **Lo que sí se puede
+  reusar:** la misma lista de 12+ personas sirve para todas las apps — solo tienen que
+  aceptar la invitación de cada app puntual, no hace falta reclutar gente nueva cada vez. Y
+  una vez que una app ya pasó el filtro y llegó a Producción, **sus actualizaciones futuras
+  no vuelven a pedir testers** — el trámite es una sola vez por app (la primera vez que esa
+  app en particular pide Producción), no por cada versión que se suba después.
 - Modelo: **gratis con límite de cursos, versión completa paga**. Se descartó la app paga
   de entrada porque nadie compra a ciegas una herramienta de uso diario.
 - **Cobro: Google Play Billing únicamente.** Se descartó Mercado Pago porque Google exige
