@@ -142,10 +142,12 @@ recuperatorio lleve las mismas notas que la evaluación que recupera**:
   a **cada parte que se llevó** — si se llevó las dos, la misma nota va en las dos — y
   después se rearma la nota final combinándola con las partes que ya tenía aprobadas.
   Corre una sola vez, en `migrate()`, cuando el recu todavía no tiene `parts`.
-- **Si faltó a una parte que tenía que recuperar, el recuperatorio no reemplaza la nota
-  original** (queda sin nota final). Es distinto de una evaluación común, donde un
-  "Ausente" simplemente no pesa en el promedio de las partes: acá faltar significa que no
-  recuperó, y no puede terminar mejorándole la nota.
+- **En el recuperatorio, faltar cuenta 1 en el promedio** (decisión de la dueña, 29/8:
+  "si faltó por lógica es un 1, y el promedio no le da"). Es a propósito distinto de una
+  evaluación común, donde un "Ausente" no pesa en el promedio de las partes: ahí todavía
+  queda el recuperatorio por delante, acá ya no hay red. Ojo con la consecuencia: la nota
+  final del recu puede quedar **más baja que la original** (ej.: 3 en Vocabulary y 9 en
+  Grammar da 6; si falta al recu queda (1+9)/2 = 5).
 
 **Por qué se había perdido:** con dos partes + recu no entraban las columnas en el celular
 y la columna de nombres se achicaba hasta partir cada apellido letra por letra. Se resolvió

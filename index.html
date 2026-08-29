@@ -788,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-50';
+const APP_VER='v2026.08.29-51';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1072,7 +1072,8 @@ function migrate(st){
                 if(typeof vP==="number"&&vP>=pmG){ vals.push(vP); return; }
                 const vR=cR["p"+pi];
                 if(typeof vR==="number") vals.push(vR);
-                else todasResueltas=false; // faltó o no la rindió: no recuperó el examen
+                else if(cR["ausente_p"+pi]===true) vals.push(1); // faltó al recu: no recuperó
+                else todasResueltas=false;
               });
               cR.nota=(todasResueltas&&vals.length)?Math.round(vals.reduce((x,y)=>x+y,0)/vals.length*100)/100:undefined;
               if(cR.nota===undefined) delete cR.nota;
@@ -5258,7 +5259,7 @@ function renderExamEntry(g,t,e,body){
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <div class="pagefoot">${hasParts?`La nota final es el promedio de las partes, y se completa sola apenas están todas cargadas. `:""}Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota.`
-      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos.`:""}`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos. Acá el que faltó no recuperó, así que esa parte cuenta 1 en el promedio.`:""}`
       :"La recu reemplaza a la nota si supera el mínimo de aprobación. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   // En un recuperatorio por partes, la parte que ya aprobó en la evaluación no se
@@ -5344,10 +5345,12 @@ function renderExamEntry(g,t,e,body){
       if(partYaAprobada(sid,pi)){ vals.push(getGrade(t,sid,parentEx.id)[f]); return; }
       const v=c[f];
       if(typeof v==="number"){ vals.push(v); return; }
-      // En una evaluación común, un "Ausente" no pesa en el promedio de las partes.
-      // En un recuperatorio es distinto: si faltó a la parte que tenía que recuperar,
-      // no la recuperó, así que la recu no puede reemplazar la nota original.
-      if(soyRecuPorPartes||!gradeAusenteEffective(t,g,sid,e.id,f,e.date)) allResolved=false;
+      const faltoAca=gradeAusenteEffective(t,g,sid,e.id,f,e.date);
+      // En una evaluación común, un "Ausente" no pesa en el promedio de las partes (para
+      // eso está el recuperatorio). En el recuperatorio no hay red: el que faltó no
+      // recuperó, así que esa parte cuenta 1 y el promedio no le da.
+      if(faltoAca&&soyRecuPorPartes){ vals.push(1); return; }
+      if(!faltoAca) allResolved=false;
     });
     setGradeField(t,sid,e.id,"nota",(allResolved&&vals.length)?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100:null);
   }
