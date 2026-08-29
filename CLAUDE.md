@@ -884,9 +884,15 @@ Node ni JDK. Pasos:
      mismo formato que usa en sus otras apps (ver "My Band Box" como referencia).
      **Acordarse de incrementar el número al final de `APP_VER` en cada cambio real**
      que se publique, para poder confirmar de un vistazo si una actualización llegó.
-8. Completar la ficha de Play Store (iba en "2 de 11 tareas"): descripción, capturas
-   —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
-   paralelo, no bloquea nada.
+8. Completar la ficha de Play Store (iba en "2 de 11 tareas").
+   **Verificado en pantalla el 29/8/2026: nombre, descripción breve y descripción completa
+   YA ESTÁN CARGADOS** en Play Console (Presencia en Play Store → Fichas de Play Store →
+   `.../app/4974565274805185721/main-store-listing`). Ese texto vive solo en Play Console,
+   no está guardado en este repo — si se vuelve a tocar, convendría copiarlo acá también
+   para no depender de una sola fuente. Las capturas también están, en `play-store-assets/`.
+   **Lo único que falta: la clasificación de contenido** (cuestionario en Play Console
+   sobre violencia/lenguaje/etc. — para esta app va a ser todo "No", es una app de gestión
+   docente sin contenido sensible).
 9. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
 10. ~~Armar una landing page para promocionar la app por fuera de Google Play~~ ✅ hecha
     el 29/8/2026. Vive en **`landing.html`** (más las imágenes livianas de
