@@ -641,7 +641,7 @@
   .schedule-slot{width:100%;height:100%;display:flex;flex-direction:column;gap:4px;align-items:stretch;justify-content:flex-start;}
   .schedule-course{position:absolute;left:6px;right:6px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:6px;border-radius:8px;background:var(--primary);color:#fff;font-weight:700;font-size:13px;line-height:1.2;cursor:pointer;transition:transform .1s;text-align:center;gap:2px;word-break:break-word;overflow:hidden;}
   .schedule-course:active{transform:scale(.97);}
-  .schedule-course .school{font-size:10px;font-weight:800;opacity:.85;letter-spacing:.04em;text-transform:uppercase;}
+  .schedule-course .school{font-size:10px;font-weight:800;opacity:.85;letter-spacing:.04em;text-transform:uppercase;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .schedule-course .name{font-weight:700;font-size:13px;}
   .schedule-course .time{font-size:11.5px;opacity:.9;}
   .schedule-course .status{font-size:10.5px;font-weight:800;opacity:.95;margin-top:2px;background:rgba(255,255,255,.28);padding:1px 6px;border-radius:99px;letter-spacing:.01em;}
@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-25';
+const APP_VER='v2026.08.29-26';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2654,7 +2654,9 @@ function renderScheduleTable(activeGroups){
         let dispName=g.name;
         let schoolHTML="";
         if(escG&&escG.nombre){
-          schoolHTML=`<div class="school">${esc(escG.nombre)}</div>`;
+          // Acortado por las dudas: si quedó una escuela vieja con nombre largo
+          // (de antes de limitar el campo), no tiene que desbordar este bloque.
+          schoolHTML=`<div class="school">${esc(escG.nombre.trim().substring(0,18))}</div>`;
           const pref=escG.nombre.trim().toLowerCase();
           if(dispName.trim().toLowerCase().startsWith(pref)){
             const rest=dispName.trim().substring(escG.nombre.trim().length).trim();
@@ -3468,10 +3470,10 @@ function renderGroup(g){
   }
   else if(tab==="asist") renderAsist(g,t,body);
   else if(tab==="clase"){
-    // El código y el link de Classroom se leen mejor acá, junto a las clases
-    // del día a día, que adentro de "Escuela y horarios" (de donde se mudó).
-    body.innerHTML=classroomCardHTML(g)+`<div id="claseBody"></div>`;
-    wireClassroomCard(g);
+    // El código y el link de Classroom se cargan en Documentos; acá se repiten
+    // en modo lectura, para no tener que ir a buscarlos a otra pantalla.
+    body.innerHTML=classroomEchoHTML(g)+`<div id="claseBody"></div>`;
+    wireClassroomEcho(g);
     renderClase(g,t,$("#claseBody"));
   }
   else if(tab==="grilla") renderGrid(g,t,body);
@@ -3529,7 +3531,7 @@ async function uploadDoc(g,cat,file){
   }catch(e){ console.error(e); toastError('Error al subir: '+(e&&e.message?e.message:'desconocido')); }
 }
 
-/* ---- Classroom (código + link) — vive en la sección Clases, se lee de ahí ---- */
+/* ---- Classroom (código + link) — se carga en Documentos; en Clases se repite en modo lectura ---- */
 function classroomCardHTML(g){
   const inf=ensureInfo(g);
   const clsCodeVal=inf.classroom?inf.classroom.split("\n")[0]:""; const clsLinkVal=inf.classroom?inf.classroom.split("\n")[1]:"";
@@ -3578,6 +3580,27 @@ function wireClassroomCard(g){
   };
   const clsLinkEdit=$("#clsLinkEdit"); if(clsLinkEdit) clsLinkEdit.onclick=()=>{ view.editClsLink=true; render(); };
 }
+// En Clases no se edita Classroom (eso vive en Documentos) — acá solo se repite
+// el código y el link, para no tener que ir a buscarlos a otra pantalla.
+function classroomEchoHTML(g){
+  const inf=ensureInfo(g);
+  const code=inf.classroom?inf.classroom.split("\n")[0]:""; const link=inf.classroom?inf.classroom.split("\n")[1]:"";
+  if(!code&&!link) return `<div class="card pad" style="margin-bottom:16px;">
+      <div class="cardtitle">${I.doc}Classroom</div>
+      <div style="font-size:12.5px;color:var(--faint);">Todavía no cargaste el código ni el link — se cargan desde Documentos.</div>
+    </div>`;
+  return `<div class="card pad" style="margin-bottom:16px;">
+      <div class="cardtitle">${I.doc}Classroom</div>
+      ${code?`<div class="kv-lbl" style="margin-bottom:6px;">Código</div><div class="lockfield" style="margin-bottom:8px;"><span class="lf-val">${esc(code)}</span><button class="btn subtle sm" id="claseClsCodeCopy">Copiar</button></div>`:""}
+      ${link?`<div class="kv-lbl" style="margin-bottom:6px;">Link</div><div class="lockfield"><a href="${esc(link)}" target="_blank" class="lf-val">Abrir</a><button class="btn subtle sm" id="claseClsLinkCopy">Copiar</button></div>`:""}
+      <div style="font-size:11px;color:var(--faint);margin-top:10px;">Se edita desde Documentos.</div>
+    </div>`;
+}
+function wireClassroomEcho(g){
+  const inf=ensureInfo(g);
+  const c1=$("#claseClsCodeCopy"); if(c1) c1.onclick=()=>copyText((inf.classroom||"").split("\n")[0]||"");
+  const c2=$("#claseClsLinkCopy"); if(c2) c2.onclick=()=>copyText((inf.classroom||"").split("\n")[1]||"");
+}
 /* ---- INFO (escuela + horario y días + notas + grupo) ---- */
 function infoSectionHTML(g){
   const allSes=["1","2"].flatMap(k=>g.terms[k].sessions);
@@ -3615,7 +3638,7 @@ function infoSectionHTML(g){
       <div id="escForm" style="${showEscView?"display:none;":""}">
         ${(esc_&&otherCourses.length)?`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:8px 10px;margin-bottom:10px;">⚠️ Esta escuela es compartida con ${otherCourses.length===1?"1 curso más":otherCourses.length+" cursos más"} (${otherCourses.map(o=>esc(o.name)).join(", ")}). Lo que cambies acá se va a ver en todos esos cursos.</div>`:""}
         <div class="sched-card" style="margin-bottom:10px;">
-          <div class="sched-row"><label>Nombre</label><input id="esc_nombre" class="sched-inp" maxlength="60" value="${esc(esc_&&esc_.nombre||"")}"></div>
+          <div class="sched-row"><label>Nombre</label><input id="esc_nombre" class="sched-inp" maxlength="18" placeholder="Ej.: EES 5, Escuela 53" value="${esc(esc_&&esc_.nombre||"")}"></div>
           <div class="sched-row"><label>Dirección</label><input id="esc_direccion" class="sched-inp" value="${esc(esc_&&esc_.direccion||"")}"></div>
           <div class="sched-row"><label>Teléfono</label><input id="esc_tel" class="sched-inp" type="tel" value="${esc(esc_&&esc_.tel||"")}"></div>
         </div>
@@ -3868,10 +3891,12 @@ function documentosSectionHTML(g){
       <button class="xbtn" data-doc-empty="${f.id}">${I.trash}</button>
     </div>`).join("")}
   </div>`:"";
-  return (!gd.tok?`<div style="font-size:12.5px;color:var(--faint);margin:0 2px 10px;">Conectá Google Drive desde el menú <b>⋯</b> para poder subir archivos nuevos.</div>`:"")
+  return classroomCardHTML(g)
+    + (!gd.tok?`<div style="font-size:12.5px;color:var(--faint);margin:0 2px 10px;">Conectá Google Drive desde el menú <b>⋯</b> para poder subir archivos nuevos.</div>`:"")
     + docsHTML(g) + trashHTML;
 }
 function wireDocumentosSection(g,body){
+  wireClassroomCard(g);
   body.querySelectorAll(".doc-up-btn input").forEach(inp=>inp.addEventListener("change",async e=>{
     const files=[...e.target.files]; if(!files.length) return;
     for(const f of files){ await uploadDoc(g,inp.dataset.cat,f); }
@@ -5874,7 +5899,7 @@ function confirmDlg(title,message,confirmLabel,onConfirm){
 function promptRenameGroup(g){
   const cur=((g.color||0)%PAL.length+PAL.length)%PAL.length;
   const swatches=PAL.map((p,i)=>`<button class="swatch ${cur===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
-  openDlg("Editar nombre del curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" maxlength="40" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
+  openDlg("Editar nombre del curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" maxlength="20" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="rg_swatches">${swatches}</div></div>
     <div class="dlg-actions"><button class="btn subtle" id="rg_cancel">Cancelar</button><button class="btn" id="rg_ok">Guardar</button></div>`);
   const inp=$("#rg_name"); setTimeout(()=>{inp.focus();inp.select();},60);
@@ -5904,9 +5929,9 @@ function promptNewGroup(){
       <div class="chiprow" id="f_escChips" style="margin-bottom:8px;">${escuelasUnicas.map(n=>`<button type="button" class="mchip sm" data-esc-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-bottom:6px;">O escribí una nueva ↓</div>`:"";
   openDlg("Agregar curso",`<div class="dlg-field"><label>Escuela <span style="font-weight:500;color:var(--faint);">(opcional — la podés cargar después)</span></label>
-      ${escChips}<input id="f_escuela" class="sched-inp" maxlength="60" placeholder="Ej.: EEST N°05" autocomplete="off">
+      ${escChips}<input id="f_escuela" class="sched-inp" maxlength="18" placeholder="Ej.: EEST N°5" autocomplete="off">
     </div>
-    <div class="dlg-field"><label>Año y curso</label><input id="f_name" maxlength="40" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
+    <div class="dlg-field"><label>Año y curso</label><input id="f_name" maxlength="20" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="f_swatches">${swatches}</div></div>
     <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Escuela y horarios)</span></label>
       <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
