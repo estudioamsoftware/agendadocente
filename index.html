@@ -543,10 +543,14 @@
   .fecha-lbl{font-weight:700;font-size:15.5px;min-width:120px;flex:none;}
   .fecha-val{font-size:14px;color:var(--primary);font-weight:700;flex:1;min-width:60px;}
   .fecha-empty{font-size:13.5px;color:var(--faint);flex:1;}
-  .docrow{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
+  .docrow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
   .docrow:last-child{border-bottom:none;}
-  .doc-lbl{font-weight:600;font-size:13px;min-width:140px;flex:none;color:var(--ink);}
-  .doc-files{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0;}
+  .docrow-lbl{display:flex;align-items:center;gap:6px;flex:none;min-width:132px;}
+  .doc-lbl{font-weight:600;font-size:13px;color:var(--ink);}
+  .doc-files{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:90px;}
+  .docrow-right{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;}
+  .docrow-date{display:flex;align-items:center;gap:6px;flex:none;white-space:nowrap;}
+  .docrow-pencil{flex:none;}
   .doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--primary-tint);border-radius:99px;padding:3px 10px 3px 10px;font-size:12px;max-width:100%;box-sizing:border-box;}
   .doc-chip a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
   .doc-chip a{color:var(--primary);font-weight:600;text-decoration:none;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -780,7 +784,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-37';
+const APP_VER='v2026.08.29-38';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3513,24 +3517,38 @@ const DOC_CATS=[
 function docsHTML(g){
   const docs=ensureDocs(g);
   const inf=ensureInfo(g); const fechas=inf.fechas||{};
+  const rv=ensureRevista(g);
   const FECHA_CATS=["diagnostico","contrato","planificacion","programa"];
   return `<div class="card" style="margin-bottom:16px;">`+DOC_CATS.map(cat=>{
     const files=docs[cat.key]||[];
-    const filesHTML=files.map(f=>`<span class="doc-chip"><a href="${esc(f.url)}" target="_blank" title="${esc(f.name)}">${esc(f.name.length>28?f.name.slice(0,26)+'…':f.name)}</a>
-      <button class="doc-del" data-cat="${cat.key}" data-fid="${f.id}" data-fname="${esc(f.name)}" data-furl="${esc(f.url)}" title="Eliminar">${I.trash}</button></span>`).join('');
+    const filesHTML=files.length?files.map(f=>`<span class="doc-chip"><a href="${esc(f.url)}" target="_blank" title="${esc(f.name)}">${esc(f.name.length>22?f.name.slice(0,20)+'…':f.name)}</a>
+      <button class="doc-del" data-cat="${cat.key}" data-fid="${f.id}" data-fname="${esc(f.name)}" data-furl="${esc(f.url)}" title="Eliminar">${I.trash}</button></span>`).join(''):`<span style="font-size:12px;color:var(--faint);">Sin subir</span>`;
+    // "Toma de posesión" no tiene fecha propia acá: muestra la misma que ya se
+    // cargó en Situación de revista, de solo lectura (se edita desde ahí).
+    const isToma=cat.key==='tomaPosesion';
     const hasFechaField=FECHA_CATS.includes(cat.key);
     const fd=hasFechaField?(fechas[cat.key]||""):"";
     const entregado=hasFechaField?((inf.entregado||{})[cat.key]||false):false;
     const vencido=hasFechaField&&fd&&!entregado&&fd<todayISO();
-    const fechaInline=hasFechaField?`
-      ${fd?`<span style="font-size:12px;color:${vencido?"var(--absent-ink)":"var(--muted)"};font-weight:600;">${vencido?"Venció · ":""}${fmtItemDate(fd)}</span>`:`<span style="font-size:12px;color:var(--faint);">Sin fecha</span>`}
-      <button class="btn subtle sm fecha-btn" data-fk="${cat.key}" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>
-      <button class="doc-entregado ${entregado?"on":""}" data-ek="${cat.key}">${entregado?"✓":""}</button>`:"";
-    return `<div class="docrow"><span class="doc-lbl">${cat.label}</span>
-      ${fechaInline}
+    let dateCell="";
+    if(isToma){
+      dateCell=rv.toma?`<span style="font-size:12px;color:var(--muted);font-weight:600;">${fmtItemDate(rv.toma)}</span>`:`<span style="font-size:12px;color:var(--faint);">Sin fecha</span>`;
+    } else if(hasFechaField){
+      dateCell=`${fd?`<span style="font-size:12px;color:${vencido?"var(--absent-ink)":"var(--muted)"};font-weight:600;">${vencido?"Venció · ":""}${fmtItemDate(fd)}</span>`:`<span style="font-size:12px;color:var(--faint);">Sin fecha</span>`}
+        <button class="doc-entregado ${entregado?"on":""}" data-ek="${cat.key}">${entregado?"✓":""}</button>`;
+    }
+    const pencilCell=hasFechaField?`<button class="btn subtle sm fecha-btn" data-fk="${cat.key}" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>`:"";
+    return `<div class="docrow">
+      <div class="docrow-lbl"><span class="doc-lbl">${cat.label}</span>
+        <label class="doc-up-btn" title="${cat.key==='tomaPosesion'?'Subir foto o PDF del comprobante':'Subir PDF (podés elegir varios a la vez)'}">
+          <input type="file" accept="${cat.key==='tomaPosesion'?'.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf':'application/pdf,.pdf'}" multiple data-cat="${cat.key}" style="display:none;">${I.clip}</label>
+      </div>
       <div class="doc-files">${filesHTML}</div>
-      <label class="doc-up-btn" title="${cat.key==='tomaPosesion'?'Subir foto o PDF del comprobante':'Subir PDF (podés elegir varios a la vez)'}">
-        <input type="file" accept="${cat.key==='tomaPosesion'?'.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf':'application/pdf,.pdf'}" multiple data-cat="${cat.key}" style="display:none;">${I.clip}</label></div>`;
+      <div class="docrow-right">
+        <div class="docrow-date">${dateCell}</div>
+        <div class="docrow-pencil">${pencilCell}</div>
+      </div>
+    </div>`;
   }).join('')+classroomRowsHTML(g)+`</div>`;
 }
 async function uploadDoc(g,cat,file){
@@ -3552,21 +3570,21 @@ async function uploadDoc(g,cat,file){
 function classroomRowsHTML(g){
   const inf=ensureInfo(g);
   const code=inf.classroom?inf.classroom.split("\n")[0]:""; const link=inf.classroom?inf.classroom.split("\n")[1]:"";
-  return `<div class="docrow"><span class="doc-lbl">Código Classroom</span>
-      ${code?`<span style="font-size:13px;color:var(--ink);font-weight:600;">${esc(code)}</span>`:`<span style="font-size:12px;color:var(--faint);">Sin cargar</span>`}
-      <button class="btn subtle sm" id="clsCodeEdit" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>
-      ${code?`<button class="btn subtle sm" id="clsCodeCopy" style="font-size:11px;padding:0 8px;height:26px;">Copiar</button>`:""}
+  // Sin "Copiar": el código se lee en voz alta para los chicos y el link se
+  // abre directo — no hay ningún lado de la app donde pegarlos, así que
+  // copiar no servía para nada.
+  return `<div class="docrow">
+      <div class="docrow-lbl"><span class="doc-lbl">Código Classroom</span></div>
+      <div class="doc-files">${code?`<span style="font-size:13px;color:var(--ink);font-weight:600;">${esc(code)}</span>`:`<span style="font-size:12px;color:var(--faint);">Sin cargar</span>`}</div>
+      <div class="docrow-pencil"><button class="btn subtle sm" id="clsCodeEdit" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button></div>
     </div>
-    <div class="docrow"><span class="doc-lbl">Link Classroom</span>
-      ${link?`<a href="${esc(link)}" target="_blank" style="font-size:13px;color:var(--primary);font-weight:600;">Abrir</a>`:`<span style="font-size:12px;color:var(--faint);">Sin cargar</span>`}
-      <button class="btn subtle sm" id="clsLinkEdit" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>
-      ${link?`<button class="btn subtle sm" id="clsLinkCopy" style="font-size:11px;padding:0 8px;height:26px;">Copiar</button>`:""}
+    <div class="docrow">
+      <div class="docrow-lbl"><span class="doc-lbl">Link Classroom</span></div>
+      <div class="doc-files">${link?`<a href="${esc(link)}" target="_blank" style="font-size:13px;color:var(--primary);font-weight:600;">Abrir</a>`:`<span style="font-size:12px;color:var(--faint);">Sin cargar</span>`}</div>
+      <div class="docrow-pencil"><button class="btn subtle sm" id="clsLinkEdit" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button></div>
     </div>`;
 }
 function wireClassroomRows(g){
-  const inf=ensureInfo(g);
-  const codeCopy=$("#clsCodeCopy"); if(codeCopy) codeCopy.onclick=()=>copyText((inf.classroom||"").split("\n")[0]||"");
-  const linkCopy=$("#clsLinkCopy"); if(linkCopy) linkCopy.onclick=()=>copyText((inf.classroom||"").split("\n")[1]||"");
   const codeEdit=$("#clsCodeEdit"); if(codeEdit) codeEdit.onclick=()=>promptClassroomField(g,"code");
   const linkEdit=$("#clsLinkEdit"); if(linkEdit) linkEdit.onclick=()=>promptClassroomField(g,"link");
 }
@@ -6510,8 +6528,6 @@ function promptInfoItem(g,id){
   const c=$("#it_cancel"); if(c) c.onclick=closeDlg;
   const del=$("#it_del"); if(del) del.onclick=()=>{ confirmDlg("¿Borrar este dato?","No se puede deshacer.","Borrar",()=>{ removeInfoItem(g,id); render(); }); };
 }
-function copyText(t){ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast("Copiado"),()=>fallbackCopy(t)); } else fallbackCopy(t); }
-function fallbackCopy(t){ try{ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); ta.remove(); toast("Copiado"); }catch(e){ toast("No se pudo copiar"); } }
 function seedGroups(){ if(!licCanAddGroup()){ licPaywall(); return; } ["EEST N°05 – 2°","EES N°3 – 6°","EES N°77","FINES","Particulares"].forEach(n=>addGroup(n)); toast("Grupos creados · editalos cuando quieras"); render(); }
 
 /* ============ Export / backup ============ */
