@@ -522,7 +522,7 @@
   .infoItem .ichip{flex:none;background:var(--primary-tint);color:var(--primary);font-weight:700;font-size:12.5px;padding:5px 10px;border-radius:99px;white-space:nowrap;}
   .infoItem .echev{color:var(--faint);flex:none;} .infoItem .echev svg{width:22px;height:22px;}
   .lockfield{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .cardtitle{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;letter-spacing:.01em;margin-bottom:14px;text-transform:uppercase;}
+  .cardtitle{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;letter-spacing:.01em;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);text-transform:uppercase;}
   .cardtitle svg{width:18px;height:18px;color:var(--primary);flex:none;}
   .kvrow{display:flex;align-items:center;gap:12px;padding:10px 0;}
   .kv-ic{flex:none;width:24px;color:var(--primary);display:grid;place-items:center;}
@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-27';
+const APP_VER='v2026.08.29-28';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3516,7 +3516,7 @@ function docsHTML(g){
       <div class="doc-files">${filesHTML}</div>
       <label class="doc-up-btn" title="${cat.key==='tomaPosesion'?'Subir foto o PDF del comprobante':'Subir PDF (podés elegir varios a la vez)'}">
         <input type="file" accept="${cat.key==='tomaPosesion'?'.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf':'application/pdf,.pdf'}" multiple data-cat="${cat.key}" style="display:none;">${I.clip}</label></div>`;
-  }).join('')+`</div>`;
+  }).join('')+classroomRowsHTML(g)+`</div>`;
 }
 async function uploadDoc(g,cat,file){
   if(!gd.tok){ toastSuccess('Conectá Drive primero desde el menú ⋯','#8C4108'); return; }
@@ -3531,54 +3531,46 @@ async function uploadDoc(g,cat,file){
   }catch(e){ console.error(e); toastError('Error al subir: '+(e&&e.message?e.message:'desconocido')); }
 }
 
-/* ---- Classroom (código + link) — se carga en Documentos; en Clases se repite en modo lectura ---- */
-function classroomCardHTML(g){
+/* ---- Classroom (código + link) — dos filas más al final de Documentos, mismo
+   formato que el resto (docrow), para no desentonar ni ocupar de más. Editar
+   abre un diálogo chico en vez de tener el formulario siempre abierto. ---- */
+function classroomRowsHTML(g){
   const inf=ensureInfo(g);
-  const clsCodeVal=inf.classroom?inf.classroom.split("\n")[0]:""; const clsLinkVal=inf.classroom?inf.classroom.split("\n")[1]:"";
-  const hasClsCode=!!(clsCodeVal&&clsCodeVal.trim()); const editClsCode=view.editClsCode||!hasClsCode;
-  const clsCodeBlock=editClsCode
-    ? `<input id="clsCodeIn" class="sched-inp" placeholder="Ej: abc-def-ghi" value="${esc(clsCodeVal)}" autocomplete="off" style="width:100%;margin-bottom:8px;"><button class="btn sm" id="clsCodeSave">Guardar</button>`
-    : `<div class="lockfield" style="margin-bottom:8px;"><span class="lf-val">${esc(clsCodeVal)}</span><button class="btn subtle sm" id="clsCodeCopy">Copiar</button><button class="btn subtle sm" id="clsCodeEdit">Editar</button></div>`;
-  const hasClsLink=!!(clsLinkVal&&clsLinkVal.trim()); const editClsLink=view.editClsLink||!hasClsLink;
-  const clsLinkBlock=editClsLink
-    ? `<input id="clsLinkIn" class="sched-inp" placeholder="Ej: https://classroom.google.com/..." value="${esc(clsLinkVal)}" autocomplete="off" style="width:100%;margin-bottom:8px;"><button class="btn sm" id="clsLinkSave">Guardar</button>`
-    : `<div class="lockfield" style="margin-bottom:8px;"><a href="${esc(clsLinkVal)}" target="_blank" class="lf-val">Abrir</a><button class="btn subtle sm" id="clsLinkCopy">Copiar</button><button class="btn subtle sm" id="clsLinkEdit">Editar</button></div>`;
-  return `<div class="card pad" style="margin-bottom:16px;">
-      <div class="cardtitle">${I.doc}Classroom</div>
-      <div class="kv-lbl" style="margin-bottom:6px;">Código</div>${clsCodeBlock}
-      <div class="kv-lbl" style="margin-bottom:6px;margin-top:12px;">Link</div>${clsLinkBlock}
+  const code=inf.classroom?inf.classroom.split("\n")[0]:""; const link=inf.classroom?inf.classroom.split("\n")[1]:"";
+  return `<div class="docrow"><span class="doc-lbl">Código Classroom</span>
+      ${code?`<span style="font-size:13px;color:var(--ink);font-weight:600;">${esc(code)}</span>`:`<span style="font-size:12px;color:var(--faint);">Sin cargar</span>`}
+      <button class="btn subtle sm" id="clsCodeEdit" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>
+      ${code?`<button class="btn subtle sm" id="clsCodeCopy" style="font-size:11px;padding:0 8px;height:26px;">Copiar</button>`:""}
+    </div>
+    <div class="docrow"><span class="doc-lbl">Link Classroom</span>
+      ${link?`<a href="${esc(link)}" target="_blank" style="font-size:13px;color:var(--primary);font-weight:600;">Abrir</a>`:`<span style="font-size:12px;color:var(--faint);">Sin cargar</span>`}
+      <button class="btn subtle sm" id="clsLinkEdit" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>
+      ${link?`<button class="btn subtle sm" id="clsLinkCopy" style="font-size:11px;padding:0 8px;height:26px;">Copiar</button>`:""}
     </div>`;
 }
-function wireClassroomCard(g){
+function wireClassroomRows(g){
   const inf=ensureInfo(g);
-  const clsCodeIn=$("#clsCodeIn");
-  const clsCodeSave=$("#clsCodeSave"); if(clsCodeSave) clsCodeSave.onclick=()=>{
-    const code=clsCodeIn.value.trim();
-    const link=(inf.classroom||"").split("\n")[1]||"";
-    const newVal=code+(link?"\n"+link:"");
-    inf.classroom=newVal; save();
-    delete view.editClsCode; render(); flashSuccess("#clsCodeIn","#FCEBDA");
+  const codeCopy=$("#clsCodeCopy"); if(codeCopy) codeCopy.onclick=()=>copyText((inf.classroom||"").split("\n")[0]||"");
+  const linkCopy=$("#clsLinkCopy"); if(linkCopy) linkCopy.onclick=()=>copyText((inf.classroom||"").split("\n")[1]||"");
+  const codeEdit=$("#clsCodeEdit"); if(codeEdit) codeEdit.onclick=()=>promptClassroomField(g,"code");
+  const linkEdit=$("#clsLinkEdit"); if(linkEdit) linkEdit.onclick=()=>promptClassroomField(g,"link");
+}
+function promptClassroomField(g,field){
+  const inf=ensureInfo(g);
+  const code=inf.classroom?inf.classroom.split("\n")[0]:""; const link=inf.classroom?inf.classroom.split("\n")[1]:"";
+  const isCode=field==="code";
+  openDlg(isCode?"Código de Classroom":"Link de Classroom",`
+    <div class="dlg-field"><label>${isCode?"Código":"Link"}</label><input id="cls_inp" placeholder="${isCode?"Ej: abc-def-ghi":"Ej: https://classroom.google.com/..."}" value="${esc(isCode?code:link)}" autocomplete="off"></div>
+    <div class="dlg-actions"><button class="btn subtle" id="cls_cancel">Cancelar</button><button class="btn" id="cls_ok">Guardar</button></div>`);
+  setTimeout(()=>{ const inp=$("#cls_inp"); if(inp){ inp.focus(); } },60);
+  $("#cls_cancel").onclick=closeDlg;
+  $("#cls_ok").onclick=()=>{
+    const v=$("#cls_inp").value.trim();
+    const newCode=isCode?v:code;
+    const newLink=isCode?link:v;
+    inf.classroom=newCode+(newLink?"\n"+newLink:"");
+    save(); closeDlg(); render();
   };
-  const clsCodeCopy=$("#clsCodeCopy"); if(clsCodeCopy) clsCodeCopy.onclick=()=>{
-    const code=(inf.classroom||"").split("\n")[0]||"";
-    if(!code){ toast("No hay código"); return; }
-    copyText(code);
-  };
-  const clsCodeEdit=$("#clsCodeEdit"); if(clsCodeEdit) clsCodeEdit.onclick=()=>{ view.editClsCode=true; render(); };
-  const clsLinkIn=$("#clsLinkIn");
-  const clsLinkSave=$("#clsLinkSave"); if(clsLinkSave) clsLinkSave.onclick=()=>{
-    const link=clsLinkIn.value.trim();
-    const code=(inf.classroom||"").split("\n")[0]||"";
-    const newVal=(code||"")+(code&&link?"\n":"")+link;
-    inf.classroom=newVal; save();
-    delete view.editClsLink; render(); flashSuccess("#clsLinkIn","#FCEBDA");
-  };
-  const clsLinkCopy=$("#clsLinkCopy"); if(clsLinkCopy) clsLinkCopy.onclick=()=>{
-    const link=(inf.classroom||"").split("\n")[1]||"";
-    if(!link){ toast("No hay link"); return; }
-    copyText(link);
-  };
-  const clsLinkEdit=$("#clsLinkEdit"); if(clsLinkEdit) clsLinkEdit.onclick=()=>{ view.editClsLink=true; render(); };
 }
 // En Clases no se edita Classroom (eso vive en Documentos) — acá solo se repite
 // el código y el link, para no tener que ir a buscarlos a otra pantalla.
@@ -3716,8 +3708,8 @@ function infoSectionHTML(g){
   // El armado de los cuatrimestres (ciclo lectivo + generar clases) es un tema
   // propio, no un detalle más de "Cursada" — va en su propia tarjeta.
   const cuatriHTML=`<div class="card pad" style="margin-top:16px;">
-      <div class="cardtitle">${I.cal}Cuatrimestres</div>
-      ${showCicloView?`<div class="kvrow"><span class="kv-ic">${I.cal}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Ciclo lectivo</div><div class="kv-val">${cicloStr}</div></div><button class="iconbtn" id="ciclo_edit" aria-label="Editar ciclo lectivo">${I.pencil}</button></div>`:``}
+      <div class="cardtitle">${I.cal}Ciclo lectivo</div>
+      ${showCicloView?`<div class="kvrow"><span class="kv-ic">${I.cal}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Fechas</div><div class="kv-val">${cicloStr}</div></div><button class="iconbtn" id="ciclo_edit" aria-label="Editar ciclo lectivo">${I.pencil}</button></div>`:``}
       <div id="cicloForm" style="${showCicloView?"display:none;":"padding:2px 0 14px;"}">
         <div class="sched-row2">
           <div class="sched-field"><label>Inicio</label><input id="ciclo_first" type="date" value="${cicloIni}"></div>
@@ -3726,6 +3718,7 @@ function infoSectionHTML(g){
         <button class="btn" id="ciclo_go" style="width:100%;margin-top:10px;">Generar clases</button>
         ${anyGenerated?`<button class="btn subtle sm" id="ciclo_cancel" style="width:100%;margin-top:8px;">Cancelar</button>`:``}
       </div>
+      <div style="font-size:11.5px;color:var(--faint);margin-top:${showCicloView?"12px":"14px"};line-height:1.4;">💡 El receso invernal se carga en <b>Calendario</b>, no acá — con esa fecha la app separa sola el 1° y 2° cuatrimestre.</div>
     </div>`;
 
   const inf=ensureInfo(g);
@@ -3891,12 +3884,11 @@ function documentosSectionHTML(g){
       <button class="xbtn" data-doc-empty="${f.id}">${I.trash}</button>
     </div>`).join("")}
   </div>`:"";
-  return classroomCardHTML(g)
-    + (!gd.tok?`<div style="font-size:12.5px;color:var(--faint);margin:0 2px 10px;">Conectá Google Drive desde el menú <b>⋯</b> para poder subir archivos nuevos.</div>`:"")
+  return (!gd.tok?`<div style="font-size:12.5px;color:var(--faint);margin:0 2px 10px;">Conectá Google Drive desde el menú <b>⋯</b> para poder subir archivos nuevos.</div>`:"")
     + docsHTML(g) + trashHTML;
 }
 function wireDocumentosSection(g,body){
-  wireClassroomCard(g);
+  wireClassroomRows(g);
   body.querySelectorAll(".doc-up-btn input").forEach(inp=>inp.addEventListener("change",async e=>{
     const files=[...e.target.files]; if(!files.length) return;
     for(const f of files){ await uploadDoc(g,inp.dataset.cat,f); }
