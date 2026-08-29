@@ -137,9 +137,15 @@ recuperatorio lleve las mismas notas que la evaluación que recupera**:
 - En la evaluación, la columna RECUP. **se abre en una columna por parte** (RECUP.
   VOCABULARY, RECUP. GRAMMAR), en modo lectura: "–" si esa parte ya estaba aprobada o no la
   rindió, la nota si la recuperó, "A" si faltó.
-- Migración: a un recuperatorio viejo sin partes se le pasan las de su evaluación **sólo si
-  todavía no tiene ninguna nota cargada** — si ya tiene, cambiarle la forma escondería lo
-  cargado (las notas se guardan en `nota` y pasarían a `p0`/`p1`).
+- Migración de los recuperatorios que ya existían (con una sola nota, como los dejaba la
+  versión vieja): esa nota única **es lo que el alumno sacó recuperando**, así que se copia
+  a **cada parte que se llevó** — si se llevó las dos, la misma nota va en las dos — y
+  después se rearma la nota final combinándola con las partes que ya tenía aprobadas.
+  Corre una sola vez, en `migrate()`, cuando el recu todavía no tiene `parts`.
+- **Si faltó a una parte que tenía que recuperar, el recuperatorio no reemplaza la nota
+  original** (queda sin nota final). Es distinto de una evaluación común, donde un
+  "Ausente" simplemente no pesa en el promedio de las partes: acá faltar significa que no
+  recuperó, y no puede terminar mejorándole la nota.
 
 **Por qué se había perdido:** con dos partes + recu no entraban las columnas en el celular
 y la columna de nombres se achicaba hasta partir cada apellido letra por letra. Se resolvió

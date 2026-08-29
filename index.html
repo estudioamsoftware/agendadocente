@@ -788,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-49';
+const APP_VER='v2026.08.29-50';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1041,15 +1041,42 @@ function migrate(st){
           const parent=T.exams.find(x=>x.id===recu.recuOf);
           if(parent&&parent.recuDate!==recu.date) parent.recuDate=recu.date;
           // Recuperatorios creados antes de que la recu heredara las notas de su
-          // evaluación: se las pasamos, pero sólo si todavía no tienen ninguna nota
-          // cargada — si ya las tiene, cambiarle la forma escondería lo cargado.
-          if(parent&&Array.isArray(parent.parts)&&parent.parts.length>=2
-             &&!(Array.isArray(recu.parts)&&recu.parts.length>=2)){
-            const tieneNotas=Object.keys(T.grades||{}).some(sid=>{
-              const c=((T.grades||{})[sid]||{})[recu.id]||{};
-              return Object.keys(c).some(k=>c[k]!=null&&c[k]!==false);
+          // evaluación: se las pasamos. Si ya tenían cargada una nota única, esa nota es
+          // lo que el alumno sacó recuperando, así que se copia a cada parte que se
+          // llevó (si se llevó las dos, la misma nota va en las dos) y la nota final se
+          // rearma combinando con lo que ya tenía aprobado.
+          if(parent&&Array.isArray(parent.parts)&&parent.parts.length>=2&&!Array.isArray(recu.parts)){
+            const pmG=ng.passMark||7;
+            recu.parts=parent.parts.slice();
+            Object.keys(T.grades||{}).forEach(sid=>{
+              const cR=((T.grades||{})[sid]||{})[recu.id]; if(!cR) return;
+              const cP=((T.grades||{})[sid]||{})[parent.id]||{};
+              const notaVieja=cR.nota, ausVieja=cR.ausenteNota===true;
+              if(typeof notaVieja!=="number"&&!ausVieja) return;
+              // Las partes que se llevó: las que no llegaron al mínimo en la evaluación.
+              const pendientes=parent.parts.map((_,pi)=>pi).filter(pi=>{
+                const v=cP["p"+pi]; return !(typeof v==="number"&&v>=pmG);
+              });
+              if(!pendientes.length) return;
+              pendientes.forEach(pi=>{
+                if(cR["p"+pi]!=null) return;
+                if(ausVieja) cR["ausente_p"+pi]=true;
+                else cR["p"+pi]=notaVieja;
+                if(cR.motivoNota) cR["motivo_p"+pi]=cR.motivoNota;
+              });
+              // Nota final del recuperatorio = promedio de todas las partes, tomando la
+              // nota de la evaluación en las que ya estaban aprobadas.
+              const vals=[]; let todasResueltas=true;
+              parent.parts.forEach((_,pi)=>{
+                const vP=cP["p"+pi];
+                if(typeof vP==="number"&&vP>=pmG){ vals.push(vP); return; }
+                const vR=cR["p"+pi];
+                if(typeof vR==="number") vals.push(vR);
+                else todasResueltas=false; // faltó o no la rindió: no recuperó el examen
+              });
+              cR.nota=(todasResueltas&&vals.length)?Math.round(vals.reduce((x,y)=>x+y,0)/vals.length*100)/100:undefined;
+              if(cR.nota===undefined) delete cR.nota;
             });
-            if(!tieneNotas) recu.parts=parent.parts.slice();
           }
         });
       }
@@ -5316,8 +5343,11 @@ function renderExamEntry(g,t,e,body){
       // la nota del recuperatorio refleja el examen entero y no sólo lo que rindió hoy.
       if(partYaAprobada(sid,pi)){ vals.push(getGrade(t,sid,parentEx.id)[f]); return; }
       const v=c[f];
-      if(typeof v==="number") vals.push(v);
-      else if(!gradeAusenteEffective(t,g,sid,e.id,f,e.date)) allResolved=false;
+      if(typeof v==="number"){ vals.push(v); return; }
+      // En una evaluación común, un "Ausente" no pesa en el promedio de las partes.
+      // En un recuperatorio es distinto: si faltó a la parte que tenía que recuperar,
+      // no la recuperó, así que la recu no puede reemplazar la nota original.
+      if(soyRecuPorPartes||!gradeAusenteEffective(t,g,sid,e.id,f,e.date)) allResolved=false;
     });
     setGradeField(t,sid,e.id,"nota",(allResolved&&vals.length)?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100)/100:null);
   }
