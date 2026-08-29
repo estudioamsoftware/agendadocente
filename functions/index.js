@@ -111,6 +111,47 @@ exports.verifyPurchase = onCall(
   }
 );
 
+// Cuenta que puede ver el panel de administración (index → admin.html).
+const ADMIN_EMAIL = "estudioam.dev@gmail.com";
+
+// Junta quién se conectó alguna vez con Google (Firebase Authentication) con
+// su estado de suscripción (Firestore) para mostrarlo en admin.html. Google
+// nunca da la lista de quién *instaló* la app desde Play —esto es lo más
+// cercano que existe: quién se logueó adentro de ella.
+exports.adminListUsers = onCall(async (request) => {
+  if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+    throw new HttpsError("permission-denied", "No autorizada.");
+  }
+
+  const users = [];
+  let pageToken;
+  do {
+    const page = await admin.auth().listUsers(1000, pageToken);
+    users.push(...page.users);
+    pageToken = page.pageToken;
+  } while (pageToken);
+
+  const subsSnap = await db.collection("subscriptions").get();
+  const subsByUid = {};
+  subsSnap.forEach((doc) => {
+    subsByUid[doc.id] = doc.data();
+  });
+
+  return users
+    .map((u) => {
+      const sub = subsByUid[u.uid];
+      return {
+        email: u.email || "(sin mail)",
+        firstSignIn: u.metadata.creationTime,
+        lastSignIn: u.metadata.lastSignInTime,
+        subscriptionStatus: sub ? sub.status : "sin suscripción",
+        currentPeriodEnd:
+          sub?.currentPeriodEnd?.toDate?.().toISOString() ?? null,
+      };
+    })
+    .sort((a, b) => new Date(b.firstSignIn) - new Date(a.firstSignIn));
+});
+
 // Endpoint que recibe las notificaciones push de Pub/Sub configuradas en
 // Play Console > Monetización > Notificaciones en tiempo real.
 exports.playRtdn = onRequest(
