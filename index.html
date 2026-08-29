@@ -395,13 +395,17 @@
   .erow .einfo{flex:1;min-width:0;} .erow .ename{display:block;font-weight:600;font-size:14px;word-break:break-word;}
   .erow .edate{display:block;font-size:12.5px;color:var(--muted);margin-top:5px;} .erow .echev{color:var(--faint);flex:none;}
 
-  .examgrid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .examgrid{background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);overflow:hidden;min-width:380px;}
+  /* La columna de nombres queda fija y las notas corren al costado, igual que en la
+     tabla de Resumen: así entran todas las partes del examen más la recu sin que el
+     nombre del alumno se aplaste letra por letra. El borde y el redondeo van en el
+     contenedor que scrollea (no en la grilla) para que el sticky funcione. */
+  .examgrid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);}
+  .examgrid{width:max-content;min-width:100%;}
   .eg-row{display:flex;align-items:stretch;border-bottom:1px solid var(--line-soft);min-height:54px;}
   .eg-row:last-child{border-bottom:none;}
   .eg-row.eg-head{background:var(--line-soft);min-height:34px;color:var(--faint);font-size:10px;font-weight:800;letter-spacing:.03em;align-items:center;}
-  .eg-nm{flex:1;min-width:0;padding:8px 10px 8px 14px;font-weight:600;font-size:14px;word-break:break-word;display:flex;align-items:center;flex-wrap:wrap;gap:6px;text-transform:uppercase;}
-  .eg-head .eg-nm{font-weight:800;}
+  .eg-nm{position:sticky;left:0;z-index:2;flex:none;width:140px;padding:8px 10px 8px 14px;font-weight:600;font-size:13.5px;line-height:1.2;word-break:break-word;display:flex;align-items:center;flex-wrap:wrap;gap:6px;text-transform:uppercase;background:var(--card);box-shadow:1px 0 0 var(--line-soft);}
+  .eg-head .eg-nm{font-weight:800;background:var(--line-soft);z-index:3;}
   .eg-nm .attdot{margin-left:6px;}
   .eg-col{width:108px;flex:none;display:flex;align-items:flex-start;justify-content:center;padding:6px 4px;border-left:1px solid var(--line-soft);min-height:44px;}
   .eg-head .eg-col{min-height:32px;text-align:center;justify-content:center;line-height:1.25;align-items:center;}
@@ -784,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-47';
+const APP_VER='v2026.08.29-48';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
