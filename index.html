@@ -447,9 +447,9 @@
   .topicchecks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
   .topicchk{height:34px;padding:0 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--muted);}
   .progchips{display:flex;flex-wrap:wrap;gap:7px;}
-  .progchip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 5px 0 13px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);}
+  .progchip{display:inline-flex;align-items:flex-start;gap:5px;min-height:32px;max-width:100%;padding:5px 5px 5px 13px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.35;word-break:break-word;}
 
-  .progchip .pc-x{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:var(--faint);font-size:15px;line-height:1;flex:none;}
+  .progchip .pc-x{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:var(--faint);font-size:15px;line-height:1;flex:none;margin-top:1px;}
   .progchip .pc-x:active{background:var(--absent-tint);color:var(--absent);}
   .prog-cat{border-left:3px solid var(--line);padding-left:10px;margin-bottom:14px;}
   .prog-inp{flex:1;height:36px;border:1.5px solid var(--line);border-radius:9px;padding:0 10px;font-size:13px;background:#fff;min-width:0;}
@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-35';
+const APP_VER='v2026.08.29-36';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
