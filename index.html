@@ -112,7 +112,6 @@
   /* ===== Índice del curso ===== */
   .ghead2{padding:14px 0 12px;}
   .ghead2 h1{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:24px;margin:0;letter-spacing:-.01em;line-height:1.15;word-break:break-word;}
-  .gh-school{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
   .gh-bits{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:9px;}
   .gh-bit{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);min-width:0;}
   .gh-bit svg{width:14px;height:14px;flex:none;color:var(--primary);opacity:.75;}
@@ -781,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-20';
+const APP_VER='v2026.08.29-21';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3322,10 +3321,9 @@ function groupHeadHTML(g){
   const bits=[];
   bits.push(`<span class="gh-bit">${I.users}${g.students.length} ${g.students.length===1?"alumno":"alumnos"}</span>`);
   if(dias||g.horario) bits.push(`<span class="gh-bit">${I.clock}${esc([dias,g.horario].filter(Boolean).join(" · "))}</span>`);
-  const schoolHTML=(esc_&&esc_.nombre)?`<div class="gh-school">${esc(esc_.nombre)}</div>`:"";
+  const titleTxt=(esc_&&esc_.nombre)?`${esc(esc_.nombre)} · ${esc(g.name)}`:esc(g.name);
   return `<div class="ghead2">
-    ${schoolHTML}
-    <div class="gh-top"><h1>${esc(g.name)} <button class="titleEdit" id="renameHdr" aria-label="Editar nombre">${I.pencil}</button></h1>
+    <div class="gh-top"><h1>${titleTxt} <button class="titleEdit" id="renameHdr" aria-label="Editar nombre">${I.pencil}</button></h1>
       <div class="undoredo" id="undoRedoSlot"></div></div>
     <div class="gh-bits">${bits.join("")}</div>
   </div>`;
