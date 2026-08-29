@@ -388,8 +388,6 @@
   .gridlock.unlocked{background:var(--present-tint);border-color:var(--present-bd);color:var(--present-ink);}
   .gridlock:active{opacity:.8;}
 
-  .sharedchip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--muted);background:var(--line-soft);border-radius:99px;padding:3px 9px 3px 7px;white-space:nowrap;}
-  .sharedchip svg{width:11px;height:11px;}
   .savedtag{color:#5F6368;font-weight:700;font-size:14px;}
 
   .evallist{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
@@ -782,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-23';
+const APP_VER='v2026.08.29-24';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2899,8 +2897,35 @@ function renderEventos(){
   const feriadosYr=getFeriadosArgentina(yr);
   const feriadoRows=Object.keys(feriadosYr).map(iso=>({motivo:feriadosYr[iso],desde:iso,hasta:iso,docente:false,isFeriado:true}));
   
-  // Agregar vacaciones de invierno (configurable, ver Configuración)
+  // Vacaciones de invierno: una sola fecha para todos los cursos, se edita acá
+  // (antes había un lápiz para esto adentro de cada curso — no hacía falta
+  // cargarla curso por curso, así que se sacó de ahí).
   const vacCfg=getVacInvConfig();
+  const vacMdToDDMM=(md)=>{ const [m,d]=md.split("-"); return d+"/"+m; };
+  const showVacInvView=!view.editVacInv;
+  const vacInvResumen=vacCfg.activa?`${vacMdToDDMM(vacCfg.ini)} al ${vacMdToDDMM(vacCfg.fin)}`:"Desactivadas";
+  const vacInvDummyYr="2024";
+  const vacInvCardHTML=`<div class="card pad" style="margin-bottom:16px;">
+      <label class="fieldlbl">🏖️ VACACIONES DE INVIERNO</label>
+      ${showVacInvView?`<div class="kvrow" style="padding:8px 0 0;">
+          <div style="flex:1;min-width:0;">
+            <div class="kv-val${vacCfg.activa?"":" empty"}">${esc(vacInvResumen)}</div>
+            <div style="font-size:11px;color:var(--faint);margin-top:2px;">Se aplica sola a todos tus cursos — no hace falta cargarla en cada uno.</div>
+          </div>
+          <button class="iconbtn" id="vacinv_edit" aria-label="Editar vacaciones de invierno">${I.pencil}</button>
+        </div>`:`<div style="padding:8px 0 0;">
+          <label style="display:flex;align-items:center;gap:9px;margin-bottom:12px;"><input type="checkbox" id="vacinv_activa" ${vacCfg.activa?"checked":""} style="width:18px;height:18px;"><span style="font-size:13px;font-weight:500;">Activar vacaciones de invierno</span></label>
+          <div id="vacinv_dates" style="${vacCfg.activa?"":"display:none;"}">
+            <div class="sched-row2">
+              <div class="sched-field"><label>Inicio</label><input id="vacinv_ini" type="date" value="${vacInvDummyYr}-${vacCfg.ini}"></div>
+              <div class="sched-field"><label>Fin</label><input id="vacinv_fin" type="date" value="${vacInvDummyYr}-${vacCfg.fin}"></div>
+            </div>
+            <p style="margin:8px 0 0;font-size:11px;color:var(--faint);">El año no importa, solo el día y el mes — se aplica todos los años.</p>
+          </div>
+          <button class="btn" id="vacinv_save" style="width:100%;margin-top:14px;">✓ Guardar</button>
+          <button class="btn subtle sm" id="vacinv_cancel" style="width:100%;margin-top:8px;">Cancelar</button>
+        </div>`}
+    </div>`;
   if(vacCfg.activa){
     const vacacionesInvierno={motivo:"Vacaciones de invierno",desde:yr+"-"+vacCfg.ini,hasta:yr+"-"+vacCfg.fin,docente:false,isFeriado:true};
     feriadoRows.push(vacacionesInvierno);
@@ -2998,6 +3023,7 @@ function renderEventos(){
       <span class="count" style="margin:0;">Licencias, paros, suspensiones y vacaciones</span></div>
       <button class="btn" id="addGlobalEvent2" style="flex:none;width:auto;">+ Agregar</button></div>
     <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin:-6px 0 16px;">📍 Feriados y licencias configurados para <b>Argentina</b> (Provincia de Buenos Aires). Si sos de otra provincia o país, <a href="mailto:${FB_MAIL}?subject=${encodeURIComponent("Agenda Docente — Ajustar a mi ciudad/país")}" style="color:var(--primary);font-weight:600;">escribinos</a> y vemos de ajustarlo.</div>
+    ${vacInvCardHTML}
     ${listadosHTML}
     ${tallyHTML}
     ${derivedNoteHTML}
@@ -3005,6 +3031,24 @@ function renderEventos(){
     ${pastToggleHTML}
     ${archToggleHTML}
     ${archBtnHTML}`;
+  const vacinvEdit=$("#vacinv_edit"); if(vacinvEdit) vacinvEdit.onclick=()=>{ view.editVacInv=true; render(); };
+  const vacinvCancel=$("#vacinv_cancel"); if(vacinvCancel) vacinvCancel.onclick=()=>{ delete view.editVacInv; render(); };
+  const vacinvActivaChk=$("#vacinv_activa");
+  if(vacinvActivaChk) vacinvActivaChk.onchange=()=>{ const d=$("#vacinv_dates"); if(d) d.style.display=vacinvActivaChk.checked?"":"none"; };
+  const vacinvSave=$("#vacinv_save"); if(vacinvSave) vacinvSave.onclick=()=>{
+    const activa=$("#vacinv_activa").checked;
+    state.config=state.config||{};
+    state.config.vacInvActiva=activa;
+    if(activa){
+      const iniVal=$("#vacinv_ini").value, finVal=$("#vacinv_fin").value;
+      if(!iniVal||!finVal){ toastError("Completá las dos fechas"); return; }
+      const ini=iniVal.slice(5,10), fin=finVal.slice(5,10);
+      if(ini>fin){ toastError("La fecha de inicio tiene que ser antes que la de fin"); return; }
+      state.config.vacInvIni=ini;
+      state.config.vacInvFin=fin;
+    }
+    save(); delete view.editVacInv; render(); toastSuccess("✓ Vacaciones de invierno guardadas","var(--present-ink)");
+  };
   $("#addGlobalEvent2").onclick=promptGlobalEvent;
   app.querySelectorAll("[data-listado-fijo]").forEach(b=>b.onclick=()=>promptListado(b.dataset.listadoFijo));
   const addOtroListado=$("#addOtroListado"); if(addOtroListado) addOtroListado.onclick=()=>promptListado("otro");
@@ -3339,9 +3383,13 @@ function groupHeadHTML(g,backBtnHTML){
 // vuelta y en qué parte del curso estás parada.
 function famNavHTML(g,tab){
   const S=GRP_SEC[tab]; const fam=S.fam; const F=GRP_FAM[fam];
+  // La pantalla de "Escuela y horarios" no repite su propio título acá arriba:
+  // la primera tarjeta (Escuela) ya lo deja claro, y quedaba una uppercase
+  // encima de otra ("LA FICHA DEL CURSO" + "Escuela y horarios").
+  const titleHTML=tab==="info"?"":`<h1 class="secnav-title">${S.label}</h1>`;
   return `<div class="secnav">
     <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}</div>
-    <h1 class="secnav-title">${S.label}</h1>
+    ${titleHTML}
   </div>`;
 }
 function famBlockHTML(g,fam){
@@ -3489,7 +3537,6 @@ function infoSectionHTML(g){
   // Sección de Escuela
   let esc_=g.escuelaId?state.escuelas.find(s=>s.id===g.escuelaId):null;
   const otherCourses=esc_?state.groups.filter(og=>og.id!==g.id&&og.escuelaId===esc_.id&&!og.archived):[];
-  const sharedNote=otherCourses.length?`<button type="button" class="sharedchip" id="sharedChip" title="Tocá para ver cuáles">${I.clip}Compartida con ${otherCourses.length===1?"1 curso más":otherCourses.length+" cursos más"}</button>`:"";
   const pickHTML=(!esc_&&state.escuelas.length)?`<div style="margin-bottom:12px;">
       <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">¿Ya la cargaste? Elegí una:</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -3503,10 +3550,7 @@ function infoSectionHTML(g){
       ${pickHTML}
       ${showEscView?`<div class="kvrow" style="padding:0 0 12px;">
         <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
-            <div class="kv-val" style="font-size:16px;">${esc(esc_.nombre||"—")}</div>
-            ${sharedNote}
-          </div>
+          <div class="kv-val" style="font-size:16px;">${esc(esc_.nombre||"—")}</div>
           ${esc_.direccion?`<div style="font-size:13px;color:var(--muted);margin-top:5px;"><span class="mini-ic">${I.pin}</span>${esc(esc_.direccion)}</div>`:""}
           ${esc_.tel?`<div style="font-size:13px;color:var(--muted);margin-top:3px;"><span class="mini-ic">${I.phone}</span>${esc(esc_.tel)}</div>`:""}
         </div>
@@ -3516,12 +3560,11 @@ function infoSectionHTML(g){
         ${esc_.director?`<div><strong style="color:var(--ink);font-weight:600;">Director/a:</strong> ${esc(esc_.director)}</div>`:""}
         ${esc_.vice?`<div><strong style="color:var(--ink);font-weight:600;">Vice:</strong> ${esc(esc_.vice)}</div>`:""}
         ${esc_.secretario?`<div><strong style="color:var(--ink);font-weight:600;">Secretario/a:</strong> ${esc(esc_.secretario)}</div>`:""}
-      </div>`:""}
-      <button class="link" id="esc_unlink" style="font-size:12px;margin-top:10px;">🔄 Cambiar de escuela</button>`:``}
+      </div>`:""}`:``}
       <div id="escForm" style="${showEscView?"display:none;":""}">
         ${(esc_&&otherCourses.length)?`<div style="font-size:12px;color:var(--absent-ink);background:var(--absent-tint);border-radius:9px;padding:8px 10px;margin-bottom:10px;">⚠️ Esta escuela es compartida con ${otherCourses.length===1?"1 curso más":otherCourses.length+" cursos más"} (${otherCourses.map(o=>esc(o.name)).join(", ")}). Lo que cambies acá se va a ver en todos esos cursos.</div>`:""}
         <div class="sched-card" style="margin-bottom:10px;">
-          <div class="sched-row"><label>Nombre</label><input id="esc_nombre" class="sched-inp" value="${esc(esc_&&esc_.nombre||"")}"></div>
+          <div class="sched-row"><label>Nombre</label><input id="esc_nombre" class="sched-inp" maxlength="60" value="${esc(esc_&&esc_.nombre||"")}"></div>
           <div class="sched-row"><label>Dirección</label><input id="esc_direccion" class="sched-inp" value="${esc(esc_&&esc_.direccion||"")}"></div>
           <div class="sched-row"><label>Teléfono</label><input id="esc_tel" class="sched-inp" type="tel" value="${esc(esc_&&esc_.tel||"")}"></div>
         </div>
@@ -3542,17 +3585,22 @@ function infoSectionHTML(g){
   const horasStr=`${(g.diasClase||[]).map(d=>["","Lun","Mar","Mié","Jue","Vie","Sáb"][d]).filter(Boolean).join(" · ")} ${g.horario||""}`.trim();
   const showCicloView=!view.editCiclo&&anyGenerated;
   const cicloStr=`${fmtItemDate(cicloIni)} → ${fmtItemDate(cicloFin)}`;
-  const dummyYr=new Date().getFullYear();
-  const vacinStart=`${dummyYr}-${vc.ini}`;
-  const vacinEnd=`${dummyYr}-${vc.fin}`;
-  const showRecesoView=!view.editReceso;
   const recesStr=vc.activa?`${vacIni} al ${vacFin}`:"Desactivado";
   // Situación de revista: titular / provisional / suplente, con fechas y prórrogas
   const rv=ensureRevista(g);
   const REV_TIPOS=[["titular","Titular"],["provisional","Provisional"],["suplente","Suplente"]];
   const ceseVigente=rv.prorrogas.length?rv.prorrogas[rv.prorrogas.length-1].hasta:rv.cese;
+  // Antes los chips de tipo (Titular/Provisional/Suplente) quedaban siempre tocables,
+  // así que un toque sin querer cambiaba la situación de revista. Ahora se ven en modo
+  // lectura y hace falta tocar el lápiz para entrar a editarlos.
+  const showRevistaView=!view.editRevista;
+  const revTipoLbl=rv.tipo?(REV_TIPOS.find(([id])=>id===rv.tipo)||[,""])[1]:"";
+  const revistaResumen=rv.tipo
+    ?`${revTipoLbl}${rv.toma?` · desde ${fmtItemDate(rv.toma)}`:""}${rv.tipo==="suplente"&&ceseVigente?` · hasta ${fmtItemDate(ceseVigente)}`:""}`
+    :"Sin definir";
   const revistaHTML=`<div class="card pad" style="margin-top:16px;">
       <div class="cardtitle">${I.doc}Situación de revista</div>
+      ${showRevistaView?`<div class="kvrow" style="padding:0;"><div style="flex:1;min-width:0;"><div class="kv-val${rv.tipo?"":" empty"}">${esc(revistaResumen)}</div></div><button class="iconbtn" id="revista_edit" aria-label="Editar situación de revista">${I.pencil}</button></div>`:`
       <div class="chiprow" style="margin-bottom:${rv.tipo?"12px":"2px"};">${REV_TIPOS.map(([id,lbl])=>`<button type="button" class="mchip sm ${rv.tipo===id?"on":""}" data-rev-tipo="${id}">${lbl}</button>`).join("")}</div>
       ${rv.tipo?`<div style="border-top:1px solid var(--line-soft);">
         <div class="fecharow" style="padding-left:0;padding-right:0;"><span class="fecha-lbl">Toma de posesión</span>
@@ -3574,6 +3622,8 @@ function infoSectionHTML(g){
         ${ceseVigente?`<div style="font-size:12px;color:var(--muted);background:var(--line-soft);border-radius:9px;padding:8px 10px;margin-top:10px;"><b>Cese vigente: ${fmtItemDate(ceseVigente)}.</b> 💡 Si la suplencia se extiende más allá del fin de ciclo que cargaste más abajo, cambiá ahí la fecha de "Fin" y tocá "Generar clases" para que se agreguen las clases nuevas.</div>`:""}
         `:""}
       </div>`:""}
+      <button class="btn subtle sm" id="revista_done" style="width:100%;margin-top:12px;">✓ Listo</button>
+      `}
     </div>`;
 
   const cursadaHTML=`<div class="card pad" style="margin-top:16px;">
@@ -3600,15 +3650,7 @@ function infoSectionHTML(g){
         </div>
       </div>
       <div style="border-top:1px solid var(--line-soft);">
-        ${showRecesoView?`<div class="kvrow"><span class="kv-ic">${I.snow}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Receso invernal</div><div class="kv-val${vc.activa?"":" empty"}">${recesStr}</div></div><button class="iconbtn" id="receso_edit" aria-label="Editar receso invernal">${I.pencil}</button></div>`:``}
-        <div id="resoForm" style="${showRecesoView?"display:none;":"padding:12px 0 14px;"}">
-          <div class="sched-row2">
-            <div class="sched-field"><label>Inicio</label><input id="receso_ini" type="date" value="${vacinStart}"></div>
-            <div class="sched-field"><label>Fin</label><input id="receso_fin" type="date" value="${vacinEnd}"></div>
-          </div>
-          <button class="btn" id="receso_save" style="width:100%;margin-top:10px;">✓ Guardar</button>
-          <button class="btn subtle sm" id="receso_cancel" style="width:100%;margin-top:8px;">Cancelar</button>
-        </div>
+        <div class="kvrow"><span class="kv-ic">${I.snow}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Receso invernal</div><div class="kv-val${vc.activa?"":" empty"}">${recesStr}</div><div style="font-size:11.5px;color:var(--faint);margin-top:2px;">Es el mismo para todos tus cursos — se cambia desde la pantalla Calendario.</div></div></div>
       </div>
     </div>`;
 
@@ -3646,6 +3688,8 @@ function infoSectionHTML(g){
 function wireInfoSection(g,body){
   // Situación de revista
   const rv=ensureRevista(g);
+  const revEdit=$("#revista_edit"); if(revEdit) revEdit.onclick=()=>{ view.editRevista=true; render(); };
+  const revDone=$("#revista_done"); if(revDone) revDone.onclick=()=>{ delete view.editRevista; render(); };
   body.querySelectorAll("[data-rev-tipo]").forEach(b=>b.onclick=()=>{
     const t=b.dataset.revTipo;
     rv.tipo=(rv.tipo===t)?"":t; // tocar de nuevo lo desmarca
@@ -3672,11 +3716,6 @@ function wireInfoSection(g,body){
     toastSuccess("✓ Escuela vinculada","#A9500A");
   });
   const escEdit=$("#esc_edit"); if(escEdit) escEdit.onclick=()=>{ view.editEsc=true; render(); };
-  const escUnlink=$("#esc_unlink"); if(escUnlink) escUnlink.onclick=()=>{
-    confirmDlg("¿Cambiar de escuela?",'Este curso se desvincula de "'+esc_.nombre+'" (esa escuela sigue existiendo tal cual para los cursos que la usan). Vas a poder elegir otra ya cargada o cargar una nueva.',"Cambiar",()=>{
-      g.escuelaId=null; delete view.editEsc; save(); render();
-    });
-  };
   const escNombreInp=$("#esc_nombre");
   if(escNombreInp) escNombreInp.addEventListener("input",()=>{
     const v=escNombreInp.value.trim().toLowerCase(); if(!v) return;
@@ -3687,11 +3726,6 @@ function wireInfoSection(g,body){
       if(tEl&&!tEl.value.trim()) tEl.value=match.tel||"";
     }
   });
-  const sharedChip=$("#sharedChip");
-  if(sharedChip&&esc_) sharedChip.onclick=()=>{
-    const others=state.groups.filter(og=>og.id!==g.id&&og.escuelaId===esc_.id&&!og.archived);
-    toast(others.length?"También en esta escuela: "+others.map(og=>og.name).join(", "):"No hay otros cursos en esta escuela");
-  };
   const escCancel=$("#esc_cancel"); if(escCancel) escCancel.onclick=()=>{ delete view.editEsc; render(); };
   $("#esc_save").onclick=()=>{
     const nombre=$("#esc_nombre").value.trim();
@@ -3771,23 +3805,6 @@ function wireInfoSection(g,body){
     if(anyExisting){
       confirmDlg("¿Volver a generar clases?","Esto va a borrar todas las fechas actuales (1° y 2° cuatrimestre) y crearlas de nuevo.\n\nLas asistencias ya guardadas se conservan si la fecha sigue existiendo.","Generar clases",doGenerar);
     } else { doGenerar(); }
-  };
-
-  // Receso Invernal
-  const resoForm=$("#resoForm");
-  const resoEdit=$("#receso_edit"); if(resoEdit) resoEdit.onclick=()=>{ view.editReceso=true; render(); };
-  const resoCancel=$("#receso_cancel"); if(resoCancel) resoCancel.onclick=()=>{ delete view.editReceso; render(); };
-  const resoSave=$("#receso_save"); if(resoSave) resoSave.onclick=()=>{
-    const ini=$("#receso_ini").value, fin=$("#receso_fin").value;
-    if(!ini||!fin){ toast("Completá las dos fechas"); return; }
-    if(ini>fin){ toast("La fecha de inicio tiene que ser antes que la de fin"); return; }
-    state.config=state.config||{};
-    state.config.vacInvActiva=true;
-    state.config.vacInvIni=ini.slice(5,10);
-    state.config.vacInvFin=fin.slice(5,10);
-    save();
-    delete view.editReceso;
-    render(); flashSuccess("#resoForm","#FCEBDA");
   };
 
   // Classroom - Código
@@ -5852,7 +5869,7 @@ function confirmDlg(title,message,confirmLabel,onConfirm){
 function promptRenameGroup(g){
   const cur=((g.color||0)%PAL.length+PAL.length)%PAL.length;
   const swatches=PAL.map((p,i)=>`<button class="swatch ${cur===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
-  openDlg("Editar nombre del curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
+  openDlg("Editar nombre del curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" maxlength="40" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="rg_swatches">${swatches}</div></div>
     <div class="dlg-actions"><button class="btn subtle" id="rg_cancel">Cancelar</button><button class="btn" id="rg_ok">Guardar</button></div>`);
   const inp=$("#rg_name"); setTimeout(()=>{inp.focus();inp.select();},60);
@@ -5882,9 +5899,9 @@ function promptNewGroup(){
       <div class="chiprow" id="f_escChips" style="margin-bottom:8px;">${escuelasUnicas.map(n=>`<button type="button" class="mchip sm" data-esc-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-bottom:6px;">O escribí una nueva ↓</div>`:"";
   openDlg("Agregar curso",`<div class="dlg-field"><label>Escuela <span style="font-weight:500;color:var(--faint);">(opcional — la podés cargar después)</span></label>
-      ${escChips}<input id="f_escuela" class="sched-inp" placeholder="Ej.: EEST N°05" autocomplete="off">
+      ${escChips}<input id="f_escuela" class="sched-inp" maxlength="60" placeholder="Ej.: EEST N°05" autocomplete="off">
     </div>
-    <div class="dlg-field"><label>Año y curso</label><input id="f_name" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
+    <div class="dlg-field"><label>Año y curso</label><input id="f_name" maxlength="40" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="f_swatches">${swatches}</div></div>
     <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Escuela y horarios)</span></label>
       <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
