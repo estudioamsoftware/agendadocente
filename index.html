@@ -784,7 +784,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-41';
+const APP_VER='v2026.08.29-42';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3611,7 +3611,7 @@ function classroomEchoHTML(g){
   const inf=ensureInfo(g);
   const code=inf.classroom?inf.classroom.split("\n")[0]:""; const link=inf.classroom?inf.classroom.split("\n")[1]:"";
   if(!code||!link) return "";
-  return `<div style="font-size:12.5px;color:var(--muted);margin:0 2px 14px;line-height:1.6;word-break:break-word;">Cod. Classroom: <b style="color:var(--ink);">${esc(code)}</b> · Link: <a href="${esc(link)}" target="_blank" style="color:var(--primary);font-weight:600;">${esc(link)}</a></div>`;
+  return `<div style="font-size:14.5px;color:var(--muted);margin:0 2px 14px;line-height:1.8;word-break:break-word;">Cod. Classroom: <b style="color:var(--ink);">${esc(code)}</b> · <a href="${esc(link)}" target="_blank" style="color:var(--primary);font-weight:700;">Abrir Classroom</a></div>`;
 }
 /* ---- INFO (escuela + horario y días + notas + grupo) ---- */
 function infoSectionHTML(g){
@@ -3971,7 +3971,7 @@ function dateBarHTML(t,date,locked){
       <button class="datestep" id="firstDate" ${idx<=0?"disabled":""} aria-label="Primera clase" style="font-size:12px;">⏮</button>
       <button class="datestep" id="prevDate" ${idx<=0?"disabled":""} aria-label="Fecha anterior">${I.left}</button>
       <div class="datecur ${canc?"iscanc":(locked&&isToday?"locked":(isToday?"istoday":""))}"><span class="dnum">${fmtTop(date)}${revision?' <span class="revtag">REVISIÓN</span>':''}</span>
-        <span class="ddow">${canc?("Anulada · "+esc(ses.motivo||"sin dictado")):revision?"Clase de revisión":isToday?"Hoy":""}</span></div>
+        <span class="ddow">${revision?"Clase de revisión":isToday?"Hoy":""}</span></div>
       <button class="datestep" id="nextDate" ${idx>=t.sessions.length-1?"disabled":""} aria-label="Fecha siguiente">${I.right}</button>
       <button class="datestep" id="lastDate" ${idx>=t.sessions.length-1?"disabled":""} aria-label="Última clase" style="font-size:12px;">⏭</button></div>`;
 }
