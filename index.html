@@ -131,7 +131,7 @@
   .famblock{margin-bottom:22px;}
   .fam-head{display:flex;align-items:center;gap:11px;padding:0 4px 10px;}
   .fam-ic{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary-bd);}
-  .famblock.dia .fam-ic{background:#EAF2EC;color:#2F6B44;border-color:#CDE3D4;}
+  .famblock.dia .fam-ic{background:#FCEBDA;color:#A9500A;border-color:#F0CDA6;}
   .fam-ic svg{width:17px;height:17px;}
   .fam-t{font-family:"Fraunces",Georgia,serif;font-size:17px;font-weight:600;color:var(--ink);line-height:1.2;}
   .fam-s{font-size:12px;color:var(--faint);font-weight:500;margin-top:2px;}
@@ -140,13 +140,13 @@
   .secrow:first-child{border-top:0;}
   .secrow:active{background:var(--line-soft);}
   .sr-ic{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--primary-tint);color:var(--primary);}
-  .famblock.dia .sr-ic{background:#EAF2EC;color:#2F6B44;}
+  .famblock.dia .sr-ic{background:#FCEBDA;color:#A9500A;}
   .sr-ic svg{width:17px;height:17px;}
   .sr-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
   .sr-t{font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .sr-d{font-size:12px;color:var(--muted);font-weight:500;line-height:1.35;}
   .sr-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--line-soft);color:var(--muted);letter-spacing:.01em;}
-  .sr-badge.ok{background:var(--primary-tint);color:var(--primary-press);}
+  .sr-badge.ok{background:#FCEBDA;color:#8C4108;}
   .sr-badge.warn{background:var(--amber-tint);color:#8C4108;}
   .sr-chev{flex:none;color:var(--faint);display:grid;place-items:center;}
   .sr-chev svg{width:17px;height:17px;}
@@ -157,7 +157,7 @@
 
   .secnav{padding:12px 0 0;margin-bottom:14px;}
   .secnav-fam{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--primary);}
-  .secnav-fam.dia{color:#2F6B44;}
+  .secnav-fam.dia{color:#A9500A;}
   .secnav-fam svg{width:13px;height:13px;flex:none;}
   .secnav-title{font-family:"Fraunces",Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.01em;line-height:1.15;margin:5px 0 0;word-break:break-word;}
 
@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-26';
+const APP_VER='v2026.08.29-27';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
