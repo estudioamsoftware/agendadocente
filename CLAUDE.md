@@ -34,6 +34,21 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
 `service-worker.js`, `manifest.json`, `privacy-policy.html`, los íconos y
 `tools/make-icons.py`.
 
+## Pendiente de probar (29/8/2026) — NO se probó todavía en el celular
+
+**Importar contenidos desde un Word o PDF**, en Contenidos → "Importar contenidos desde
+un Word o PDF" (dentro de un curso). Se armó y se reordenó la pantalla en esta sesión,
+pero nadie lo probó de verdad con un archivo real — solo se chequeó que el diálogo se
+vea bien. Falta confirmar que ande en el celular:
+- Elegir un `.docx` real y que se lea el texto (usa la librería `mammoth.js`, se carga
+  desde `cdnjs.cloudflare.com` la primera vez que hace falta — necesita internet).
+- Elegir un `.pdf` real y que se lea el texto (usa `pdf.js`, mismo tema de conexión).
+- Que el texto extraído aparezca bien en el cuadro para revisar, y que "Agregar todos"
+  cargue cada línea como un contenido separado en "Contenidos propios".
+- Si el Word/PDF tiene formato raro (columnas, tablas, texto escaneado sin OCR), ver qué
+  tan prolijo sale el texto extraído — puede necesitar bastante edición manual, eso es
+  esperable y ya está contemplado (por eso hay un paso de "revisar antes de agregar").
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
