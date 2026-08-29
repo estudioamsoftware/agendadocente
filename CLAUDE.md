@@ -864,6 +864,14 @@ Node ni JDK. Pasos:
       460 px de ancho (`landing-assets/shot-*.webp`, ~25 KB cada una en vez de ~180 KB)
       para que cargue rápido con datos del celular. Si se cambian las capturas de Play,
       regenerarlas con Pillow (`Image.open(...).resize(...).save(..., "WEBP", quality=80)`).
+      **Ojo con `screenshot-7-notas-finales.png`:** esa tabla es más ancha que la
+      pantalla del celular y la captura de Play Store quedó a mitad de un scroll
+      horizontal, con columnas cortadas a los dos lados — se ve prolija en la ficha de
+      Play (ahí no llama tanto la atención), pero como carta de presentación sola en la
+      landing quedaba confusa. Por eso **no está en la galería de `landing.html`** — se
+      usa `screenshot-1-bienvenida.png` en su lugar (`landing-assets/shot-bienvenida.webp`,
+      que no se usaba en ningún otro lado). Si el día de mañana se saca una captura nueva
+      de esa pantalla sin el corte, ahí sí se puede sumar.
     - `landing-assets/og.jpg` es la imagen que se ve cuando se comparte el link por
       WhatsApp o Facebook (sale de `play-store-assets/feature-graphic.png`).
     - **El botón de Google Play está apagado a propósito**: mientras la app esté en prueba
