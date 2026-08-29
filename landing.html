@@ -125,11 +125,15 @@
   .feat p{margin:8px 0 0;font-size:15px;color:var(--muted);}
 
   /* ---------- galeria ---------- */
-  .shots{display:flex;gap:18px;overflow-x:auto;padding:34px 20px 8px;
-    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+  /* Una captura grande y completa por vez: en el celular la tarjeta ocupa casi
+     todo el ancho (con scroll-padding para que arranque pegada al borde), y
+     apenas se asoma un pedacito de la siguiente para insinuar que hay más. */
+  .shots{display:flex;gap:14px;overflow-x:auto;padding:34px 16px 8px;
+    scroll-snap-type:x mandatory;scroll-padding-left:16px;-webkit-overflow-scrolling:touch;}
   .shots::-webkit-scrollbar{height:8px;}
   .shots::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
-  .shot{flex:0 0 auto;width:216px;scroll-snap-align:center;}
+  .shot{flex:0 0 78%;max-width:270px;scroll-snap-align:start;}
+  @media(min-width:640px){.shot{flex-basis:240px;}}
   .shot .cap{margin:14px 2px 0;font-size:14px;font-weight:600;color:var(--muted);text-align:center;}
   .shot .cap b{display:block;color:var(--ink);font-size:15px;font-weight:700;margin-bottom:2px;}
   .swipe-hint{text-align:center;font-size:13px;color:var(--faint);font-weight:600;margin:6px 0 0;}
