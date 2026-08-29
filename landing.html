@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda Docente — la app para organizar tus cursos</title>
+<meta name="description" content="Asistencia, notas, horarios y papeles de todos tus cursos en un solo lugar. Funciona en el celular, en el aula, con o sin internet.">
+<meta name="theme-color" content="#F7EFE7">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="canonical" href="https://estudioamsoftware.github.io/agendadocente/landing.html">
+
+<!-- Para cuando se comparte el link por WhatsApp / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_AR">
+<meta property="og:site_name" content="Agenda Docente">
+<meta property="og:title" content="Agenda Docente — Ella organiza. Vos enseñás.">
+<meta property="og:description" content="Asistencia, notas, horarios y papeles de todos tus cursos en un solo lugar. Con o sin internet.">
+<meta property="og:url" content="https://estudioamsoftware.github.io/agendadocente/landing.html">
+<meta property="og:image" content="https://estudioamsoftware.github.io/agendadocente/landing-assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="586">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- OJO: esta página NO enlaza manifest.json ni registra el service worker a
+     propósito. La PWA instalable es index.html; si la landing declarara el
+     manifest, el navegador ofrecería instalar la página equivocada. -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  /* Misma paleta que la app (index.html): crema, carbon y naranja del logo. */
+  :root{
+    --paper:#F7EFE7; --card:#FFFFFF; --ink:#2B2A28; --muted:#6E665E; --faint:#A2988D;
+    --line:#E8DDD1; --line-soft:#F3EBE2;
+    --primary:#A9500A; --primary-press:#8C4108; --primary-tint:#FCEBDA; --primary-bd:#F0CDA6;
+    --accent:#E8801E;
+    --green:#2F7D4E; --green-tint:#E3F1E5; --green-bd:#BCDCC3;
+    --shadow:0 1px 2px rgba(74,52,30,.07), 0 1px 3px rgba(74,52,30,.05);
+    --shadow-lg:0 14px 40px rgba(74,52,30,.16);
+    --serif:"Fraunces",Georgia,"Times New Roman",serif;
+    --r:16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  }
+  img{max-width:100%;display:block;}
+  a{color:var(--primary);}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 20px;}
+  .narrow{max-width:760px;}
+
+  h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em;line-height:1.12;margin:0;}
+  h1{font-size:clamp(34px,7.4vw,58px);}
+  h2{font-size:clamp(26px,4.6vw,38px);}
+  h3{font-size:19px;line-height:1.25;}
+  .lead{font-size:clamp(17px,2.4vw,20px);color:var(--muted);margin:18px 0 0;}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 14px;}
+  .accent{color:var(--accent);}
+
+  /* ---------- barra de arriba ---------- */
+  .top{position:sticky;top:0;z-index:20;background:rgba(247,239,231,.88);
+    backdrop-filter:saturate(180%) blur(10px);-webkit-backdrop-filter:saturate(180%) blur(10px);
+    border-bottom:1px solid var(--line);}
+  .top-in{display:flex;align-items:center;gap:12px;min-height:66px;}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit;flex:1;min-width:0;}
+  .brand img{width:42px;height:42px;border-radius:11px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);padding:3px;}
+  .brand b{font-family:var(--serif);font-weight:700;font-size:19px;letter-spacing:-.01em;white-space:nowrap;}
+  .brand small{display:block;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);}
+
+  /* ---------- botones ---------- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    min-height:52px;padding:0 22px;border-radius:14px;font-size:16.5px;font-weight:600;
+    text-decoration:none;border:1px solid transparent;transition:transform .12s ease, background .12s ease;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 3px 12px rgba(169,80,10,.28);}
+  .btn-primary:hover{background:var(--primary-press);}
+  .btn-ghost{background:var(--card);color:var(--ink);border-color:var(--line);box-shadow:var(--shadow);}
+  .btn-ghost:hover{background:var(--line-soft);}
+  .btn-sm{min-height:42px;padding:0 15px;font-size:14.5px;border-radius:11px;}
+  .btn svg{width:20px;height:20px;flex:none;}
+
+  /* ---------- hero ---------- */
+  .hero{padding:clamp(38px,7vw,76px) 0 clamp(30px,5vw,50px);}
+  .hero-grid{display:grid;gap:clamp(30px,5vw,56px);align-items:center;}
+  @media(min-width:900px){.hero-grid{grid-template-columns:1.08fr .92fr;}}
+  .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px;}
+  .cta-note{margin:16px 0 0;font-size:14px;color:var(--faint);font-weight:600;}
+  .cta-note span{white-space:nowrap;}
+
+  /* ---------- celular dibujado ---------- */
+  .phone{position:relative;margin:0 auto;max-width:290px;padding:9px;
+    background:linear-gradient(160deg,#3A3835,#232120);border-radius:38px;
+    box-shadow:var(--shadow-lg);}
+  .phone::after{content:"";position:absolute;top:16px;left:50%;transform:translateX(-50%);
+    width:66px;height:5px;border-radius:3px;background:rgba(255,255,255,.22);}
+  /* Todas las capturas al mismo alto, aunque el archivo original sea más largo
+     (las de notas y documentos son 460x1005 y el resto 460x817): se recortan
+     desde arriba, así en la grilla ninguna queda más alta que su vecina. */
+  /* height:auto es imprescindible: sin eso el atributo height="817" del HTML
+     se aplica como alto literal y le gana a aspect-ratio, dejando la imagen
+     estirada y recortada de costado. */
+  .phone img{border-radius:30px;background:var(--paper);
+    width:100%;height:auto;aspect-ratio:460/817;object-fit:cover;object-position:top;}
+  .phone-big{max-width:330px;}
+
+  /* ---------- bandas ---------- */
+  section{padding:clamp(44px,7vw,84px) 0;}
+  .band{background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .band-ink{background:#2B2A28;color:#F7EFE7;border:none;}
+  .band-ink h2{color:#fff;}
+  .band-ink .lead,.band-ink p{color:#D9CFC4;}
+  .band-ink a{color:#F3B071;}
+
+  .quote{font-family:var(--serif);font-weight:600;font-size:clamp(21px,3.4vw,29px);
+    line-height:1.3;letter-spacing:-.01em;margin:0;}
+
+  /* ---------- grilla de funciones ---------- */
+  .feats{display:grid;gap:14px;margin-top:38px;}
+  @media(min-width:620px){.feats{grid-template-columns:1fr 1fr;}}
+  @media(min-width:940px){.feats{grid-template-columns:1fr 1fr 1fr;}}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    padding:20px;box-shadow:var(--shadow);}
+  .band .feat{background:var(--paper);}
+  .feat .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+    background:var(--primary-tint);border:1px solid var(--primary-bd);color:var(--primary);margin-bottom:14px;}
+  .feat .ic svg{width:22px;height:22px;}
+  .feat p{margin:8px 0 0;font-size:15px;color:var(--muted);}
+
+  /* ---------- galeria ---------- */
+  /* De a pares, en fila, bajando la página — nada para deslizar ni recortar. */
+  .shots{display:grid;grid-template-columns:1fr 1fr;gap:28px 14px;padding-top:34px;padding-bottom:8px;align-items:start;}
+  .shot{text-align:center;}
+  .shot .cap{margin:12px 2px 0;font-size:13px;font-weight:600;color:var(--muted);text-align:center;}
+  .shot .cap b{display:block;color:var(--ink);font-size:14.5px;font-weight:700;margin-bottom:1px;}
+  @media(min-width:700px){.shots{grid-template-columns:repeat(3,1fr);gap:32px 20px;}
+    .shot .cap{font-size:14px;} .shot .cap b{font-size:15.5px;}}
+
+  /* ---------- privacidad ---------- */
+  .privacy{display:grid;gap:14px;margin-top:34px;}
+  @media(min-width:760px){.privacy{grid-template-columns:1fr 1fr 1fr;}}
+  .priv{border:1px solid rgba(247,239,231,.18);border-radius:var(--r);padding:20px;background:rgba(247,239,231,.05);}
+  .priv h3{color:#fff;font-size:17px;}
+  .priv p{margin:8px 0 0;font-size:14.5px;}
+
+  /* ---------- precios ---------- */
+  .plans{display:grid;gap:16px;margin-top:38px;align-items:start;}
+  @media(min-width:800px){.plans{grid-template-columns:1fr 1fr;}}
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:var(--shadow);}
+  .plan.hi{border-color:var(--primary-bd);box-shadow:0 8px 28px rgba(169,80,10,.14);position:relative;}
+  .plan .tag{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    padding:5px 11px;border-radius:999px;background:var(--line-soft);color:var(--muted);margin-bottom:14px;}
+  .plan.hi .tag{background:var(--primary-tint);color:var(--primary);border:1px solid var(--primary-bd);}
+  .price{font-family:var(--serif);font-weight:700;font-size:36px;letter-spacing:-.02em;margin:12px 0 2px;}
+  .price small{font-family:inherit;font-size:15px;font-weight:600;color:var(--muted);letter-spacing:0;}
+  .price-alt{font-size:14.5px;color:var(--muted);font-weight:600;margin:0 0 6px;}
+  .plan ul{list-style:none;margin:18px 0 0;padding:0;}
+  .plan li{position:relative;padding-left:28px;margin-bottom:11px;font-size:15.5px;}
+  .plan li::before{content:"";position:absolute;left:2px;top:7px;width:14px;height:8px;
+    border-left:2.5px solid var(--green);border-bottom:2.5px solid var(--green);
+    transform:rotate(-45deg);border-radius:1px;}
+  .plan .fine{font-size:13.5px;color:var(--faint);margin:18px 0 0;}
+  .soon{display:inline-flex;align-items:center;gap:8px;min-height:52px;padding:0 20px;border-radius:14px;
+    background:var(--line-soft);border:1px dashed var(--line);color:var(--muted);
+    font-weight:600;font-size:15.5px;margin-top:20px;}
+  .soon svg{width:19px;height:19px;}
+
+  /* ---------- preguntas ---------- */
+  .faq{margin-top:34px;}
+  details{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:0 18px;margin-bottom:10px;box-shadow:var(--shadow);}
+  summary{list-style:none;cursor:pointer;padding:17px 30px 17px 0;position:relative;
+    font-weight:700;font-size:16.5px;}
+  summary::-webkit-details-marker{display:none;}
+  summary::after{content:"";position:absolute;right:4px;top:24px;width:9px;height:9px;
+    border-right:2.5px solid var(--primary);border-bottom:2.5px solid var(--primary);
+    transform:rotate(45deg);transition:transform .18s ease;}
+  details[open] summary::after{transform:rotate(-135deg);top:27px;}
+  details p{margin:0 0 18px;color:var(--muted);font-size:15.5px;}
+
+  /* ---------- compartir ---------- */
+  .share{text-align:center;}
+  .wa{background:#1FA855;color:#fff;}
+  .wa:hover{background:#18904a;}
+
+  /* ---------- pie ---------- */
+  footer{border-top:1px solid var(--line);padding:36px 0 46px;font-size:14.5px;color:var(--muted);}
+  .foot-in{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;justify-content:space-between;}
+  footer a{font-weight:600;}
+  .foot-links{display:flex;flex-wrap:wrap;gap:10px 20px;}
+
+  .center{text-align:center;}
+  .center .lead{margin-left:auto;margin-right:auto;max-width:620px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#top">
+      <img src="logo.svg" alt="" width="42" height="42">
+      <span>
+        <b>Agenda Docente</b>
+        <small>By EstudioAM</small>
+      </span>
+    </a>
+    <a class="btn btn-primary btn-sm" href="index.html">Abrir la app</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">App para docentes</p>
+        <h1>Ella organiza.<br><span class="accent">Vos enseñás.</span></h1>
+        <p class="lead">
+          Asistencia, notas, horarios y los papeles de todos tus cursos en un solo lugar.
+          En el celular, adentro del aula, con o sin señal.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="index.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            Probala gratis
+          </a>
+          <a class="btn btn-ghost" href="#funciones">Ver qué hace</a>
+        </div>
+        <p class="cta-note"><span>Gratis para empezar</span> · <span>No pide tarjeta</span> · <span>Anda sin internet</span></p>
+      </div>
+      <div class="phone phone-big">
+        <img src="landing-assets/shot-horario.webp" width="460" height="817"
+             alt="Pantalla de Agenda Docente con el horario semanal: cada curso en un bloque de color, de lunes a viernes.">
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EL PROBLEMA ============ -->
+  <section class="band">
+    <div class="wrap narrow center">
+      <p class="quote">
+        El cuaderno se llena de tachones, la planilla no la abrís en el aula
+        y las notas terminan repartidas en tres lugares distintos.
+      </p>
+      <p class="lead">
+        Agenda Docente es una sola app, pensada para el día a día real de una profe
+        con varios cursos, en varias escuelas y con el celular en la mano.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ FUNCIONES ============ -->
+  <section id="funciones">
+    <div class="wrap">
+      <div class="narrow">
+        <p class="eyebrow">Qué hace</p>
+        <h2>Todo lo de la cursada, en el bolsillo</h2>
+        <p class="lead">Sin planillas, sin apps sueltas, sin pasar todo en limpio a la noche.</p>
+      </div>
+
+      <div class="feats">
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div>
+          <h3>Tu horario semanal</h3>
+          <p>Todos los cursos en una grilla de lunes a viernes, cada uno con su color. Tocás el bloque de la clase de hoy y entrás derecho.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <h3>Asistencia en dos toques</h3>
+          <p>Presentes y ausentes clase por clase. La app lleva la cuenta sola y te avisa quién viene faltando seguido.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14"/><path d="M4 19a2 2 0 0 0 2 2h14"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+          <h3>Notas y promedios</h3>
+          <p>Evaluaciones, recuperatorios y notas de avance. El promedio se calcula solo, y si el alumno faltó ese día la nota queda en "A" sin arrastrarle el promedio.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/></svg></div>
+          <h3>Cierre de cuatrimestre</h3>
+          <p>La tabla de notas finales con el cierre de cada cuatrimestre, la intensificación y el tilde de "ya lo pasé al cuaderno de comunicaciones".</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4"/><path d="m9 14 2 2 4-4"/></svg></div>
+          <h3>Licencias, paros y feriados</h3>
+          <p>Anulás de una sola vez las clases de todos tus cursos, y la app te lleva el conteo anual de licencias por tipo, como pide el Estatuto.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
+          <h3>Los papeles de cada curso</h3>
+          <p>Toma de posesión, diagnóstico, contrato pedagógico, programa, planificación, evaluaciones. Con su fecha, su tilde y el archivo adjunto.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+          <h3>Respaldo en tu Google Drive</h3>
+          <p>Opcional. Conectás tu cuenta y la app sincroniza el celu con la compu. El archivo queda en tu Drive, no en un servidor nuestro.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18a4 4 0 0 1 .6-7.96 6 6 0 0 1 11.6-1.4A3.7 3.7 0 0 1 22 12.3"/><path d="m16 16-3 6"/><path d="m20 16-2 4"/></svg></div>
+          <h3>Anda sin internet</h3>
+          <p>Se instala como app y funciona igual en el aula sin señal. Cuando volvés a tener datos, sincroniza sola.</p>
+        </div>
+
+        <div class="feat">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="M18 8a6 6 0 1 0-12 0c0 6-3 7-3 7h18s-3-1-3-7"/></svg></div>
+          <h3>Te avisa lo que vence</h3>
+          <p>Alertas de lo que se viene: papeles sin entregar, notas sin pasar, listados próximos a vencer. Para no enterarte tarde.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GALERIA ============ -->
+  <section class="band">
+    <div class="wrap narrow center">
+      <p class="eyebrow">Así se ve</p>
+      <h2>Pantallas de verdad, no dibujitos</h2>
+    </div>
+    <div class="shots wrap">
+      <figure class="shot" style="margin:0">
+        <div class="phone"><img src="landing-assets/shot-bienvenida.webp" width="460" height="817" alt="Pantalla de bienvenida de Agenda Docente."></div>
+        <figcaption class="cap"><b>Bienvenida</b>Ella organiza. Vos enseñás.</figcaption>
+      </figure>
+      <figure class="shot" style="margin:0">
+        <div class="phone"><img src="landing-assets/shot-agregar-curso.webp" width="460" height="817" alt="Formulario para agregar un curso: escuela, año, color y días de la semana."></div>
+        <figcaption class="cap"><b>Cargá un curso</b>Escuela, año, color y horario</figcaption>
+      </figure>
+      <figure class="shot" style="margin:0">
+        <div class="phone"><img src="landing-assets/shot-horario.webp" width="460" height="817" alt="Horario semanal con los cursos en bloques de color."></div>
+        <figcaption class="cap"><b>Tu semana</b>Todos los cursos de un vistazo</figcaption>
+      </figure>
+      <figure class="shot" style="margin:0">
+        <div class="phone"><img src="landing-assets/shot-notas.webp" width="460" height="817" alt="Carga de notas de una evaluación, alumno por alumno."></div>
+        <figcaption class="cap"><b>Notas</b>Evaluaciones y recuperatorios</figcaption>
+      </figure>
+      <figure class="shot" style="margin:0">
+        <div class="phone"><img src="landing-assets/shot-licencias.webp" width="460" height="817" alt="Pantalla para cargar una licencia, un paro o un feriado y anular las clases."></div>
+        <figcaption class="cap"><b>Licencias y paros</b>Anulá clases de una vez</figcaption>
+      </figure>
+      <figure class="shot" style="margin:0">
+        <div class="phone"><img src="landing-assets/shot-documentos.webp" width="460" height="817" alt="Lista de documentos del curso con fecha y adjunto."></div>
+        <figcaption class="cap"><b>Documentos</b>Los papeles de cada curso</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ PRIVACIDAD ============ -->
+  <section class="band-ink">
+    <div class="wrap">
+      <div class="narrow">
+        <p class="eyebrow" style="color:#A79A8C">Tus datos</p>
+        <h2>Las notas de tus alumnos son tuyas</h2>
+        <p class="lead">No hay una base de datos nuestra con la información de tu curso. Así de simple.</p>
+      </div>
+      <div class="privacy">
+        <div class="priv">
+          <h3>Viven en tu celular</h3>
+          <p>Todo lo que cargás se guarda en el dispositivo. La app funciona entera sin mandar nada a ningún lado.</p>
+        </div>
+        <div class="priv">
+          <h3>El respaldo va a tu Drive</h3>
+          <p>Si conectás Google Drive, el archivo de respaldo queda en <b>tu</b> cuenta. Podés abrirlo, moverlo o borrarlo cuando quieras.</p>
+        </div>
+        <div class="priv">
+          <h3>Una copia siempre a mano</h3>
+          <p>Desde el menú podés bajar todo a un archivo, para guardarlo aparte o pasarlo a otro celular.</p>
+        </div>
+      </div>
+      <p style="margin-top:26px"><a href="privacy-policy.html">Leer la política de privacidad →</a></p>
+    </div>
+  </section>
+
+  <!-- ============ PRECIOS ============ -->
+  <section id="precio">
+    <div class="wrap">
+      <div class="narrow">
+        <p class="eyebrow">Cuánto sale</p>
+        <h2>Empezá gratis. Pasate cuando te sirva.</h2>
+        <p class="lead">Probás la app entera sin poner un peso ni cargar una tarjeta.</p>
+      </div>
+
+      <div class="plans">
+        <div class="plan">
+          <span class="tag">Gratis</span>
+          <div class="price">$ 0</div>
+          <p class="price-alt">Para siempre</p>
+          <ul>
+            <li>Cargá tu curso con sus alumnos</li>
+            <li>Asistencia clase por clase</li>
+            <li>Notas, recuperatorios y promedios</li>
+            <li>Tu horario semanal</li>
+            <li>Los documentos del curso</li>
+          </ul>
+          <a class="btn btn-ghost" href="index.html" style="margin-top:22px;width:100%">Probala ahora</a>
+        </div>
+
+        <div class="plan hi">
+          <span class="tag">Agenda Docente completa</span>
+          <div class="price">USD 2,99 <small>por mes</small></div>
+          <!-- OJO: NO poner acá el plan anual. Está creado y activo en Play Console,
+               pero hoy Google no deja comprarlo desde la app: por la Digital Goods
+               API solo se puede comprar el plan marcado "Compatible con versiones
+               anteriores", que es el mensual (ver CLAUDE.md, issue de Bubblewrap #830).
+               Anunciarlo acá sería prometer algo que la app no puede cobrar. -->
+          <p class="price-alt">Suscripción mensual</p>
+          <ul>
+            <li>Cursos ilimitados</li>
+            <li>Licencias, paros y eventos administrativos</li>
+            <li>Alertas automáticas de vencimientos</li>
+            <li>Respaldo en tu Google Drive</li>
+          </ul>
+          <!-- Cuando la app pase a prueba abierta o produccion en Play, reemplazar
+               el <div class="soon"> de abajo por este boton:
+          <a class="btn btn-primary" style="margin-top:22px;width:100%"
+             href="https://play.google.com/store/apps/details?id=com.estudioam.agendadocente">
+            Bajarla de Google Play
+          </a>
+          -->
+          <div class="soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Pronto en Google Play
+          </div>
+          <p class="fine">Se paga desde la app de Google Play, en pesos y con los medios de pago que ya tenés cargados ahí. Se cancela cuando quieras, desde la misma Play Store.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PREGUNTAS ============ -->
+  <section class="band">
+    <div class="wrap narrow">
+      <p class="eyebrow">Preguntas</p>
+      <h2>Lo que más nos preguntan</h2>
+
+      <div class="faq">
+        <details open>
+          <summary>¿Tengo que instalar algo?</summary>
+          <p>No hace falta. Abrís el link en el navegador del celular o de la compu y ya está funcionando. Si querés tenerla como una app más, Android te ofrece agregarla a la pantalla de inicio.</p>
+        </details>
+
+        <details>
+          <summary>¿Anda sin internet?</summary>
+          <p>Sí. Una vez que la abriste la primera vez, queda guardada en el dispositivo y funciona igual en el aula sin señal. Todo lo que cargues se guarda ahí y no se pierde.</p>
+        </details>
+
+        <details>
+          <summary>¿Sirve en iPhone y en la computadora?</summary>
+          <p>Sí, se abre en cualquier navegador moderno: Android, iPhone, notebook o tablet. La versión que se baja de Google Play es solo para Android, pero la app es la misma.</p>
+        </details>
+
+        <details>
+          <summary>¿Qué pasa si cambio de celular o se me rompe?</summary>
+          <p>Conectá Google Drive y la app deja el respaldo en tu propia cuenta: entrás en el celular nuevo, conectás de vuelta y aparece todo. Además, desde el menú podés bajar una copia a un archivo y guardarla donde quieras.</p>
+        </details>
+
+        <details>
+          <summary>¿Alguien más ve las notas de mis alumnos?</summary>
+          <p>No. Los datos se guardan en tu dispositivo, y el respaldo va a tu Google Drive. No tenemos un servidor con la información de tus cursos.</p>
+        </details>
+
+        <details>
+          <summary>Doy clase en varias escuelas, ¿se puede?</summary>
+          <p>Sí. Cada curso lleva su escuela, sus días y su horario, y todos aparecen juntos en la misma grilla semanal con colores distintos.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CIERRE + COMPARTIR ============ -->
+  <section>
+    <div class="wrap narrow center share">
+      <h2>Probala con el curso de mañana</h2>
+      <p class="lead">Cargás un curso, ponés los alumnos y en la próxima clase ya estás tomando asistencia desde el celular.</p>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn btn-primary" href="index.html">Abrir Agenda Docente</a>
+        <a class="btn btn-ghost wa" target="_blank" rel="noopener"
+           href="https://wa.me/?text=Mir%C3%A1%20esta%20app%20para%20organizar%20los%20cursos%3A%20Agenda%20Docente%20%E2%80%94%20asistencia%2C%20notas%20y%20horarios%20en%20el%20celular.%20https%3A%2F%2Festudioamsoftware.github.io%2Fagendadocente%2Flanding.html">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2m0 1.8a8.2 8.2 0 1 1-4.2 15.2l-.3-.2-3 .8.8-3-.2-.3A8.2 8.2 0 0 1 12 3.8m-3.7 4c-.2 0-.5.1-.7.4s-.9.9-.9 2.1.9 2.5 1 2.6c.2.2 1.8 2.8 4.4 3.8 2.2.9 2.6.7 3.1.6.5 0 1.5-.6 1.7-1.2s.2-1.1.2-1.2l-.5-.3-1.7-.8c-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1s-1.1-.4-2-1.3c-.7-.6-1.2-1.4-1.4-1.7s0-.4.1-.5l.4-.5.3-.5v-.4l-.7-1.8c-.2-.4-.4-.4-.5-.4z"/></svg>
+          Pasásela a otra profe
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-in">
+    <div>
+      <strong>Agenda Docente</strong> — hecha por Estudio AM<br>
+      <a href="mailto:estudioam.dev@gmail.com">estudioam.dev@gmail.com</a>
+    </div>
+    <div class="foot-links">
+      <a href="index.html">Abrir la app</a>
+      <a href="#funciones">Funciones</a>
+      <a href="#precio">Precio</a>
+      <a href="privacy-policy.html">Privacidad</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

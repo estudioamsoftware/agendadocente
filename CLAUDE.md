@@ -872,9 +872,49 @@ Node ni JDK. Pasos:
    —ya hechas, están en `play-store-assets/`—, clasificación de contenido. Se puede hacer en
    paralelo, no bloquea nada.
 9. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
-10. **Pendiente futuro, no bloquea nada de lo anterior:** armar una landing page para
-    promocionar la app por fuera de Google Play (la dueña lo pidió el 28/8/2026, para
-    después de terminar lo de arriba).
+10. ~~Armar una landing page para promocionar la app por fuera de Google Play~~ ✅ hecha
+    el 29/8/2026. Vive en **`landing.html`** (más las imágenes livianas de
+    `landing-assets/`), o sea:
+
+        https://estudioamsoftware.github.io/agendadocente/landing.html
+
+    Ese es el link que se pasa por WhatsApp para promocionar. **No se tocó `index.html`**:
+    la app sigue siendo la raíz del sitio, así que ni la PWA, ni el TWA de Play, ni el
+    `assetlinks.json` se enteran de que existe la landing.
+    Cosas que conviene saber antes de tocarla:
+    - **A propósito NO enlaza `manifest.json` ni registra el service worker.** Si lo
+      hiciera, el navegador ofrecería instalar la página equivocada como app.
+    - Las capturas son las mismas de `play-store-assets/`, pero convertidas a `.webp` de
+      460 px de ancho (`landing-assets/shot-*.webp`, ~25 KB cada una en vez de ~180 KB)
+      para que cargue rápido con datos del celular. Si se cambian las capturas de Play,
+      regenerarlas con Pillow (`Image.open(...).resize(...).save(..., "WEBP", quality=80)`).
+      **Ojo con `screenshot-7-notas-finales.png`:** esa tabla es más ancha que la
+      pantalla del celular y la captura de Play Store quedó a mitad de un scroll
+      horizontal, con columnas cortadas a los dos lados — se ve prolija en la ficha de
+      Play (ahí no llama tanto la atención), pero como carta de presentación sola en la
+      landing quedaba confusa. Por eso **no está en la galería de `landing.html`** — se
+      usa `screenshot-1-bienvenida.png` en su lugar (`landing-assets/shot-bienvenida.webp`,
+      que no se usaba en ningún otro lado). Si el día de mañana se saca una captura nueva
+      de esa pantalla sin el corte, ahí sí se puede sumar.
+    - `landing-assets/og.jpg` es la imagen que se ve cuando se comparte el link por
+      WhatsApp o Facebook (sale de `play-store-assets/feature-graphic.png`).
+    - **El botón de Google Play está apagado a propósito**: mientras la app esté en prueba
+      interna, el link público de Play da 404 a quien no sea tester, así que dice
+      "Pronto en Google Play". Cuando se pase a prueba abierta o producción (pendiente 8),
+      hay un comentario en `landing.html`, dentro de la tarjeta del plan pago, con el
+      `<a>` ya escrito para reemplazar ese cartel.
+    - **La landing anuncia SOLO el plan mensual (USD 2,99), a propósito.** El anual de
+      USD 25 está creado y activo en Play Console, pero hoy Google no deja comprarlo
+      desde la app (por la Digital Goods API solo se puede comprar el plan marcado
+      "Compatible con versiones anteriores", que es el mensual — ver más arriba, issue
+      de Bubblewrap #830). Anunciarlo sería prometer algo que la app no puede cobrar.
+      Hay un comentario en `landing.html` avisándolo, en la tarjeta del plan pago. Si
+      algún día Google lo habilita, o si se cambia cuál plan está marcado compatible,
+      ahí se suma. El precio está escrito a mano: si se cambia en Play Console, hay que
+      cambiarlo también ahí.
+    - Los beneficios del plan pago son **los mismos cuatro** que están cargados en la
+      ficha del producto de Play Console y en `licPaywall()`. Si se toca uno, tocar los
+      tres lugares.
 11. **Pendiente futuro, no bloquea nada de lo anterior:** unificar los dos proyectos de
     Google Cloud de esta app (`agenda-docente-506819` de Drive y `agenda-docente-8c53d` de
     Firebase) en uno solo. Hoy conviven sin problema y ninguna docente nota la diferencia
