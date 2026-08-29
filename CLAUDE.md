@@ -902,13 +902,38 @@ Node ni JDK. Pasos:
      🚨 **Volver a tocar esto el día que se prenda el candado de pago de verdad** — ahí sí
      va a haber contenido pago y hay que marcar "Sí" y darle a Google una cuenta de
      prueba para revisar esas partes.
-   - Quedan por hacer: **Clasificación de contenido**, **Público objetivo**, **Seguridad
-     de los datos** (esta última importa: hay que declarar que se usa Google Drive/Firebase
-     y qué datos se comparten).
-   - Al terminar las 11, falta ir a "Descripción general de la publicación" y mandar todo
-     a revisión junto — no hace falta enviarlo después de cada tarea individual (los
-     carteles de "¿Ir a Descripción general?" que aparecen en cada paso se pueden
-     contestar "Ahora no" tranquilamente, uno por uno).
+   - **Clasificación de contenido** → completada: categoría "El resto de los tipos de app",
+     todo "No" salvo **"¿Permite comprar productos digitales?" → Sí** (por la suscripción
+     de Play Billing, aunque hoy esté apagada) y sin loot boxes. Dio 14+ en Brasil (ClassInd
+     es más estricto con cualquier compra dentro de la app) y "Todos" en EE.UU. (ESRB) —
+     es normal, no es un error.
+   - **Público objetivo** → completada: solo **"Mayores de 18 años"** (no es una app para
+     chicos), sin restringir además el acceso a menores detectados por Google (opcional,
+     no hace falta).
+   - **Seguridad de los datos** → completada, la más larga. Resumen de lo que se declaró:
+     - **Sí recopila datos, pero no comparte nada con terceros.**
+     - Datos que sí se declaran como recopilados: **Nombre, Dirección de correo
+       electrónico, ID de usuario** (los tres vía Google Sign-In/Firebase Auth, opcionales,
+       con fin "Funciones de la app") y **Historial de compras** (por Firestore/Play
+       Billing, con fin "Funciones de la app").
+     - **Todo lo demás declarado que NO se recopila**: ubicación, fotos/videos, audio,
+       archivos y documentos, calendario, contactos, mensajes, actividad en la app,
+       navegación web, rendimiento, IDs de dispositivo. El criterio usado: los cursos,
+       asistencia, notas y archivos/fotos que carga la docente **nunca salen del
+       dispositivo ni van a un servidor de Estudio AM** — quedan locales o, como mucho,
+       en el Google Drive propio de la docente, así que no cuentan como "recopilados por
+       el desarrollador". Solo cuenta lo que efectivamente toca Firebase (mail, nombre,
+       uid, estado de suscripción).
+     - **URL de eliminación de datos** (se pidió dos veces, para cuenta completa y para
+       datos parciales): se usó la misma,
+       `https://estudioamsoftware.github.io/agendadocente/privacy-policy.html#eliminar-datos`
+       — se le agregó el `id="eliminar-datos"` al `<h2>` de la sección 7 de
+       `privacy-policy.html` para poder linkear directo a esa parte.
+     - Todos los datos declarados como "encriptados en tránsito: Sí" (todo viaja por
+       HTTPS) y con login por "OAuth" (Google Sign-In).
+   - **Las 11 tareas quedaron completas el 29/8/2026.** Falta un solo paso: ir a
+     "Descripción general de la publicación" y tocar "Enviar la app para su revisión" —
+     no se hizo todavía en esta sesión, hacerlo apenas se retome.
 9. Cargar la forma de pago (cuenta bancaria) después de la consulta con contador/gestor.
 10. ~~Armar una landing page para promocionar la app por fuera de Google Play~~ ✅ hecha
     el 29/8/2026. Vive en **`landing.html`** (más las imágenes livianas de
