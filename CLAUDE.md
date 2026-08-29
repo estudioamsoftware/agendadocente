@@ -871,8 +871,15 @@ Node ni JDK. Pasos:
       "Pronto en Google Play". Cuando se pase a prueba abierta o producción (pendiente 8),
       hay un comentario en `landing.html`, dentro de la tarjeta del plan pago, con el
       `<a>` ya escrito para reemplazar ese cartel.
-    - Los precios (USD 2,99 mensual / USD 25 anual) están escritos a mano en la sección
-      "Cuánto sale": si se cambian en Play Console, hay que cambiarlos también ahí.
+    - **La landing anuncia SOLO el plan mensual (USD 2,99), a propósito.** El anual de
+      USD 25 está creado y activo en Play Console, pero hoy Google no deja comprarlo
+      desde la app (por la Digital Goods API solo se puede comprar el plan marcado
+      "Compatible con versiones anteriores", que es el mensual — ver más arriba, issue
+      de Bubblewrap #830). Anunciarlo sería prometer algo que la app no puede cobrar.
+      Hay un comentario en `landing.html` avisándolo, en la tarjeta del plan pago. Si
+      algún día Google lo habilita, o si se cambia cuál plan está marcado compatible,
+      ahí se suma. El precio está escrito a mano: si se cambia en Play Console, hay que
+      cambiarlo también ahí.
     - Los beneficios del plan pago son **los mismos cuatro** que están cargados en la
       ficha del producto de Play Console y en `licPaywall()`. Si se toca uno, tocar los
       tres lugares.
