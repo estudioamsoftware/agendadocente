@@ -502,6 +502,7 @@
   .mchip.sm{height:30px;padding:0 10px;font-size:12px;font-weight:600;}
   .mchip:active{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-bd);}
   .mchip.on{background:var(--primary-tint);color:var(--primary);border-color:var(--primary-bd);font-weight:700;}
+  .mchip svg{width:14px;height:14px;flex:none;}
 
   .link{color:var(--primary);font-weight:600;background:none;font-size:14.5px;padding:6px 4px;}
   .stack{display:flex;flex-direction:column;gap:10px;}
@@ -780,7 +781,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-21';
+const APP_VER='v2026.08.29-22';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5873,7 +5874,7 @@ function promptNewGroup(){
   // Antes había un datalist nativo con una flechita que en Android no respondía bien al toque.
   const escuelasUnicas=[...new Set(state.escuelas.map(s=>s.nombre).filter(Boolean))];
   const escChips=escuelasUnicas.length?`<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">¿Ya la cargaste? Tocá para elegirla:</div>
-      <div class="chiprow" id="f_escChips" style="margin-bottom:8px;">${escuelasUnicas.map(n=>`<button type="button" class="mchip sm" data-esc-name="${esc(n)}">${I.school} ${esc(n)}</button>`).join("")}</div>
+      <div class="chiprow" id="f_escChips" style="margin-bottom:8px;">${escuelasUnicas.map(n=>`<button type="button" class="mchip sm" data-esc-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-bottom:6px;">O escribí una nueva ↓</div>`:"";
   openDlg("Agregar curso",`<div class="dlg-field"><label>Escuela <span style="font-weight:500;color:var(--faint);">(opcional — la podés cargar después)</span></label>
       ${escChips}<input id="f_escuela" class="sched-inp" placeholder="Ej.: EEST N°05" autocomplete="off">
