@@ -780,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-29';
+const APP_VER='v2026.08.29-30';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3472,7 +3472,6 @@ function renderGroup(g){
     // El código y el link de Classroom se cargan en Documentos; acá se repiten
     // en modo lectura, para no tener que ir a buscarlos a otra pantalla.
     body.innerHTML=classroomEchoHTML(g)+`<div id="claseBody"></div>`;
-    wireClassroomEcho(g);
     renderClase(g,t,$("#claseBody"));
   }
   else if(tab==="grilla") renderGrid(g,t,body);
@@ -3571,26 +3570,13 @@ function promptClassroomField(g,field){
     save(); closeDlg(); render();
   };
 }
-// En Clases no se edita Classroom (eso vive en Documentos) — acá solo se repite
-// el código y el link, para no tener que ir a buscarlos a otra pantalla.
+// En Clases no se edita Classroom (eso vive en Documentos) — acá se repite
+// nomás, en una línea de texto discreta, y solo si ya cargaste los dos datos.
 function classroomEchoHTML(g){
   const inf=ensureInfo(g);
   const code=inf.classroom?inf.classroom.split("\n")[0]:""; const link=inf.classroom?inf.classroom.split("\n")[1]:"";
-  if(!code&&!link) return `<div class="card pad" style="margin-bottom:16px;">
-      <div class="cardtitle">${I.doc}Classroom</div>
-      <div style="font-size:12.5px;color:var(--faint);">Todavía no cargaste el código ni el link — se cargan desde Documentos.</div>
-    </div>`;
-  return `<div class="card pad" style="margin-bottom:16px;">
-      <div class="cardtitle">${I.doc}Classroom</div>
-      ${code?`<div class="kv-lbl" style="margin-bottom:6px;">Código</div><div class="lockfield" style="margin-bottom:8px;"><span class="lf-val">${esc(code)}</span><button class="btn subtle sm" id="claseClsCodeCopy">Copiar</button></div>`:""}
-      ${link?`<div class="kv-lbl" style="margin-bottom:6px;">Link</div><div class="lockfield"><a href="${esc(link)}" target="_blank" class="lf-val">Abrir</a><button class="btn subtle sm" id="claseClsLinkCopy">Copiar</button></div>`:""}
-      <div style="font-size:11px;color:var(--faint);margin-top:10px;">Se edita desde Documentos.</div>
-    </div>`;
-}
-function wireClassroomEcho(g){
-  const inf=ensureInfo(g);
-  const c1=$("#claseClsCodeCopy"); if(c1) c1.onclick=()=>copyText((inf.classroom||"").split("\n")[0]||"");
-  const c2=$("#claseClsLinkCopy"); if(c2) c2.onclick=()=>copyText((inf.classroom||"").split("\n")[1]||"");
+  if(!code||!link) return "";
+  return `<div style="font-size:12.5px;color:var(--muted);margin:0 2px 14px;line-height:1.6;word-break:break-word;">Cod. Classroom: <b style="color:var(--ink);">${esc(code)}</b> · Link: <a href="${esc(link)}" target="_blank" style="color:var(--primary);font-weight:600;">${esc(link)}</a></div>`;
 }
 /* ---- INFO (escuela + horario y días + notas + grupo) ---- */
 function infoSectionHTML(g){
