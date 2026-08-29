@@ -156,18 +156,15 @@
 
   .secnav{padding:12px 0 0;margin-bottom:14px;}
   .secnav-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
-  .secnav-back{display:inline-flex;align-items:center;gap:2px;height:30px;padding:0 11px 0 7px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:700;color:var(--muted);flex:none;}
-  .secnav-back svg{width:14px;height:14px;}
-  .secnav-course{flex:1;min-width:0;font-family:"Fraunces",Georgia,serif;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .secnav-fam{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--primary);margin-bottom:8px;}
+  .secnav-back{display:inline-flex;align-items:center;gap:3px;height:34px;padding:0 15px 0 9px;border-radius:99px;border:1px solid var(--primary-bd);background:var(--primary-tint);font-size:13px;font-weight:700;color:var(--primary);flex:none;}
+  .secnav-back svg{width:15px;height:15px;}
+  .secnav-back.dia{border-color:#CDE3D4;background:#EAF2EC;color:#2F6B44;}
+  .secnav-back:active{opacity:.75;}
+  .secnav-fam{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--primary);}
   .secnav-fam.dia{color:#2F6B44;}
   .secnav-fam svg{width:13px;height:13px;flex:none;}
-  .secnav-chips{display:flex;flex-wrap:wrap;gap:6px;}
-  .secchip{display:inline-flex;align-items:center;gap:5px;height:33px;padding:0 12px;border-radius:99px;border:1px solid var(--line);background:var(--card);font-size:12px;font-weight:600;color:var(--muted);}
-  .secchip svg{width:13px;height:13px;flex:none;opacity:.65;}
-  .secchip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:700;}
-  .secnav-fam.dia ~ .secnav-chips .secchip.on{background:#2F6B44;border-color:#2F6B44;}
-  .secchip.on svg{opacity:1;}
+  .secnav-course{min-width:0;color:var(--faint);font-weight:700;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .secnav-title{font-family:"Fraunces",Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.01em;line-height:1.15;margin:5px 0 0;word-break:break-word;}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);}
   .pad{padding:16px;} .muted{color:var(--muted);}
@@ -789,7 +786,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-14';
+const APP_VER='v2026.08.29-15';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2831,7 +2828,7 @@ function renderHome(){
     <div style="margin-top:18px;">${archHTML}</div>
     <div class="pagefoot">Tus datos se sincronizan con Google Drive · Podés hacer un backup extra desde el menú ⋯</div>`;
 
-  app.querySelectorAll(".schedule-course").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"asist"}));
+  app.querySelectorAll(".schedule-course").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"indice"}));
   const listadoAlertBtn=$("#listadoAlertBtn"); if(listadoAlertBtn) listadoAlertBtn.onclick=()=>go({screen:"eventos"});
   
   // Plegar/desplegar el panel de configuración rápida.
@@ -3337,17 +3334,18 @@ function groupHeadHTML(g){
     <div class="gh-bits">${bits.join("")}</div>
   </div>`;
 }
+// Adentro de una sección no se repiten las secciones hermanas: se vuelve al índice
+// y desde ahí se entra a la que se quiera. Acá arriba va solamente el camino de
+// vuelta y en qué parte del curso estás parada.
 function famNavHTML(g,tab){
-  const fam=GRP_SEC[tab].fam; const F=GRP_FAM[fam];
-  const keys=Object.keys(GRP_SEC).filter(k=>GRP_SEC[k].fam===fam);
+  const S=GRP_SEC[tab]; const fam=S.fam; const F=GRP_FAM[fam];
   return `<div class="secnav">
     <div class="secnav-top">
-      <button class="secnav-back" id="toIndice">${I.back}<span>Índice</span></button>
-      <span class="secnav-course">${esc(g.name)}</span>
+      <button class="secnav-back ${fam}" id="toIndice">${I.back}<span>Volver al índice</span></button>
       <div class="undoredo" id="undoRedoSlot"></div>
     </div>
-    <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}</div>
-    <div class="secnav-chips">${keys.map(k=>`<button class="secchip ${k===tab?"on":""}" data-tab="${k}">${secIcon(GRP_SEC[k].ic)}<span>${GRP_SEC[k].label}</span></button>`).join("")}</div>
+    <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}<span class="secnav-course">· ${esc(g.name)}</span></div>
+    <h1 class="secnav-title">${S.label}</h1>
   </div>`;
 }
 function famBlockHTML(g,fam){
@@ -3384,7 +3382,6 @@ function todayCtaHTML(g){
 }
 function renderGroup(g){
   app.classList.remove("app-home");
-  setTopBack(()=>go({screen:"home"}));
   let tab=view.tab||"indice";
   // "datos" es el nombre viejo de la pantalla de entrada: con datosSub va derecho a esa
   // sección (los atajos de Inicio siguen andando), y sin datosSub cae en el índice.
@@ -3392,13 +3389,16 @@ function renderGroup(g){
   if(tab==="cuatri") tab="grilla";
   if(tab!=="indice"&&!GRP_SEC[tab]) tab="indice";
   view.tab=tab; delete view.datosSub;
+  // El "Atrás" de la barra de arriba acompaña el mismo camino: de una sección
+  // se vuelve al índice, y del índice a Inicio.
+  setTopBack(tab==="indice"?(()=>go({screen:"home"})):(()=>{ view.tab="indice"; render(); window.scrollTo(0,0); }));
 
   if(tab==="indice"){
     app.innerHTML=groupHeadHTML(g)
       +todayCtaHTML(g)
       +famBlockHTML(g,"ficha")
       +famBlockHTML(g,"dia")
-      +`<div class="pagefoot">Tocá cualquier fila para entrar. Desde adentro volvés a este índice con “← Índice”.</div>`;
+      +`<div class="pagefoot">Tocá cualquier fila para entrar. Para pasar a otra, volvé acá con “Volver al índice”.</div>`;
     $("#renameHdr").onclick=()=>promptRenameGroup(g);
     app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); window.scrollTo(0,0); });
     const cta=app.querySelector("[data-cta]");
@@ -3408,7 +3408,6 @@ function renderGroup(g){
 
   app.innerHTML=famNavHTML(g,tab)+`<div id="tabBody"></div>`;
   $("#toIndice").onclick=()=>{ view.tab="indice"; render(); window.scrollTo(0,0); };
-  app.querySelectorAll(".secchip[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); window.scrollTo(0,0); });
   const body=$("#tabBody"); const t=term(g);
   if(GRP_SEC[tab].fam==="ficha"){
     if(tab==="alumnos"){ body.innerHTML=alumnosSectionHTML(g); wireAlumnosSection(g,body); }
