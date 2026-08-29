@@ -155,15 +155,9 @@
   .gh-top h1{flex:1;min-width:0;}
 
   .secnav{padding:12px 0 0;margin-bottom:14px;}
-  .secnav-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
-  .secnav-back{display:inline-flex;align-items:center;gap:3px;height:34px;padding:0 15px 0 9px;border-radius:99px;border:1px solid var(--primary-bd);background:var(--primary-tint);font-size:13px;font-weight:700;color:var(--primary);flex:none;}
-  .secnav-back svg{width:15px;height:15px;}
-  .secnav-back.dia{border-color:#CDE3D4;background:#EAF2EC;color:#2F6B44;}
-  .secnav-back:active{opacity:.75;}
   .secnav-fam{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--primary);}
   .secnav-fam.dia{color:#2F6B44;}
   .secnav-fam svg{width:13px;height:13px;flex:none;}
-  .secnav-course{min-width:0;color:var(--faint);font-weight:700;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .secnav-title{font-family:"Fraunces",Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.01em;line-height:1.15;margin:5px 0 0;word-break:break-word;}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);}
@@ -786,7 +780,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-18';
+const APP_VER='v2026.08.29-19';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3340,11 +3334,7 @@ function groupHeadHTML(g){
 function famNavHTML(g,tab){
   const S=GRP_SEC[tab]; const fam=S.fam; const F=GRP_FAM[fam];
   return `<div class="secnav">
-    <div class="secnav-top">
-      <button class="secnav-back ${fam}" id="toIndice">${I.back}<span>Atrás</span></button>
-      <div class="undoredo" id="undoRedoSlot"></div>
-    </div>
-    <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}<span class="secnav-course">· ${esc(g.name)}</span></div>
+    <div class="secnav-fam ${fam}">${secIcon(F.ic)}${F.title}</div>
     <h1 class="secnav-title">${S.label}</h1>
   </div>`;
 }
@@ -3390,29 +3380,31 @@ function renderGroup(g){
   if(tab!=="indice"&&!GRP_SEC[tab]) tab="indice";
   view.tab=tab; delete view.datosSub;
   // El "Atrás" ya no va en la barra de arriba (quedaba pegado al logo, lejos
-  // de dónde se está mirando). Ahora vive más abajo, justo antes de "La
-  // ficha del curso": en el índice es este link de texto, y adentro de una
-  // sección ya cumple el mismo lugar el botón "Atrás" (antes decía "Volver
-  // al índice", pero es el mismo botón).
+  // de dónde se está mirando). Ahora el nombre del curso y sus datos
+  // (groupHeadHTML) se repiten arriba de todo lo que se abre —el índice y
+  // cada sección—, y el botón "Atrás" va siempre justo debajo, en el mismo
+  // lugar exacto, para que no salte al ir entrando más adentro.
   setTopBack(null);
+  const backBtn=`<button class="topback-link" id="grpBack" style="margin:0 0 10px 2px;"><span style="width:16px;height:16px;display:inline-flex;flex:none;">${I.back}</span>Atrás</button>`;
 
   if(tab==="indice"){
     app.innerHTML=groupHeadHTML(g)
+      +backBtn
       +todayCtaHTML(g)
-      +`<button class="topback-link" id="idxBack" style="margin:0 0 10px 2px;"><span style="width:16px;height:16px;display:inline-flex;flex:none;">${I.back}</span>Atrás</button>`
       +famBlockHTML(g,"ficha")
       +famBlockHTML(g,"dia")
       +`<div class="pagefoot">Tocá cualquier fila para entrar. Para pasar a otra, volvé acá con “Atrás”.</div>`;
     $("#renameHdr").onclick=()=>promptRenameGroup(g);
-    $("#idxBack").onclick=()=>go({screen:"home"});
+    $("#grpBack").onclick=()=>go({screen:"home"});
     app.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{ view.tab=b.dataset.tab; delete view.examId; delete view.editCls; delete view.editNotes; render(); window.scrollTo(0,0); });
     const cta=app.querySelector("[data-cta]");
     if(cta) cta.onclick=()=>{ view.term=cta.dataset.cta; view.tab="asist"; render(); window.scrollTo(0,0); };
     return;
   }
 
-  app.innerHTML=famNavHTML(g,tab)+`<div id="tabBody"></div>`;
-  $("#toIndice").onclick=()=>{ view.tab="indice"; render(); window.scrollTo(0,0); };
+  app.innerHTML=groupHeadHTML(g)+backBtn+famNavHTML(g,tab)+`<div id="tabBody"></div>`;
+  $("#renameHdr").onclick=()=>promptRenameGroup(g);
+  $("#grpBack").onclick=()=>{ view.tab="indice"; render(); window.scrollTo(0,0); };
   const body=$("#tabBody"); const t=term(g);
   if(GRP_SEC[tab].fam==="ficha"){
     if(tab==="alumnos"){ body.innerHTML=alumnosSectionHTML(g); wireAlumnosSection(g,body); }
