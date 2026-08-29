@@ -333,6 +333,32 @@ unificar los dos enfoques:
   —ya están en `play-store-assets/`—, clasificación de contenido), que iba en "2 de 11
   tareas" y hay que completar igual antes de vender. Es el próximo tema grande después de
   la compra.
+  **Las 11 tareas de la ficha ya están completas (29/8/2026)** — ver el detalle en
+  "Pendientes en orden" más abajo. Falta solo tocar "Enviar la app para su revisión" en
+  Descripción general de la publicación.
+
+  🚨 **TRABA NUEVA ENCONTRADA (29/8/2026), cambia el plan: "Prueba abierta" NO es un
+  atajo.** Verificado en pantalla (Play Console → Prueba y lanza → Prueba abierta): dice
+  literal **"Las pruebas abiertas están disponibles cuando tienes acceso a producción"**.
+  O sea que Prueba abierta está bloqueada hasta conseguir Producción, no es un escalón
+  intermedio más fácil como se pensaba. Y para pedir acceso a Producción (Panel → sección
+  "Producción"), Google exige:
+  1. Publicar una versión en **prueba cerrada** (distinta de la prueba interna que ya se
+     usa).
+  2. Conseguir que **al menos 12 verificadores acepten participar** en esa prueba cerrada
+     (hoy: 0).
+  3. Que esa prueba cerrada corra con esos 12+ verificadores durante **al menos 14 días**.
+  Recién ahí se habilita pedir Producción, y una vez aprobada, se desbloquean Producción
+  **y** Prueba abierta juntas.
+  **Esto es requisito de Google para cuentas de desarrollador nuevas (antiabuso), no algo
+  que dependa de nuestro trabajo técnico — no hay forma de saltearlo.**
+  **Próximo paso concreto:** armar la pista de "Prueba cerrada" (Play Console → Prueba y
+  lanza → Prueba cerrada → crear una lista de verificadores, puede ser más grande que la
+  de prueba interna) y conseguir que sumen al menos 12 personas dispuestas a instalar y
+  dejar la app usándose 14 días — reutilizar los contactos que ya probaron, pedir a
+  conocidas/a, familiares, otras docentes. El reloj de los 14 días arranca cuando ya haya
+  12+ aceptando, así que conviene arrancar esto cuanto antes, en paralelo a cualquier otra
+  cosa — no bloquea nada más del trabajo técnico.
 - Modelo: **gratis con límite de cursos, versión completa paga**. Se descartó la app paga
   de entrada porque nadie compra a ciegas una herramienta de uso diario.
 - **Cobro: Google Play Billing únicamente.** Se descartó Mercado Pago porque Google exige
