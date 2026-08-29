@@ -739,7 +739,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-6';
+const APP_VER='v2026.08.29-7';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3091,7 +3091,6 @@ function renderAbout(){
   `;
   renderAboutInfo();
   const fab=$("#fabFeedback"); if(fab) fab.onclick=promptFeedback;
-  const ayudaLink=$("#aboutAyuda"); if(ayudaLink) ayudaLink.onclick=()=>promptAyuda("usar");
 }
 
 function renderAboutInfo(){
@@ -3099,15 +3098,6 @@ function renderAboutInfo(){
   if(!content) return;
   
   content.innerHTML=`
-    <button class="card pad" id="aboutAyuda" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin-bottom:20px;">
-      <span style="width:40px;height:40px;flex:none;border-radius:11px;background:var(--primary-tint);color:var(--primary);display:grid;place-items:center;font-size:19px;">📖</span>
-      <span style="flex:1;min-width:0;">
-        <span style="display:block;font-size:15px;font-weight:700;color:var(--ink);">Cómo usar la app</span>
-        <span style="display:block;font-size:12.5px;color:var(--muted);margin-top:2px;">Primeros pasos, cómo fluyen las notas, backup y tips</span>
-      </span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex:none;color:var(--faint);"><path d="M9 18l6-6-6-6"/></svg>
-    </button>
-
     <div class="card pad" style="margin-bottom:20px;">
       <p style="margin:0 0 16px;font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;">By Estudio AM</p>
       
