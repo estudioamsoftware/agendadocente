@@ -786,7 +786,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-15';
+const APP_VER='v2026.08.29-16';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5763,12 +5763,12 @@ function alumnosSectionHTML(g){
       <input id="noIn" placeholder="Nombre" autocomplete="off" enterkeyhint="done">
       <button class="add" id="addStudent" aria-label="Agregar">${I.plus}</button></div>
     ${remBar}
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 2px 14px;">
-      <button type="button" class="lockbtn ${locked?"":"unlocked"}" id="alumnosLockBtn" style="height:34px;font-size:12.5px;padding:0 12px 0 10px;width:auto;margin:0;flex:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:-2px 2px 14px;">
+      <button type="button" class="lockbtn ${locked?"":"unlocked"}" id="alumnosLockBtn" style="height:34px;font-size:12.5px;padding:0 12px 0 10px;width:auto;max-width:100%;margin:0;flex:0 1 auto;min-width:0;">
         <span class="cb" style="width:16px;height:16px;">${locked?I.lock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`}</span>
         <span>${locked?"Lista bloqueada — tocá para desbloquear":"Bloquear lista"}</span>
       </button>
-      <button class="link" id="bulkBtn" style="white-space:nowrap;display:inline-flex;align-items:center;gap:5px;"><span class="mini-ic" style="margin:0;">${I.table}</span>Importar lista de Excel</button>
+      <button class="link" id="bulkBtn" style="white-space:nowrap;display:inline-flex;align-items:center;gap:5px;margin-left:auto;flex:none;"><span class="mini-ic" style="margin:0;">${I.table}</span>Importar lista de Excel</button>
     </div>
     <div class="slist">${list}</div>
     ${trashHTML}
