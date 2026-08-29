@@ -241,11 +241,16 @@ real de la dueña** (ella lo confirmó) — lo que sigue siendo cierto es que **
 se administra Play Console día a día** (eso es `estudioam.dev@gmail.com`). Apareció en la
 pantalla de Play Console → Cuentas de desarrollador asociadas → "Inscribirse en el programa
 de cargos del servicio del 15%", como **"Cuenta principal"** del grupo de cuentas "Estudio
-AM". La dueña no recuerda haber creado la cuenta de desarrollador con ese mail — puede haber
-quedado como mail de recuperación en algún momento. **Investigar con "Usuarios y permisos"
-de Play Console** (`https://play.google.com/console/u/0/developers/6208089129841152998/users-and-permissions`)
-para confirmar si aparece ahí con algún rol, y actualizar esta nota con lo que se encuentre —
-no dejar esto sin resolver ni volver a borrarlo de un plumazo sin chequear.
+AM".
+
+**Chequeado en "Usuarios y permisos" el mismo 29/8/2026:** `mullerana@hotmail.com` **no
+figura en ningún lado** de esa lista — solo aparecen `estudioam.dev@gmail.com` (nombre de
+Google asociado: "Annie Muller") y la cuenta de servicio técnica
+(`play-store-api@agenda-docente-8c53d...`). Osea que **no tiene ningún permiso ni acceso
+real a Play Console**, cero riesgo de seguridad. Lo de "Cuenta principal" en la pantalla del
+15% debe salir de algún dato interno de verificación de identidad que Google guardó al
+crear la cuenta hace tiempo (o un mail de recuperación viejo), separado de qué cuenta
+administra el día a día. No hace falta seguir investigando esto — quedó resuelto.
 
 **Cómo es de verdad — todo el lado Google de estas apps es `estudioam.dev@gmail.com`:**
 
