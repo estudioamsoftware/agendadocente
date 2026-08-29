@@ -494,11 +494,14 @@ que se quiera cobrar de verdad.
 6. ¿Hay algún límite o restricción del BCRA para este tipo de ingreso, siendo
    monotributista?
 
-Sobre el **programa de cargos del servicio del 15%**: se creó el grupo de cuentas (paso 1),
-pero el link para aceptar los términos (paso 2) no apareció en la consola. **No vale la pena
-perseguirlo:** para *suscripciones* Google ya cobra 15% de entrada sin necesidad de anotarse;
-ese programa pesa sobre todo en ventas de una sola vez. Si algún día aparece el link, se
-acepta y listo.
+✅ **Programa de cargos del servicio del 15%: inscripto (29/8/2026).** El link para
+aceptar los términos (que antes no aparecía) se encuentra en Play Console → **Cuenta de
+desarrollador → Cuentas de desarrollador asociadas**
+(`https://play.google.com/console/u/0/developers/6208089129841152998/associated-developer-accounts`)
+→ botón **"Confirmar y ver condiciones"**. Las condiciones son las estándar de Google (15%
+en vez de 30% sobre el primer millón de USD de ganancias por año, sin letra chica rara) —
+se leyeron completas y se aceptaron. Confirmado en pantalla: "Tu grupo de cuentas se
+inscribió en el programa de cargos del servicio del 15%".
 
 ### El requisito que reordena todo: el `.aab` tiene que declarar Play Billing
 
