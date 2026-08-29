@@ -784,7 +784,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-43';
+const APP_VER='v2026.08.29-44';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -900,6 +900,24 @@ function levelBtnSizeStyle(lv){
   if(len>4) return "width:auto;min-width:36px;padding:0 8px;white-space:nowrap;font-size:11px;";
   if(len>2) return "font-size:9.5px;";
   return "";
+}
+// Nombre corto para mostrar la escala de un vistazo (la personalizada no tiene
+// nombre propio, se la nombra genérica).
+function valSchemeName(g){ const sc=getValScheme(g); return sc.name||"Escala personalizada"; }
+function valSchemeShort(g){ const sc=getValScheme(g); return sc.short||sc.levels.map(lv=>lv.symbol||lv.label).join("·"); }
+// La escala la elige cada docente segun su materia (ingles, matematica, primaria...),
+// asi que lo mas probable es que use la misma en todos sus cursos. Si ya eligio una
+// antes, se le ofrece repetirla de un toque en vez de hacerla buscar de nuevo.
+function suggestValScheme(g){
+  const others=(state.groups||[]).filter(x=>x!==g&&!x.archived&&x.valScheme
+    &&(x.valScheme.id==="custom"?(Array.isArray(x.valScheme.levels)&&x.valScheme.levels.length):!!VAL_SCHEME_PRESETS[x.valScheme.id]));
+  if(!others.length) return null;
+  const src=others[others.length-1];
+  return {vs:src.valScheme, groupName:src.name||"otro curso", short:valSchemeShort(src), name:valSchemeName(src)};
+}
+function applyValScheme(g,vs){
+  if(vs.id==="custom") setValSchemeCustom(g,vs.levels.map(lv=>({...lv})));
+  else setValSchemePreset(g,vs.id);
 }
 function schemeFootNote(scheme){
   if(scheme.footNote) return scheme.footNote;
@@ -3748,15 +3766,40 @@ function infoSectionHTML(g){
         <div class="cardtitle">${I.pencil}Notas / Observaciones${!editNotes?`<span style="flex:1;"></span><button class="iconbtn" id="notesEdit" aria-label="Editar notas">${I.pencil}</button>`:""}</div>${notesBlock}
       </div>`;
 
-  // Orden pedido: Escuela, Cursada, Cuatrimestres, Notas/Observaciones y al
-  // final Situación de revista (Classroom se mudó a la sección Clases).
-  return escuelaHTML + cursadaHTML + cuatriHTML + notasHTML + revistaHTML
+  // La escala de valoración es una decisión del alta del curso (depende de la materia
+  // que da cada docente), no algo del día a día: por eso vive acá, en la ficha, además
+  // del atajo que ya existe en Clases.
+  const valSc=getValScheme(g);
+  const valLocked=hasAnyValoracion(g);
+  const valChips=valSc.levels.map(lv=>`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:7px;font-size:11.5px;font-weight:700;background:${lv.bg};color:${lv.ink};border:1px solid ${lv.border};">${esc(lv.symbol||lv.label)}</span>`).join("");
+  const valHTML=`<div class="card pad" style="margin-top:16px;">
+      <div class="cardtitle">${I.star}Valoraciones</div>
+      <div class="kvrow" style="padding:0;">
+        <div style="flex:1;min-width:0;">
+          <div class="kv-lbl">Escala de este curso</div>
+          <div class="kv-val">${esc(valSchemeName(g))}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">${valChips}</div>
+        </div>
+        ${valLocked?"":`<button class="iconbtn" id="valsch_edit" aria-label="Cambiar la escala de valoración">${I.pencil}</button>`}
+      </div>
+      <div style="font-size:11.5px;color:var(--faint);margin-top:12px;line-height:1.45;">${valLocked
+        ?`🔒 Ya cargaste notas con esta escala, así que queda fija: si la cambiaras, esas notas quedarían guardadas pero escondidas.`
+        :`💡 Es con lo que calificás cada clase en <b>Clases</b>. Elegí la que uses en esta materia — en cuanto cargues la primera nota queda fija.`}</div>
+    </div>`;
+
+  // Orden pedido: Escuela, Cursada, Ciclo lectivo, Valoraciones,
+  // Notas/Observaciones y al final Situación de revista (Classroom se mudó a la
+  // sección Clases).
+  return escuelaHTML + cursadaHTML + cuatriHTML + valHTML + notasHTML + revistaHTML
     + `<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:10px;">
         <button class="btn subtle sm" id="archiveG" style="flex:1;">${g.archived?"Desarchivar curso":"Archivar curso"}</button>
         <button class="btn danger sm" id="deleteG" style="flex:1;">${I.trash} Eliminar curso</button>
       </div>`;
 }
 function wireInfoSection(g,body){
+  // Escala de valoración — abre el mismo cuadro que el atajo de Clases.
+  const valSchEdit=$("#valsch_edit"); if(valSchEdit) valSchEdit.onclick=()=>promptValScheme(g);
+
   // Situación de revista
   const rv=ensureRevista(g);
   const revEdit=$("#revista_edit"); if(revEdit) revEdit.onclick=()=>{ view.editRevista=true; render(); };
@@ -4773,10 +4816,13 @@ function promptValScheme(g){
   }).join("")
   + `<button type="button" class="typecard" data-scheme="custom" style="${curId==="custom"?"border-color:var(--primary);background:var(--primary-tint);color:var(--primary);":""}">
       <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
-  openDlg("Escala de valoración",`<div class="typegrid">${cardsHtml}</div>
+  const sug=g.valScheme?null:suggestValScheme(g);
+  const sugHTML=sug?`<button type="button" class="btn ghost sm" id="vs_same" style="width:100%;margin-bottom:14px;">Usar la misma que en ${esc(sug.groupName)}: ${esc(sug.short)}</button>`:"";
+  openDlg("Escala de valoración",`${sugHTML}<div class="typegrid">${cardsHtml}</div>
     <div class="dlg-actions"><button class="btn subtle" id="vs_cancel">Cerrar</button></div>`,
     "Elegí cómo registrar la valoración de cada clase en este curso. Una vez que cargues la primera nota, la escala queda fija — ya no se va a poder cambiar.");
   $("#vs_cancel").onclick=closeDlg;
+  const sameBtn=$("#vs_same"); if(sameBtn) sameBtn.onclick=()=>{ applyValScheme(g,sug.vs); closeDlg(); toastSuccess("✓ Escala actualizada","#A9500A"); render(); };
   $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.scheme;
     if(id==="custom"){ promptValSchemeCustom(g); return; }
@@ -4795,12 +4841,16 @@ function promptFirstValScheme(g){
   }).join("")
   + `<button type="button" class="typecard" data-scheme="custom">
       <span class="typecard-ic">🛠️</span><span class="typecard-lbl">Personalizada</span></button>`;
+  const sug=suggestValScheme(g);
+  const sugHTML=sug?`<button type="button" class="btn ghost sm" id="vs_same" style="width:100%;margin-bottom:14px;">Usar la misma que en ${esc(sug.groupName)}: ${esc(sug.short)}</button>`:"";
   openDlg("Elegí tu escala de valoración",`
     <p style="font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 14px;">La vas a usar para calificar cada clase de este curso. <b>Conviene elegirla ahora y no cambiarla después</b>: en cuanto cargues la primera nota, queda fija.</p>
+    ${sugHTML}
     <div class="typegrid">${cardsHtml}</div>
     <p style="font-size:12px;color:var(--faint);line-height:1.5;margin:14px 0 0;">💡 Si ya diste clases este cuatrimestre antes de empezar a usar la app, cargalas retroactivamente en Asistencia y Clases — así las estadísticas dan bien desde el principio.</p>
     <div class="dlg-actions" style="margin-top:14px;"><button class="btn subtle" id="vs_skip">Elijo después</button></div>`);
   $("#vs_skip").onclick=closeDlg;
+  const sameBtn=$("#vs_same"); if(sameBtn) sameBtn.onclick=()=>{ applyValScheme(g,sug.vs); closeDlg(); toastSuccess("✓ Escala elegida","#A9500A"); render(); };
   $("#dlgBody").querySelectorAll("[data-scheme]").forEach(b=>b.onclick=()=>{
     const id=b.dataset.scheme;
     if(id==="custom"){ promptValSchemeCustom(g); return; }

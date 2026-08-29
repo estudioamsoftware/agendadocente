@@ -49,6 +49,30 @@ vea bien. Falta confirmar que ande en el celular:
   tan prolijo sale el texto extraído — puede necesitar bastante edición manual, eso es
   esperable y ya está contemplado (por eso hay un paso de "revisar antes de agregar").
 
+## La escala de valoraciones es POR CURSO, no por cuatrimestre (decidido 29/8/2026)
+
+Decisión de la dueña, textual: la escala existe para que **cada docente elija la que usa
+según su materia** (ella, profe de inglés, usa E-VG-G-R; un profe de matemática va a usar
+la numérica o E-MB-B-R), no para cambiarla de un cuatrimestre a otro. Lo lógico es que use
+la misma en 1° y 2°. **No hace falta partir `valScheme` por cuatrimestre** — se evaluó y se
+descartó (además complicaría la tabla de Resumen, que muestra los dos cuatrimestres juntos
+con una sola escala y un solo pie de página).
+
+Dónde se elige, después del cambio del 29/8:
+- **La ficha del curso → Escuela y horarios → tarjeta "Valoraciones"** (debajo de Ciclo
+  lectivo): muestra la escala actual con sus niveles de colores y un lápiz para cambiarla.
+  Es la casa principal, porque es una decisión del alta del curso.
+- El atajo chico **"Valoraciones"** que ya estaba en Clases, al lado del selector de
+  cuatrimestre — se dejó igual, sin tocar (venía de reubicarse a mano en commits previos).
+- El cuadro que salta solo la primera vez que se generan las clases del curso.
+
+Si la docente ya eligió una escala en otro curso, los dos cuadros ofrecen arriba un botón
+**"Usar la misma que en <curso>"**, para no hacerla buscar de nuevo en cada curso nuevo.
+
+Sigue valiendo: **la escala queda fija apenas se carga la primera nota** del curso (cada
+escala guarda con claves distintas, así que cambiarla escondería las notas viejas). Con
+notas cargadas, la tarjeta de la ficha muestra el candado y no ofrece el lápiz.
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
