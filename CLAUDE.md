@@ -333,9 +333,13 @@ unificar los dos enfoques:
   —ya están en `play-store-assets/`—, clasificación de contenido), que iba en "2 de 11
   tareas" y hay que completar igual antes de vender. Es el próximo tema grande después de
   la compra.
-  **Las 11 tareas de la ficha ya están completas (29/8/2026)** — ver el detalle en
-  "Pendientes en orden" más abajo. Falta solo tocar "Enviar la app para su revisión" en
-  Descripción general de la publicación.
+  **Las 11 tareas de la ficha ya están completas y ENVIADAS A REVISIÓN el 29/8/2026** —
+  ver el detalle en "Pendientes en orden" más abajo. Al enviar apareció un trámite corto
+  más, no relacionado con las 11 tareas: la **declaración de ID de publicidad** (obligatoria
+  para apps con `targetSdk` 13+) — se completó con "No, la app no usa ID de publicidad"
+  (no tiene anuncios ni rastreo). Quedó todo mandado junto: la ficha completa y la primera
+  versión de la pista de prueba cerrada (ver abajo). Ahora toca esperar la revisión de
+  Google (puede tardar de horas a un par de días).
 
   🚨 **TRABA NUEVA ENCONTRADA (29/8/2026), cambia el plan: "Prueba abierta" NO es un
   atajo.** Verificado en pantalla (Play Console → Prueba y lanza → Prueba abierta): dice
@@ -352,13 +356,23 @@ unificar los dos enfoques:
   **y** Prueba abierta juntas.
   **Esto es requisito de Google para cuentas de desarrollador nuevas (antiabuso), no algo
   que dependa de nuestro trabajo técnico — no hay forma de saltearlo.**
-  **Próximo paso concreto:** armar la pista de "Prueba cerrada" (Play Console → Prueba y
-  lanza → Prueba cerrada → crear una lista de verificadores, puede ser más grande que la
-  de prueba interna) y conseguir que sumen al menos 12 personas dispuestas a instalar y
-  dejar la app usándose 14 días — reutilizar los contactos que ya probaron, pedir a
-  conocidas/a, familiares, otras docentes. El reloj de los 14 días arranca cuando ya haya
-  12+ aceptando, así que conviene arrancar esto cuanto antes, en paralelo a cualquier otra
-  cosa — no bloquea nada más del trabajo técnico.
+  **✅ Pista de prueba cerrada YA ARMADA (29/8/2026), pendiente de gente.** Se creó el
+  segmento **"Prueba cerrada - Alpha"** (ya existía, quedó de un intento viejo sin usar),
+  con:
+  - Países: **todos** (así no se repite el susto de un país que bloquee a un tester).
+  - Verificadores: la misma lista **"Verificadores Agenda Docente"** que ya se usa en
+    prueba interna (hoy 4 personas: englishbeats, estudioam.dev, marcelodanielcordoba74,
+    mullerana2). Se puede seguir sumando gente a esta misma lista — no hace falta crear
+    una lista aparte para la prueba cerrada.
+  - Versión: se promovió la **misma versión 2 (1.0.1.0)** que ya está en prueba interna
+    (botón "Agregar desde la biblioteca" al crear la versión — no hizo falta subir un
+    `.aab` nuevo).
+  - Enviada a revisión junto con la ficha de Play Store (ver arriba).
+  **Lo único que falta es humano, no técnico: llegar a 12 verificadores que acepten.**
+  Hoy hay 4. Faltan **8 más**. Quedó pendiente para que la dueña piense a quién sumar
+  (otras docentes, familia, conocidos con Android) — no bloquea nada del trabajo técnico
+  mientras tanto. El reloj de los 14 días arranca recién cuando los 12 ya hayan aceptado
+  la invitación, así que conviene sumar gente cuanto antes.
 - Modelo: **gratis con límite de cursos, versión completa paga**. Se descartó la app paga
   de entrada porque nadie compra a ciegas una herramienta de uso diario.
 - **Cobro: Google Play Billing únicamente.** Se descartó Mercado Pago porque Google exige
