@@ -793,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-14';
+const APP_VER='v2026.08.30-15';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -6542,7 +6542,7 @@ function promptEditExam(g,t,e){
   // pantalla arriba de todo y con el teclado abierto no quedaba lugar para nada.
   const tipoRowHTML=`<div class="dlg-field">
       <label>Tipo</label>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;">
         <span class="mchip on" id="ee_type_cur" style="display:inline-flex;align-items:center;">${EXAM_TYPE_META[e.type]?EXAM_TYPE_META[e.type].icon+" "+EXAM_TYPE_META[e.type].label:"Evaluación"}</span>
         <div style="display:flex;flex-direction:column;gap:2px;">
           <label style="margin:0;font-size:10.5px;">Fecha</label>
