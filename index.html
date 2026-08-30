@@ -785,10 +785,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-08-30-ayuda';
+const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-1';
+const APP_VER='v2026.08.30-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5625,8 +5625,10 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Nota C1°/C2°" para ponerle fecha de cierre del cuatrimestre · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
     <div class="pagefoot">Tocá una celda de Notas de avance o Nota C1°/C2° para cargar o ajustar la nota de ese alumno. Con "Notas de avance" ya con fecha puesta, se ordena sola entre los exámenes según cuándo fue.</div>
     <div class="grid-stats" id="statsFooter">${statsFooterHTML()}</div>
+    ${gridToolsHTML(null)}
     <div style="height:40px;"></div>`;
   wireDragScroll(body.querySelector(".gridwrap"));
+  wireGridTools(g,null);
   function refreshStats(){ $("#statsFooter").innerHTML=statsFooterHTML(); }
 
   body.querySelectorAll("[data-avhead-term]").forEach(th=>th.onclick=(ev)=>{
@@ -5846,8 +5848,10 @@ function renderGrid(g,t,body){
     <div class="gridkey">${mode==="asist"?"• presente · A ausente · F. = faltas en módulos · columna central = separador de cuatrimestre":schemeFootNote(valScheme)+" A ausente · amarillo: anulada"}</div>
     ${cancList?`<div class="gridblk"><div class="gridblk-t">Clases sin dictado</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">${cancList}</div></div>`:""}
     ${statsFooter}
+    ${gridToolsHTML(mode)}
     <div class="pagefoot">Deslizá la tabla hacia los costados para ver todas las fechas (o arrastrá la barrita gris). El nombre queda fijo a la izquierda.</div>`;
   wireDragScroll(body.querySelector(".gridwrap"));
+  wireGridTools(g,mode);
   wireModeBtns();
   body.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ view.gridMode=b.dataset.gm; render(); });
 }
@@ -6823,7 +6827,7 @@ function download(filename,text,mime){ const blob=new Blob([text],{type:mime||"t
 function csvCell(v){ v=String(v==null?"":v); return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function csvRows(rows){ return "\uFEFF"+rows.map(r=>r.map(csvCell).join(";")).join("\r\n"); }
 function safeName(s){ return s.replace(/[^\p{L}\p{N}]+/gu,"_").replace(/^_+|_+$/g,"").slice(0,40)||"grupo"; }
-function termLabel(){ return (view.term||"1")+"cuatri"; }
+function termLabel(k){ return (k||view.term||"1")+"cuatri"; }
 
 function exportAttCSV(g,t){
   if(!t.sessions.length){ toast("No hay fechas cargadas"); return; }
@@ -6838,7 +6842,7 @@ function exportExamsCSV(g,t){
   g.students.forEach(s=>{ const r=[dispName(s)]; t.exams.forEach(e=>{ const c=getGrade(t,s.id,e.id); r.push(gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date)?"A":(c.nota!=null?fmtNum(c.nota):"")); r.push(gradeAusenteEffective(t,g,s.id,e.id,"recu",e.recuDate)?"A":(c.recu!=null?fmtNum(c.recu):"")); }); r.push(fmtNum(stats(g,t,s.id).prom)); rows.push(r); });
   download("examenes_"+safeName(g.name)+"_"+termLabel()+".csv",csvRows(rows),"text/csv;charset=utf-8"); toast("Notas exportadas");
 }
-function exportSummaryCSV(g,t){
+function exportSummaryCSV(g,t,k){
   const scheme=getValScheme(g);
   const head=["Alumno","% Asist.","Faltas","Clases pres.",...scheme.levels.map(lv=>lv.label),"S/C","Prom. exámenes","Avance","Final","Intensif.","Estado"]; const rows=[head];
   g.students.forEach(s=>{ const st=stats(g,t,s.id); const es=estado(g,t,s.id); const ipm=intensPM(g);
@@ -6847,10 +6851,40 @@ function exportSummaryCSV(g,t){
     if(dd){ if(passedAt) it=dd.periodos[passedAt].nota; else PERIODOS.forEach(p=>{ const pr=dd.periodos[p.id]; if(pr&&typeof pr.nota==="number") it=pr.nota; }); }
     const v=st.val;
     rows.push([dispName(s),(st.pct!=null?st.pct+"%":""),st.faltas,st.presN,...scheme.levels.map(lv=>v[lv.key]||0),v.SC,fmtNum(st.prom),(avanceOf(t,s.id,g)||""),(st.final!=null?fmtNum(st.final):""),(it!=null?fmtNum(it):""),es.label]); });
-  download("resumen_"+safeName(g.name)+"_"+termLabel()+".csv",csvRows(rows),"text/csv;charset=utf-8"); toast("Resumen exportado");
+  download("resumen_"+safeName(g.name)+"_"+termLabel(k)+".csv",csvRows(rows),"text/csv;charset=utf-8"); toast("Resumen exportado");
 }
-function printGrilla(g,t,mode){
-  const k=view.term||"1"; const ses=t.sessions; if(!ses.length){ toast("No hay clases"); return; }
+// La tabla de Resumen muestra los dos cuatrimestres juntos y esta pantalla, a
+// diferencia de las otras, no tiene selector: por eso imprimir o exportar (que
+// trabajan sobre un cuatrimestre) primero pregunta cuál, salvo que haya uno solo
+// con clases. No se toca view.term para no cambiarle el cuatrimestre a las demás
+// pantallas por haber tocado un botón acá.
+function pickTermThen(g,titulo,fn){
+  const conClases=["1","2"].filter(k=>g.terms[k].sessions.length);
+  if(!conClases.length){ toast("Todavía no hay clases generadas"); return; }
+  if(conClases.length===1){ fn(conClases[0]); return; }
+  openDlg(titulo,`<div class="stack">
+      <button class="btn" data-pick-term="1">1° Cuatrimestre</button>
+      <button class="btn" data-pick-term="2">2° Cuatrimestre</button></div>
+    <div class="dlg-actions"><button class="btn subtle" id="pt_cancel">Cancelar</button></div>`,
+    "¿De qué cuatrimestre?");
+  $("#pt_cancel").onclick=closeDlg;
+  $("#dlgBody").querySelectorAll("[data-pick-term]").forEach(b=>b.onclick=()=>{ closeDlg(); fn(b.dataset.pickTerm); });
+}
+// Los dos botones del pie de Resumen. "modo" es null en Notas finales, donde no hay
+// grilla de clases que imprimir y queda sólo el CSV.
+function gridToolsHTML(modo){
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+    ${modo?`<button class="btn subtle sm" id="gridPrint">🖨️ Imprimir planilla</button>`:""}
+    <button class="btn subtle sm" id="gridCsv">📤 Exportar resumen (CSV)</button></div>`;
+}
+function wireGridTools(g,modo){
+  const pr=$("#gridPrint");
+  if(pr) pr.onclick=()=>pickTermThen(g,"Imprimir planilla",k=>printGrilla(g,g.terms[k],modo,k));
+  const cs=$("#gridCsv");
+  if(cs) cs.onclick=()=>pickTermThen(g,"Exportar resumen",k=>exportSummaryCSV(g,g.terms[k],k));
+}
+function printGrilla(g,t,mode,k){
+  k=k||view.term||"1"; const ses=t.sessions; if(!ses.length){ toast("No hay clases"); return; }
   const isExamDate=(iso)=>t.exams.some(e=>e.date===iso)||t.exams.some(e=>e.recuDate===iso);
   const valScheme=getValScheme(g);
   let head=`<tr><th class="n">N°</th><th class="al">Apellido y Nombre</th>`;
@@ -7141,7 +7175,8 @@ function promptAyuda(startTab){
           <div><b>📄 La ficha del curso → Documentos</b><br>Subí diagnóstico, planificación y programa; marcá si ya los entregaste</div>
           <div><b>✓ Tildes en Notas finales</b><br>Solo para marcarte que ya pasaste la nota al cuaderno. No afecta cálculos</div>
           <div><b>1 · Motivo (Faltó / NQ / IA)</b><br>Aparece cuando cargás un 1 en evaluación. Ahí marcás el motivo. Se ve como marquita en General</div>
-          <div><b>📤 Exportar notas (CSV)</b><br>En Exámenes y notas, abajo de la lista. Baja una planilla con las notas de todos los exámenes del cuatrimestre, para abrir en Excel</div>
+          <div><b>🖨️ Imprimir planilla</b><br>En Resumen, abajo de la tabla. Arma la grilla de papel del cuatrimestre (A4 apaisado) para imprimir o guardar como PDF: todos los alumnos, todas las fechas, y los temas de cada clase al pie. Sale como estés viendo la tabla — asistencia o calificaciones</div>
+          <div><b>📤 Exportar a Excel (CSV)</b><br>Dos, según lo que necesites: <b>"Exportar resumen"</b> en Resumen, abajo de la tabla (una fila por alumno con % de asistencia, faltas, promedio, nota final, estado), y <b>"Exportar notas"</b> en Exámenes y notas, abajo de la lista (las notas de cada examen, una por una)</div>
           <div><b>🗑️ Papelera</b><br>Lo que borrás (cursos, alumnos, exámenes, documentos) va a parar ahí y lo podés recuperar. No se vacía sola: se borra definitivamente solo si vos lo borrás desde ahí</div>
           <div><b>Actualizar Drive</b><br>Todo se sube solo al cargarlo. Este botón es para reintentar si algo quedó pendiente — por ejemplo, después de estar sin internet</div>
         </div>
