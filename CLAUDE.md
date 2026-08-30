@@ -168,6 +168,16 @@ costado) y **abre RECUP. en una columna por parte**, así se ven las cuatro colu
 carga desde Exámenes. Si el bloque del día ES el recuperatorio, la parte que el alumno ya
 tenía aprobada sale con "–" azul, igual que en la pantalla del examen.
 
+Dos ajustes de ancho de esa grilla (30/8/2026, pedidos por la dueña):
+- **Las columnas de Clases van más angostas** (80 px contra 104 px en Exámenes): la clase
+  es de sólo lectura, no tiene el casillero para escribir ni el botón "A", así que no
+  necesita tanto lugar. Se hace con la clase `eg-ro` en el `<div class="examgrid">` de
+  `renderClaseExam` (regla `.examgrid.eg-ro .eg-col` en el CSS).
+- **Cuando sobra ancho, las columnas lo reparten en vez de dejar un hueco a la derecha**
+  (`flex:1 0 auto` en `.eg-nm` y `.eg-col`): antes, con una sola columna NOTA —una
+  Carpeta, por ejemplo— la tabla quedaba con un vacío grande al costado y los apellidos
+  partidos en dos renglones al pedo. Vale para las dos pantallas.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
