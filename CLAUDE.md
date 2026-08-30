@@ -256,6 +256,52 @@ falta algo, el mensaje de ayuda dice cargarlo ahí primero y volver a elegirlo. 
 contenidos sueltos que ya existían de antes (antes de este cambio) se siguen mostrando y se
 pueden sacar, sólo que no se pueden agregar más.
 
+## Cada nota de una evaluación partida sabe qué contenidos evalúa (30/8/2026)
+
+El problema que encontró la dueña: si una evaluación se parte en dos notas (Vocabulary y
+Grammar) y el alumno saca 9 y 3, el promedio da 6 y queda desaprobada — pero
+`topicsDesaprobados()` le mandaba a Intensificación **todos** los contenidos de la
+evaluación, incluidos los de vocabulario que sí aprobó. La app ya sabía qué parte
+desaprobó cada alumno (las notas por parte se guardan aparte); lo que faltaba era el
+puente: **qué contenidos evalúa cada parte**.
+
+Se descartó adivinarlo por el nombre de la parte ("Grammar" → contenidos gramaticales):
+andaría con los nombres de ella, pero se rompe con cualquier otro profe ("Teoría/Práctica",
+"Reading/Writing", "Parte 1/Parte 2") y cuando adivina mal nadie se entera.
+
+**Cómo quedó (decisión de la dueña): primero se decide si la evaluación se separa en notas,
+y después los contenidos se eligen por nota.** En el cuadro de crear la evaluación, el campo
+"¿Necesitás poner varias notas?" ya venía **antes** que "Contenidos a evaluar"; ahora,
+cuando se escriben las partes, el selector de contenidos se reacomoda solo: pasa de chips
+sueltos a **una fila por contenido con las notas al lado** ("Present Perfect · [Vocabulary]
+[Grammar]"). Cada contenido va en una sola nota; el que no se toca no entra en el examen.
+
+- Dato nuevo: `e.partTopicIds` — array alineado con `e.parts`. `e.topicIds` se sigue
+  guardando como la unión de todos, así nada de lo que ya existía se entera del cambio.
+- Funciones nuevas en `index.html`: `examTienePartes()`, `examGruposDeContenidos()`,
+  `examPartEffective()` (nota efectiva de UNA parte, con el recu aplicado y sin bajar la
+  nota), `selDesdeExamen()` / `selHaciaExamen()`, `examTopicsPickerHTML()` +
+  `mountExamTopicsPicker()` (el selector, compartido entre crear y editar) y
+  `examTopicsReadHTML()` (la vista de sólo lectura, agrupada por nota — se usa en la
+  pantalla del examen y en Clases).
+- `topicsDesaprobados()` ahora: si los contenidos están atados a las partes, sólo entran
+  los de las partes que quedaron debajo del mínimo. Si no están atados (exámenes viejos, o
+  evaluaciones sin partir), se lleva todo lo de esa evaluación como siempre.
+- Un contenido elegido que quedó **sin parte** (ej.: se borró una nota después) entra si la
+  evaluación quedó desaprobada — el criterio de antes. Por eso ninguna combinación rara
+  deja contenidos sin poder aparecer nunca.
+- En "Editar", cambiar las partes mantiene la atadura por posición: renombrar no rompe
+  nada; sacar una nota deja sus contenidos sueltos (siguen evaluados).
+
+**Ojo si se toca `mountExamTopicsPicker`:** la función que devuelve rehace la lista **sólo
+si las partes cambiaron de verdad**. Antes rehacía siempre, y como el campo de las partes
+dispara `blur` al tocar un contenido, el primer toque se perdía (encontrado probándolo).
+
+Lo que sigue sin ser exacto, y está bien que así sea: si una evaluación sin partir toca 5
+contenidos y el alumno saca 4, no hay forma de saber cuáles falló — se llevan los 5 y la
+docente saca con la × los que no correspondan. La lista de Intensificación siempre fue un
+punto de partida, no un veredicto.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación

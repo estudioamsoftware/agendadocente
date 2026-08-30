@@ -454,6 +454,16 @@
   .numin.bignum{width:100px;height:56px;font-size:24px;border-radius:13px;border-width:2px;}
   .intbadge{align-self:flex-end;background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-bd);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:700;white-space:nowrap;}
   .topicchecks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  /* Elegir contenidos cuando la evaluación se divide en varias notas: una fila por
+     contenido, y en cada fila de qué parte es. Así queda atado qué contenido evalúa cada
+     nota, que es lo que después deja saber qué se llevó el alumno. */
+  .etp-row{padding:9px 2px;border-bottom:1px solid var(--line-soft);}
+  .etp-row:last-child{border-bottom:none;}
+  .etp-row.sinparte{background:var(--amber-tint);border-radius:9px;padding:9px 8px;border-bottom:none;margin-bottom:4px;}
+  .etp-txt{font-size:13.5px;font-weight:600;line-height:1.3;margin-bottom:6px;}
+  .etp-parts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .etp-warn{font-size:11px;color:var(--amber);font-weight:700;}
+  .etp-part-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin:8px 0 2px;}
   .topicchk{height:34px;padding:0 12px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--muted);}
   .progchips{display:flex;flex-wrap:wrap;gap:7px;}
   .progchip{display:inline-flex;align-items:flex-start;gap:5px;min-height:32px;max-width:100%;padding:5px 5px 5px 13px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.35;word-break:break-word;}
@@ -793,7 +803,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-16';
+const APP_VER='v2026.08.30-17';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2157,14 +2167,47 @@ function getOwed(t,sid,pid){
 // terminó aprobando (mirando la nota efectiva, o sea ya con el recuperatorio aplicado).
 // Sin nota también cuenta como pendiente: si no la rindió, no la aprobó. Las evaluaciones
 // de intensificación no entran — son de la instancia siguiente, no del cuatrimestre.
+// ¿La evaluación está dividida en varias notas (ej.: Vocabulary y Grammar)?
+function examTienePartes(e){ return !!e&&Array.isArray(e.parts)&&e.parts.length>=2; }
+// Contenidos atados a cada parte, alineados con e.parts. null si nunca se ataron.
+function examGruposDeContenidos(e){
+  if(!examTienePartes(e)||!Array.isArray(e.partTopicIds)) return null;
+  return e.parts.map((_,i)=>Array.isArray(e.partTopicIds[i])?e.partTopicIds[i]:[]);
+}
+// Nota efectiva de UNA parte, ya con el recuperatorio aplicado. Igual que la nota general:
+// el recuperatorio nunca baja la nota, si le fue peor vale la original.
+function examPartEffective(t,sid,e,pi,pm){
+  const orig=getGrade(t,sid,e.id)["p"+pi];
+  const recu=linkedRecuExam(t,e.id);
+  const rv=recu?getGrade(t,sid,recu.id)["p"+pi]:null;
+  if(typeof rv==="number") return typeof orig==="number"?Math.max(rv,orig):rv;
+  return typeof orig==="number"?orig:null;
+}
 function topicsDesaprobados(t,sid,pm){
   const ids=[];
+  const add=arr=>(arr||[]).forEach(tid=>{ if(!ids.includes(tid)) ids.push(tid); });
   (t.exams||[]).forEach(e=>{
     if(e.recuOf) return; // el recu ya se refleja en la nota de su evaluación
     if(String(e.type||"").startsWith("intens_")) return;
     if(!Array.isArray(e.topicIds)||!e.topicIds.length) return;
     const eff=examEffective(t,sid,e.id,pm);
-    if(eff==null||eff<pm) e.topicIds.forEach(tid=>{ if(!ids.includes(tid)) ids.push(tid); });
+    const aprobo=(eff!=null&&eff>=pm);
+    const grupos=examGruposDeContenidos(e);
+    // Sin partes (o sin atar los contenidos a cada parte): se lleva todo lo de esa
+    // evaluación, como siempre.
+    if(!grupos){ if(!aprobo) add(e.topicIds); return; }
+    // Con los contenidos atados a cada nota, se puede ser preciso: si sacó 9 en Vocabulary
+    // y 3 en Grammar, sólo se lleva lo de Grammar.
+    grupos.forEach((arr,pi)=>{
+      const v=examPartEffective(t,sid,e,pi,pm);
+      if(v==null||v<pm) add(arr);
+    });
+    // Un contenido elegido pero que quedó sin parte (ej.: se borró una parte después) se
+    // comporta como antes: entra si la evaluación no se aprobó.
+    if(!aprobo){
+      const atados=grupos.reduce((a,b)=>a.concat(b||[]),[]);
+      add(e.topicIds.filter(id=>!atados.includes(id)));
+    }
   });
   return ids;
 }
@@ -5128,7 +5171,7 @@ function renderClaseExam(g,t,body,date,ses,items){
     const examTopics=allTopics.filter(tp=>examTopicIds.includes(tp.id));
     const contPanel=examTopics.length?`<div class="card pad" style="margin-bottom:12px;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);margin-bottom:6px;">Contenidos evaluados</div>
-      <div class="topicchecks">${examTopics.map(tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`).join("")}</div>
+      ${examTopicsReadHTML(ex,allTopics)}
       ${vocab?`<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic;"><b>Vocabulario:</b> ${esc(vocab)}</div>`:""}
       </div>`:`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Elegí qué contenidos evalúa este examen desde la pestaña Exámenes.</div>`;
     // Si esta evaluación tiene un recuperatorio aparte, su nota se muestra al lado de la
@@ -5282,16 +5325,96 @@ function renderExam(g,t,body){
 // suelto, escrito acá sin id de la ficha del curso, no puede detectarse como pendiente en
 // Intensificación cuando el alumno no lo aprueba (ver `topicsDesaprobados`, que sólo mira
 // `topicIds`) — por eso ya no se puede tipear uno nuevo desde este cuadro.
+/* ---- Elegir los contenidos de un examen, y de qué parte es cada uno ---- */
+// "sel" es un objeto {idDelContenido: índiceDeParte}. -1 = elegido pero todavía sin parte
+// (pasa con exámenes viejos, de antes de que se pudiera atar, o si se borró una parte).
+function selDesdeExamen(e){
+  const sel={};
+  const grupos=examGruposDeContenidos(e);
+  (e.topicIds||[]).forEach(id=>{ sel[id]=-1; });
+  if(grupos) grupos.forEach((arr,pi)=>(arr||[]).forEach(id=>{ sel[id]=pi; }));
+  return sel;
+}
+function selHaciaExamen(sel,parts,topics){
+  const topicIds=topics.filter(tp=>sel[tp.id]!=null).map(tp=>tp.id);
+  const partTopicIds=(parts&&parts.length>=2)
+    ? parts.map((_,i)=>topics.filter(tp=>sel[tp.id]===i).map(tp=>tp.id))
+    : null;
+  return {topicIds,partTopicIds};
+}
+function examTopicsPickerHTML(parts,topics,sel){
+  if(!topics.length) return `<div style="font-size:12px;color:var(--faint);margin:0 2px 4px;">Todavía no cargaste contenidos en la ficha del curso. Andá a "Contenidos" para cargarlos y después volvé acá a elegirlos.</div>`;
+  // Sin partes: los chips de siempre, se tocan para elegir.
+  if(!parts||parts.length<2) return `<div class="topicchecks">${topics.map(tp=>`<button type="button" class="topicchk ${sel[tp.id]!=null?"on":""}" data-etid="${tp.id}">${esc(tp.text)}</button>`).join("")}</div>`;
+  // Con partes: una fila por contenido, y en cada fila de qué nota es.
+  return `<div style="font-size:11.5px;color:var(--muted);margin:0 2px 6px;line-height:1.4;">Tocá de qué nota es cada contenido. Los que no toques no entran en este examen.</div>`
+    +topics.map(tp=>{
+      const cur=sel[tp.id];
+      const sinParte=cur===-1;
+      return `<div class="etp-row ${sinParte?"sinparte":""}">
+        <div class="etp-txt">${esc(tp.text)}${sinParte?` <span class="etp-warn">¿de qué nota es?</span>`:""}</div>
+        <div class="etp-parts">${parts.map((lbl,i)=>`<button type="button" class="mchip sm ${cur===i?"on":""}" data-etid="${tp.id}" data-etpart="${i}">${esc(lbl)}</button>`).join("")}</div>
+      </div>`;
+    }).join("");
+}
+// Dibuja el selector dentro de "container" y lo deja andando. getParts() se consulta en
+// cada dibujo, así el selector se reacomoda solo cuando se cambian las partes.
+function mountExamTopicsPicker(container,getParts,topics,sel){
+  let sig=null;
+  const draw=()=>{
+    const parts=getParts();
+    sig=(parts||[]).join("|");
+    container.innerHTML=examTopicsPickerHTML(parts,topics,sel);
+    container.querySelectorAll("[data-etid]").forEach(b=>b.onclick=()=>{
+      const id=b.dataset.etid;
+      if(b.dataset.etpart!=null){
+        const pi=+b.dataset.etpart;
+        if(sel[id]===pi) delete sel[id]; else sel[id]=pi;
+      } else {
+        if(sel[id]!=null) delete sel[id]; else sel[id]=-1;
+      }
+      draw();
+    });
+  };
+  draw();
+  // Lo que se devuelve rehace la lista SÓLO si las partes cambiaron de verdad: si no,
+  // salir del campo de las partes la rehacía justo cuando se estaba tocando un contenido
+  // y se comía ese toque.
+  return ()=>{ const parts=getParts(); if((parts||[]).join("|")!==sig) draw(); };
+}
+// Los contenidos de un examen, para mostrar (no para elegir): agrupados por nota cuando
+// están atados, así se ve de un vistazo qué evalúa cada parte.
+function examTopicsReadHTML(e,allTopics){
+  const byId={}; allTopics.forEach(tp=>{ byId[tp.id]=tp; });
+  const chip=tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`;
+  const extras=(e.extraTopics||[]).map(x=>`<span class="topicchk on" style="cursor:default;background:var(--blue-tint);color:var(--blue-ink);">${esc(x)}</span>`).join("");
+  const grupos=examGruposDeContenidos(e);
+  if(!grupos){
+    const chips=(e.topicIds||[]).map(id=>byId[id]).filter(Boolean).map(chip).join("");
+    return `<div class="topicchecks">${chips}${extras}</div>`;
+  }
+  const atados=grupos.reduce((a,b)=>a.concat(b||[]),[]);
+  const sueltos=(e.topicIds||[]).filter(id=>!atados.includes(id)).map(id=>byId[id]).filter(Boolean);
+  const bloques=grupos.map((arr,pi)=>{
+    const tps=(arr||[]).map(id=>byId[id]).filter(Boolean);
+    if(!tps.length) return "";
+    return `<div class="etp-part-lbl">${esc(e.parts[pi])}</div><div class="topicchecks">${tps.map(chip).join("")}</div>`;
+  }).join("");
+  const resto=(sueltos.length||extras)?`<div class="topicchecks" style="margin-top:8px;">${sueltos.map(chip).join("")}${extras}</div>`:"";
+  return bloques+resto;
+}
 function promptEditExamTopics(e,allTopics,onSaved){
   // "extraCurrent" son contenidos sueltos que quedaron de la versión vieja (cuando sí se
   // podían escribir acá) — se pueden seguir sacando, pero no se pueden agregar más.
   let extraCurrent=(e.extraTopics||[]).slice();
   const extraListHTML=()=>extraCurrent.length?`<div style="margin-top:12px;"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);margin-bottom:6px;">Contenido extra cargado antes <span style="font-weight:500;text-transform:none;">(tocá para sacarlo)</span></label><div class="topicchecks" id="et_extra_list">${extraCurrent.map((et,i)=>`<span class="topicchk on" data-exidx="${i}" style="cursor:pointer;">${esc(et)} <b style="margin-left:4px;">✕</b></span>`).join("")}</div></div>`:"";
-  openDlg("Contenidos del examen",`${allTopics.length?`<div class="topicchecks" id="et_topics">${allTopics.map(tp=>`<button class="topicchk ${(e.topicIds||[]).includes(tp.id)?"on":""}" data-etid="${tp.id}">${esc(tp.text)}</button>`).join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin:0 2px 4px;">Todavía no cargaste contenidos en la ficha del curso. Andá a "Contenidos" para cargarlos y después volvé acá a elegirlos.</div>`}
+  const sel=selDesdeExamen(e);
+  const parts=examTienePartes(e)?e.parts:null;
+  openDlg("Contenidos del examen",`<div id="et_topics"></div>
     <div id="et_extra_wrap">${extraListHTML()}</div>
     <div class="dlg-actions"><button class="btn subtle" id="et_cancel">Cancelar</button><button class="btn" id="et_ok">Guardar</button></div>`,
     "Si te falta algún contenido, cargalo primero en \"Contenidos\" y después elegilo acá.");
-  $("#dlgBody").querySelectorAll("[data-etid]").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
+  mountExamTopicsPicker($("#et_topics"),()=>parts,allTopics,sel);
   function wireExtraRemove(){
     $("#dlgBody").querySelectorAll("[data-exidx]").forEach(chip=>chip.onclick=()=>{
       extraCurrent.splice(+chip.dataset.exidx,1);
@@ -5301,7 +5424,12 @@ function promptEditExamTopics(e,allTopics,onSaved){
   }
   wireExtraRemove();
   $("#et_cancel").onclick=closeDlg;
-  $("#et_ok").onclick=()=>{ e.topicIds=[...$("#dlgBody").querySelectorAll(".topicchk.on")].map(b=>b.dataset.etid); e.extraTopics=extraCurrent; save(); closeDlg(); onSaved&&onSaved(); };
+  $("#et_ok").onclick=()=>{
+    const r=selHaciaExamen(sel,parts,allTopics);
+    e.topicIds=r.topicIds;
+    if(r.partTopicIds) e.partTopicIds=r.partTopicIds; else delete e.partTopicIds;
+    e.extraTopics=extraCurrent; save(); closeDlg(); onSaved&&onSaved();
+  };
 }
 function renderExamEntry(g,t,e,body){
   const tk=view.term||"1"; const prog=(g.programa||{c1:[],c2:[]});
@@ -5314,7 +5442,7 @@ function renderExamEntry(g,t,e,body){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);">Contenidos evaluados</div>
       <button class="link" style="font-size:12px;" id="editTopics">Editar</button></div>
-    <div class="topicchecks">${examTopics.map(tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`).join("")}${extraTopics.map(t=>`<span class="topicchk on" style="cursor:default;background:var(--blue-tint);color:var(--blue-ink);">${esc(t)}</span>`).join("")}</div></div>`
+    ${examTopicsReadHTML(e,allTopics)}</div>`
     :`<div style="font-size:12px;color:var(--faint);margin:0 2px 14px;display:flex;justify-content:space-between;align-items:center;">
       <span>Sin contenidos seleccionados.</span><button class="link" style="font-size:12px;" id="editTopics">+ Agregar</button></div>`;
   const isTP=e.type==="tp";
@@ -6424,9 +6552,11 @@ function promptNewExam(t,g,type){
   // escribiera uno suelto acá, no tendría id de la ficha del curso y no podría contarse
   // como pendiente en Intensificación cuando el alumno no aprueba. Si falta algo, primero
   // se carga allá y recién después se elige acá.
+  // El panel va DESPUÉS del de "varias notas" a propósito: primero se decide si la
+  // evaluación se separa en notas, y recién ahí se elige qué contenido va en cada una.
   const examTopics=allTopics.filter(tp=>["gram","voc","propio"].includes(tp.cls||"gram"));
   const topicsPanel=examTopics.length?`<div class="dlg-field"><label>Contenidos a evaluar <span style="font-size:11px;color:var(--muted);">(Gramática y Vocabulario)</span></label>
-    <div class="topicchecks" id="e_topics">${examTopics.map(tp=>{ const cat=PROG_CATS.find(c=>c.id===(tp.cls||"gram"))||PROG_CATS[0]; return `<button class="topicchk" data-etid="${tp.id}" style="border-color:${cat.ink}30;">${esc(tp.text)}</button>`; }).join("")}</div></div>`
+    <div id="e_topics"></div></div>`
     :`<div style="font-size:12px;color:var(--faint);margin:0 2px 12px;">Cargá contenidos de Gramática o Vocabulario en la ficha del curso para elegirlos acá.</div>`;
   const quickDates=upcomingClassDates(t);
   // Un recuperatorio se ata a la evaluación que recupera: así sólo se listan los alumnos
@@ -6472,7 +6602,18 @@ function promptNewExam(t,g,type){
   const n=$("#e_name"); setTimeout(()=>n.focus(),60);
   const dateInp=$("#e_date");
   $("#dlgBody").querySelectorAll("[data-qd]").forEach(b=>b.onclick=()=>{ dateInp.value=b.dataset.qd; $("#dlgBody").querySelectorAll("[data-qd]").forEach(x=>x.classList.toggle("on",x===b)); });
-  $("#dlgBody").querySelectorAll("[data-etid]").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
+  // Las partes se escriben arriba ("Vocabulary, Grammar") y el selector de contenidos se
+  // reacomoda solo para pedir de qué nota es cada uno.
+  const partsInp=$("#e_parts");
+  const partsAhora=()=>{
+    const raw=(partsInp&&partsInp.value.trim())||"";
+    const list=raw?raw.split(",").map(x=>x.trim()).filter(Boolean):[];
+    return list.length>=2?list:null;
+  };
+  const selTopics={};
+  const topicsBox=$("#e_topics");
+  const redrawTopics=topicsBox?mountExamTopicsPicker(topicsBox,partsAhora,examTopics,selTopics):null;
+  if(partsInp&&redrawTopics){ partsInp.addEventListener("change",redrawTopics); partsInp.addEventListener("blur",redrawTopics); }
   let selPeriod=guessedPeriod;
   const periodRow=$("#e_period_row"), periodOtroInp=$("#e_period_otro");
   if(periodRow){
@@ -6499,12 +6640,13 @@ function promptNewExam(t,g,type){
       return;
     }
     const v=n.value.trim()||meta.label;
-    const selIds=[...$("#dlgBody").querySelectorAll(".topicchk.on")].map(b=>b.dataset.etid);
-    const e=addExam(t,v,dateInp.value||todayISO(),"",type);
-    if(selIds.length) e.topicIds=selIds;
-    const linkVal=($("#e_link")&&$("#e_link").value.trim())||""; if(linkVal) e.link=linkVal;
     const partsRaw=($("#e_parts")&&$("#e_parts").value.trim())||"";
     const partsList=partsRaw?partsRaw.split(",").map(x=>x.trim()).filter(Boolean):[];
+    const r=selHaciaExamen(selTopics,partsList.length>=2?partsList:null,examTopics);
+    const e=addExam(t,v,dateInp.value||todayISO(),"",type);
+    if(r.topicIds.length) e.topicIds=r.topicIds;
+    if(r.partTopicIds) e.partTopicIds=r.partTopicIds;
+    const linkVal=($("#e_link")&&$("#e_link").value.trim())||""; if(linkVal) e.link=linkVal;
     if(partsList.length>=2) e.parts=partsList;
     if(isIntensEval&&selPeriod){ e.period=selPeriod; if(selPeriod==="otro") e.periodOtro=(periodOtroInp&&periodOtroInp.value.trim())||""; }
     if(isRecu&&selRecuOf){
@@ -6638,6 +6780,13 @@ function promptEditExam(g,t,e){
       const partsRaw=eePartsInp.value.trim();
       const partsList=partsRaw?partsRaw.split(",").map(x=>x.trim()).filter(Boolean):[];
       if(partsList.length>=2) e.parts=partsList; else delete e.parts;
+      // Los contenidos atados a cada nota siguen a las partes: renombrar una no rompe
+      // nada, y si se saca una nota, sus contenidos quedan sueltos (siguen evaluados,
+      // pero vuelven a contarse como los de una evaluación sin partir).
+      if(Array.isArray(e.partTopicIds)){
+        if(partsList.length>=2) e.partTopicIds=partsList.map((_,i)=>e.partTopicIds[i]||[]);
+        else delete e.partTopicIds;
+      }
       // El recuperatorio atado lleva siempre las mismas notas que su evaluación.
       const miRecu=linkedRecuExam(t,e.id);
       if(miRecu){ if(partsList.length>=2) miRecu.parts=partsList.slice(); else delete miRecu.parts; }
