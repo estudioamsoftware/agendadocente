@@ -785,10 +785,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-08-28-compra-play-d';
+const APP_BUILD='2026-08-30-ayuda';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-53';
+const APP_VER='v2026.08.30-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -7066,52 +7066,86 @@ function promptAyuda(startTab){
         <div style="font-weight:700;margin-bottom:10px;">Primeros pasos:</div>
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
           <div>1. <b>Conectar Google Drive</b> → Menú ⋯ → "Conectar con Google Drive"</div>
-          <div>2. <b>Actualizar Drive</b> (por si algo quedó sin subir) → Menú ⋯ → "Actualizar Drive"</div>
+          <div>2. <b>Actualizar Drive</b> (por si algo quedó sin subir — por ejemplo, después de estar sin internet) → Menú ⋯ → "Actualizar Drive"</div>
           <div>3. <b>Crear backup / punto de restauración</b> (para poder volver atrás si borrás algo sin querer) → Menú ⋯ → "Crear backup / punto de restauración"</div>
           <div>4. <b>Restaurar backup de Drive</b> (volver a un punto guardado) → Menú ⋯ → "Restaurar backup de Drive"</div>
-          <div>5. <b>Copias en este dispositivo</b> (una por día, sin depender de Drive) → Menú ⋯ → "Copias en este dispositivo"</div>
+        </div>
+        <div style="font-weight:700;margin-bottom:8px;">Una copia que no depende de Drive:</div>
+        <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;margin-bottom:16px;">
+          <div>• <b>Guardar copia en un archivo</b> → Menú ⋯ → "Guardar copia en un archivo". Se descarga un archivo a este dispositivo (queda en Descargas). Es la copia que te sirve para cambiar de teléfono o para guardarla aparte.</div>
+          <div>• <b>Restaurar desde un archivo</b> → Menú ⋯ → "Restaurar desde un archivo". Cargás ese archivo y vuelve todo.</div>
         </div>
         <div style="font-size:11.5px;color:var(--muted);opacity:.65;margin-bottom:12px;">Versión: ${APP_BUILD}</div>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
         <div style="font-weight:700;margin-bottom:8px;">Instalar como app:</div>
-        <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+        <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;margin-bottom:16px;">
           <div>• En el navegador de la <b>tablet</b>: abrí Agenda Docente y elegí <b>"Agregar a pantalla de inicio"</b></div>
           <div>• En <b>Android</b>: aparece automáticamente un cartel abajo</div>
           <div>• Así la usás como app, sin pasar por el navegador</div>
+        </div>
+        <div style="font-weight:700;margin-bottom:8px;">Si te parece que quedó vieja:</div>
+        <div style="font-size:12.5px;color:var(--muted);">
+          Tocá la <b>flechita circular</b> ↻ de la barra de arriba ("Recargar la app"). Trae la última versión sin que tengas que borrar nada en la configuración del teléfono. Debajo del logo siempre se ve el número de versión, así podés chequear si te llegó la actualización.
         </div>
       </div>
       <div id="ayuda-usar" class="ayuda-tab" style="display:none;">
         <div style="font-weight:700;margin-bottom:10px;">Para empezar con un curso nuevo:</div>
         <div class="onboard-steps" style="margin-bottom:16px;">
           <div class="onboard-step"><span class="step-n">1</span><span>Creá el curso con <b>+ Agregar curso</b></span></div>
-          <div class="onboard-step"><span class="step-n">2</span><span>En <b>La ficha del curso → Alumnos</b>: cargá la lista (podés pegar texto o subir Excel)</span></div>
+          <div class="onboard-step"><span class="step-n">2</span><span>En <b>La ficha del curso → Alumnos</b>: cargá la lista a mano (apellido y nombre), o de una con <b>"Importar lista de Excel"</b> (.xlsx, .xls o .csv)</span></div>
           <div class="onboard-step"><span class="step-n">3</span><span>En <b>La ficha del curso → Escuela y horarios</b>: elegí los días y el horario. Después, en <b>Ciclo lectivo</b>: generá las clases del cuatrimestre y elegí tu escala de valoraciones</span></div>
-          <div class="onboard-step"><span class="step-n">4</span><span>En <b>El día a día → Asistencia</b>: pasá lista cada clase. La fecha de hoy aparece sola.</span></div>
-          <div class="onboard-step"><span class="step-n">5</span><span>En <b>El día a día → Exámenes y notas</b>: tocá "+ Agregar", elegí qué es (Evaluación, Recuperatorio, TP, Carpeta, Proyecto, etc.) y la fecha. Después entrá a esa entrada y cargá la nota de cada alumno.</span></div>
-          <div class="onboard-step"><span class="step-n">6</span><span>En <b>El día a día → Resumen → Notas finales</b>: tocá la celda de "Notas de avance" para asignar TEA/TEP/TED, y la celda de "Nota C1°/C2°" para cargar la nota de cierre de cada cuatrimestre.</span></div>
+          <div class="onboard-step"><span class="step-n">4</span><span>En <b>La ficha del curso → Contenidos</b>: cargá los temas del programa (del DC PBA, escritos a mano, o importados de un Word o PDF). No es obligatorio, pero cuanto más completo esté, más cosas se completan solas después</span></div>
+          <div class="onboard-step"><span class="step-n">5</span><span>En <b>El día a día → Asistencia</b>: pasá lista cada clase. La fecha de hoy aparece sola.</span></div>
+          <div class="onboard-step"><span class="step-n">6</span><span>En <b>El día a día → Exámenes y notas</b>: tocá "+ Agregar", elegí qué es (Evaluación, Recuperatorio, TP, Carpeta, Proyecto, etc.) y la fecha. Después entrá a esa entrada y cargá la nota de cada alumno.</span></div>
+          <div class="onboard-step"><span class="step-n">7</span><span>En <b>El día a día → Resumen → Notas finales</b>: tocá la celda de "Notas de avance" para asignar TEA/TEP/TED, y la celda de "Nota C1°/C2°" para cargar la nota de cierre de cada cuatrimestre.</span></div>
         </div>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
         <div style="font-weight:700;margin-bottom:8px;">Cómo fluyen las notas:</div>
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
-          <div>• Todo lo que evaluás se crea en <b>Exámenes y recup</b> con su fecha</div>
+          <div>• Todo lo que evaluás se crea en <b>Exámenes y notas</b> con su fecha</div>
           <div>• Las notas que cargás ahí aparecen automáticamente en <b>Clases</b> si coincide la fecha</div>
-          <div>• Si alguien rinde recuperatorio, se carga como una entrada aparte ("+ Agregar → Recuperatorio")</div>
           <div>• Todas se ven en <b>Resumen → Calificaciones</b> y <b>Notas finales</b> como columnas</div>
           <div>• <b>Carpeta</b> = nota aparte para trabajo de clase/carpeta independiente de exámenes</div>
           <div>• <b>Nota final C1°/C2°</b> = la única que cargás vos manualmente, con tu criterio</div>
         </div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
+        <div style="font-weight:700;margin-bottom:8px;">Un examen con varias notas:</div>
+        <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+          <div>• Al crear la evaluación podés partirla en varias notas (ej.: <b>Gramática, Vocabulario</b>), separadas por coma. Cada parte se carga aparte y la nota del examen sale sola, como promedio.</div>
+          <div>• Aprobar es llegar al mínimo en <b>todas</b> las partes: si se llevó una sola, el promedio no la tapa.</div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
+        <div style="font-weight:700;margin-bottom:8px;">El recuperatorio:</div>
+        <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+          <div>• Se carga como una entrada aparte: <b>"+ Agregar → Recuperatorio"</b>, eligiendo de qué evaluación es. Aparecen solo los alumnos que la tienen que recuperar.</div>
+          <div>• Si esa evaluación tenía varias notas, la recu <b>se las lleva solas</b>, y cada alumno rinde nada más que las partes que se llevó: las que ya aprobó salen con "–" y no se escriben.</div>
+          <div>• El recuperatorio <b>nunca baja la nota</b>: si le fue peor que en la evaluación, le queda la original.</div>
+          <div>• Faltar al recuperatorio cuenta como 1 — ahí ya no hay otra instancia por delante.</div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--line);margin:12px 0;">
+        <div style="font-weight:700;margin-bottom:8px;">Intensificación:</div>
+        <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+          <div>• Ahí aparecen los alumnos que terminaron el cuatrimestre desaprobados, y <b>los contenidos que se lleva cada uno salen solos</b>: son los de las evaluaciones que no aprobó. No hace falta que los saques a mano uno por uno.</div>
+          <div>• Mira la nota <b>ya con el recuperatorio aplicado</b>: si recuperó, ese contenido no se lo lleva. Una evaluación <b>sin nota también cuenta</b> como pendiente (si no la rindió, no la aprobó). Las evaluaciones de intensificación no entran, porque son de la instancia siguiente.</div>
+          <div>• Si una evaluación no tiene contenidos cargados, de ahí no se puede deducir nada: en ese caso se lleva <b>todo el cuatrimestre</b> y vos vas sacando, como antes. Así que cuanto más cargues los contenidos al crear cada evaluación, más fina sale la lista.</div>
+          <div>• La lista se arma <b>la primera vez</b> y después no se pisa, para no borrarte lo que edites a mano. Para un alumno que quedó con la lista vieja (con todo cargado), tocá <b>"↻ Rehacer la lista con lo que desaprobó"</b> abajo de su tarjeta: te avisa cuántos contenidos van a quedar y la rehace.</div>
+        </div>
       </div>
       <div id="ayuda-tips" class="ayuda-tab" style="display:none;">
         <div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:7px;">
-          <div><b>📅 Calendario académico</b><br>Licencias, paros, suspensiones y vacaciones</div>
+          <div><b>📅 Calendario</b><br>Licencias, paros, suspensiones, feriados y las vacaciones de invierno (se cargan una sola vez y valen para todos tus cursos). También las fechas de cierre de los listados de inscripción: te avisa en Inicio antes de que venzan</div>
+          <div><b>🗓️ La ficha del curso → Ciclo lectivo</b><br>Las fechas del año y el botón <b>Generar clases</b>. Ojo: primero tenés que tener cargados los días de clase en Escuela y horarios</div>
+          <div><b>⭐ Valoraciones (la escala del curso)</b><br>Es con lo que calificás clase a clase. Se elige por curso, en <b>Ciclo lectivo → Valoraciones</b> (o con el atajo "Valoraciones" en Clases). <b>La podés cambiar cuando quieras</b>, aunque ya tengas notas: si la escala nueva tiene la misma cantidad de niveles, te ofrece traducirlas solas; si no, te avisa que las viejas dejan de verse (no se borran)</div>
+          <div><b>📚 La ficha del curso → Contenidos</b><br>Cargá del DC PBA, escribí los tuyos, o usá <b>"📄 Importar contenidos desde un Word o PDF"</b> para traerlos de un archivo. Después aparecen para tildar al crear cada examen — y de ahí sale la lista de Intensificación</div>
+          <div><b>📝 El día a día → Clases</b><br>El tema y las páginas que diste cada día, más la valoración de trabajo en clase de cada alumno. Si ese día había examen, la nota aparece sola (se carga desde Exámenes y notas)</div>
           <div><b>📄 La ficha del curso → Documentos</b><br>Subí diagnóstico, planificación y programa; marcá si ya los entregaste</div>
-          <div><b>📚 La ficha del curso → Contenidos</b><br>Cargá del DC PBA o agregá vocabulario extra; aparecen al crear exámenes</div>
           <div><b>✓ Tildes en Notas finales</b><br>Solo para marcarte que ya pasaste la nota al cuaderno. No afecta cálculos</div>
           <div><b>1 · Motivo (Faltó / NQ / IA)</b><br>Aparece cuando cargás un 1 en evaluación. Ahí marcás el motivo. Se ve como marquita en General</div>
+          <div><b>📤 Exportar notas (CSV)</b><br>En Exámenes y notas, abajo de la lista. Baja una planilla con las notas de todos los exámenes del cuatrimestre, para abrir en Excel</div>
+          <div><b>🗑️ Papelera</b><br>Lo que borrás (cursos, alumnos, exámenes, documentos) va a parar ahí y lo podés recuperar. No se vacía sola: se borra definitivamente solo si vos lo borrás desde ahí</div>
           <div><b>Actualizar Drive</b><br>Todo se sube solo al cargarlo. Este botón es para reintentar si algo quedó pendiente — por ejemplo, después de estar sin internet</div>
         </div>
       </div>
-    </div>
     <div class="dlg-actions" style="margin-top:14px;"><button class="btn" id="ayuda_ok">Entendido</button></div>`);
   const tabs=document.querySelectorAll("#ayudaTabs .tab");
   tabs.forEach(tab=>{ tab.onclick=()=>{ const tabName=tab.dataset.tab; tabs.forEach(t=>t.classList.remove("sel-tab")); tab.classList.add("sel-tab"); document.querySelectorAll(".ayuda-tab").forEach(t=>t.style.display="none"); document.getElementById("ayuda-"+tabName).style.display="block"; }; });
