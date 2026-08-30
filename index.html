@@ -803,7 +803,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-17';
+const APP_VER='v2026.08.30-18';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2102,15 +2102,13 @@ const INTENS_PERIOD_OPTIONS=PERIODOS.concat([{id:'otro',label:'Otro mes'}]);
 // primera vez que se ve a un alumno acá se le precargan todos como pendientes, y el
 // profe va sacando (×) los que ya tiene aprobados. "topicsInit" marca que ya se hizo
 // esa precarga, para no volver a pisar lo que el profe fue sacando a mano.
-function ensureDeuda(t,sid,defaultTopicIds){
+function ensureDeuda(t,sid){
   if(!t.deudas) t.deudas={};
-  if(!t.deudas[sid]) t.deudas[sid]={topics:defaultTopicIds?[...defaultTopicIds]:[],periodos:{},topicsInit:!!defaultTopicIds};
-  else if(defaultTopicIds&&!t.deudas[sid].topicsInit){
-    if(!t.deudas[sid].topics||!t.deudas[sid].topics.length) t.deudas[sid].topics=[...defaultTopicIds];
-    t.deudas[sid].topicsInit=true;
-  }
-  PERIODOS.forEach(p=>{ if(!t.deudas[sid].periodos[p.id]) t.deudas[sid].periodos[p.id]={nota:null,cleared:[]}; });
-  return t.deudas[sid];
+  if(!t.deudas[sid]) t.deudas[sid]={periodos:{}};
+  const d=t.deudas[sid];
+  if(!d.periodos) d.periodos={};
+  PERIODOS.forEach(p=>{ if(!d.periodos[p.id]) d.periodos[p.id]={nota:null,cleared:[]}; });
+  return d;
 }
 // Mínimo para aprobar la intensificación, por período: 7 en general, 4 en Febrero/Marzo (así son la mayoría
 // de los DC). Queda editable por si algún colegio usa otro criterio. Migra sola: si el curso todavía tiene
@@ -2132,7 +2130,6 @@ function intensPassedAt(t,sid,ipmMap){
   return null;
 }
 function setModuloCompleto(t,sid,val){ const d=ensureDeuda(t,sid); if(val) d.moduloEstado="completo"; else delete d.moduloEstado; save(); }
-function setDeudasTopics(t,sid,topicIds){ const d=ensureDeuda(t,sid); d.topics=topicIds; save(); }
 function setPeriodoResult(t,sid,pid,nota,clearedIds){ const d=ensureDeuda(t,sid); d.periodos[pid]={nota,cleared:clearedIds||[]}; save(); }
 // Adivina a qué período de intensificación corresponde una fecha (para preseleccionarlo
 // al crear una Evaluación de intensificación): Julio/Noviembre/Diciembre/Febrero/Marzo.
@@ -2155,14 +2152,6 @@ function syncAllIntensEvalGrades(t,e){
   if(!e||e.type!=="intens_eval"||!e.period||e.period==="otro"||!t.grades) return;
   Object.keys(t.grades).forEach(sid=>{ if(t.grades[sid][e.id]) syncIntensEvalGrade(t,sid,e); });
 }
-function getOwed(t,sid,pid){
-  if(!t.deudas||!t.deudas[sid]) return [];
-  const d=t.deudas[sid]; if(!d.topics||!d.topics.length) return [];
-  const order=PERIODOS.map(p=>p.id); const idx=order.indexOf(pid);
-  let rem=[...d.topics];
-  for(let i=0;i<idx;i++){ const cl=(d.periodos[order[i]]||{}).cleared||[]; rem=rem.filter(id=>!cl.includes(id)); }
-  return rem;
-}
 // Los contenidos que el alumno se lleva: los de cada evaluación del cuatrimestre que no
 // terminó aprobando (mirando la nota efectiva, o sea ya con el recuperatorio aplicado).
 // Sin nota también cuenta como pendiente: si no la rindió, no la aprobó. Las evaluaciones
@@ -2183,35 +2172,137 @@ function examPartEffective(t,sid,e,pi,pm){
   if(typeof rv==="number") return typeof orig==="number"?Math.max(rv,orig):rv;
   return typeof orig==="number"?orig:null;
 }
-function topicsDesaprobados(t,sid,pm){
-  const ids=[];
-  const add=arr=>(arr||[]).forEach(tid=>{ if(!ids.includes(tid)) ids.push(tid); });
+/* ---- Lo que el alumno se lleva a Intensificación ----
+   Cargar contenidos es opcional: si la docente no los cargó, la deuda igual sale sola,
+   nombrada con lo que sí escribió (el nombre de la evaluación, o el de cada nota).
+   Cada cosa pendiente es una clave de texto:
+     "<idDeContenido>"      un contenido del programa
+     "ex:<idExamen>"        una evaluación / TP / proyecto / carpeta entera
+     "ex:<idExamen>#<n>"    una de las notas de una evaluación partida, sin contenidos   */
+function deudaKeyExam(id,pi){ return pi==null?("ex:"+id):("ex:"+id+"#"+pi); }
+// Los que no se rinden por contenidos: se deben enteros, con su nombre.
+const DEUDA_ENTEROS=["carpeta","tp","proyecto"];
+function deudaAuto(t,sid,pm){
+  const out=[];
+  const add=k=>{ if(k&&!out.includes(k)) out.push(k); };
+  const addAll=arr=>(arr||[]).forEach(add);
   (t.exams||[]).forEach(e=>{
     if(e.recuOf) return; // el recu ya se refleja en la nota de su evaluación
-    if(String(e.type||"").startsWith("intens_")) return;
-    if(!Array.isArray(e.topicIds)||!e.topicIds.length) return;
+    if(String(e.type||"").startsWith("intens_")) return; // son de la instancia siguiente
     const eff=examEffective(t,sid,e.id,pm);
     const aprobo=(eff!=null&&eff>=pm);
-    const grupos=examGruposDeContenidos(e);
-    // Sin partes (o sin atar los contenidos a cada parte): se lleva todo lo de esa
-    // evaluación, como siempre.
-    if(!grupos){ if(!aprobo) add(e.topicIds); return; }
-    // Con los contenidos atados a cada nota, se puede ser preciso: si sacó 9 en Vocabulary
-    // y 3 en Grammar, sólo se lleva lo de Grammar.
-    grupos.forEach((arr,pi)=>{
-      const v=examPartEffective(t,sid,e,pi,pm);
-      if(v==null||v<pm) add(arr);
-    });
-    // Un contenido elegido pero que quedó sin parte (ej.: se borró una parte después) se
-    // comporta como antes: entra si la evaluación no se aprobó.
+    // Carpeta, TP y proyecto no se dividen en contenidos: si no lo aprobó, lo debe entero.
+    if(DEUDA_ENTEROS.includes(e.type)){ if(!aprobo) add(deudaKeyExam(e.id)); return; }
+    const tieneContenidos=Array.isArray(e.topicIds)&&e.topicIds.length;
+    const atadura=examGruposDeContenidos(e);
+    const hayAtadura=!!atadura&&atadura.some(a=>a&&a.length);
+    // Nota por nota: cuando los contenidos están atados a cada una, o cuando no hay
+    // contenidos y lo único que tenemos para nombrar la deuda es el título de la nota.
+    if(examTienePartes(e)&&(hayAtadura||!tieneContenidos)){
+      const grupos=atadura||e.parts.map(()=>[]);
+      const fallaron=e.parts.map((_,pi)=>pi).filter(pi=>{
+        const v=examPartEffective(t,sid,e,pi,pm);
+        return v==null||v<pm;
+      });
+      // Si se llevó todas las notas y no hay contenidos que nombrar, se debe la
+      // evaluación entera — más corto de leer que repetir todas las partes.
+      if(!hayAtadura&&fallaron.length===e.parts.length){ if(fallaron.length) add(deudaKeyExam(e.id)); }
+      else fallaron.forEach(pi=>{
+        const arr=grupos[pi]||[];
+        if(arr.length) addAll(arr);         // con contenidos atados: van los contenidos
+        else add(deudaKeyExam(e.id,pi));    // sin contenidos: va la nota con su nombre
+      });
+      // Un contenido elegido que quedó sin nota (ej.: se borró una parte después) entra si
+      // la evaluación no se aprobó — el criterio de siempre.
+      if(!aprobo){
+        const atados=grupos.reduce((a,b)=>a.concat(b||[]),[]);
+        addAll((e.topicIds||[]).filter(id=>!atados.includes(id)));
+      }
+      return;
+    }
+    // Sin partes (o partida pero con los contenidos sin atar a cada nota): no hay forma de
+    // saber qué parte pesó, así que se lleva todo lo de esa evaluación.
     if(!aprobo){
-      const atados=grupos.reduce((a,b)=>a.concat(b||[]),[]);
-      add(e.topicIds.filter(id=>!atados.includes(id)));
+      if(tieneContenidos) addAll(e.topicIds);
+      else add(deudaKeyExam(e.id)); // sin contenidos cargados: debe la evaluación entera
     }
   });
-  return ids;
+  return out;
 }
-function hasAnyDeuda(t,sid){ return !!(t.deudas&&t.deudas[sid]&&t.deudas[sid].topics&&t.deudas[sid].topics.length); }
+// Cómo se muestra cada cosa pendiente. Devuelve null si ya no existe (ej.: se borró la
+// evaluación o el contenido) — así la deuda se limpia sola, sin dejar restos raros.
+function deudaLabel(t,topicMap,key){
+  // Viene de la marca "solo debe carpeta/TP" que antes se ponía a mano.
+  if(key==="carpeta") return {text:"📓 Carpeta / TP",kind:"exam"};
+  if(String(key).startsWith("ex:")){
+    const rest=key.slice(3), hash=rest.indexOf("#");
+    const id=hash<0?rest:rest.slice(0,hash);
+    const pi=hash<0?null:parseInt(rest.slice(hash+1),10);
+    const e=(t.exams||[]).find(x=>x.id===id);
+    if(!e) return null;
+    if(pi!=null&&(!Array.isArray(e.parts)||!e.parts[pi])) return null;
+    const meta=examTypeMeta(e.type);
+    const nombre=(e.name||"").trim()||meta.label;
+    return {text:meta.icon+" "+nombre+(pi!=null?" — "+e.parts[pi]:""),kind:"exam"};
+  }
+  const txt=topicMap[key];
+  return txt?{text:txt,kind:"topic"}:null;
+}
+// Lo que la versión vieja habría puesto sola: se usa sólo para migrar, para saber qué
+// había tocado la docente a mano antes de que la lista pasara a calcularse sola.
+function deudaLegacy(t,sid,pm,allTopicIds){
+  const ids=[];
+  (t.exams||[]).forEach(e=>{
+    if(e.recuOf||String(e.type||"").startsWith("intens_")) return;
+    if(!Array.isArray(e.topicIds)||!e.topicIds.length) return;
+    const eff=examEffective(t,sid,e.id,pm);
+    if(eff==null||eff<pm) e.topicIds.forEach(id=>{ if(!ids.includes(id)) ids.push(id); });
+  });
+  const filtrados=ids.filter(id=>allTopicIds.includes(id));
+  return filtrados.length?filtrados:allTopicIds.slice();
+}
+// Antes la lista se guardaba entera (d.topics) y se editaba a mano; ahora se calcula sola
+// y lo único que se guarda son las excepciones. Si la docente nunca la tocó, arranca
+// limpia con el criterio nuevo; si la había editado, se conserva lo que sacó y lo que
+// agregó.
+function migrarDeuda(t,sid,pm,allTopicIds){
+  const d=ensureDeuda(t,sid);
+  if(d.migrado) return d;
+  if(Array.isArray(d.topics)){
+    const vieja=d.topics;
+    const base=deudaLegacy(t,sid,pm,allTopicIds);
+    const quitados=base.filter(k=>!vieja.includes(k));
+    const extra=vieja.filter(k=>!base.includes(k));
+    if(quitados.length) d.quitados=quitados;
+    if(extra.length) d.extra=extra;
+    delete d.topics;
+  }
+  // El "solo debe carpeta/TP" que se marcaba a mano pasa a ser una cosa pendiente más.
+  if(d.debeCarpeta){ d.extra=(d.extra||[]).concat("carpeta"); delete d.debeCarpeta; }
+  delete d.topicsInit;
+  d.migrado=true; save();
+  return d;
+}
+// La lista que se ve: lo que sale solo, menos lo que la docente sacó, más lo que agregó.
+function deudaLista(t,sid,pm){
+  const d=ensureDeuda(t,sid);
+  const quitados=d.quitados||[];
+  const out=deudaAuto(t,sid,pm).filter(k=>!quitados.includes(k));
+  (d.extra||[]).forEach(k=>{ if(!out.includes(k)) out.push(k); });
+  return out;
+}
+// Sacar o poner una cosa de la lista, guardando sólo la excepción.
+function setDeudaItem(t,sid,key,quiere,pm){
+  const d=ensureDeuda(t,sid);
+  const enAuto=deudaAuto(t,sid,pm).includes(key);
+  d.quitados=(d.quitados||[]).filter(k=>k!==key);
+  d.extra=(d.extra||[]).filter(k=>k!==key);
+  if(quiere&&!enAuto) d.extra.push(key);
+  if(!quiere&&enAuto) d.quitados.push(key);
+  if(!d.quitados.length) delete d.quitados;
+  if(!d.extra.length) delete d.extra;
+  save();
+}
 function setFinal(t,sid,v){ if(v==null) delete t.final[sid]; else t.final[sid]=v; save(); }
 function finalAuto(t,sid,pm){
   // Promedio de todas las notas que ya tiene el alumno en el cuatrimestre (exámenes, recup., TP, etc.)
@@ -5323,7 +5414,7 @@ function renderExam(g,t,body){
 // Sólo se puede elegir de los contenidos que ya están cargados en "Contenidos" — si se
 // necesita algo que todavía no está ahí, primero hay que cargarlo allá. Un contenido
 // suelto, escrito acá sin id de la ficha del curso, no puede detectarse como pendiente en
-// Intensificación cuando el alumno no lo aprueba (ver `topicsDesaprobados`, que sólo mira
+// Intensificación cuando el alumno no lo aprueba (ver `deudaAuto`, que sólo mira
 // `topicIds`) — por eso ya no se puede tipear uno nuevo desde este cuadro.
 /* ---- Elegir los contenidos de un examen, y de qué parte es cada uno ---- */
 // "sel" es un objeto {idDelContenido: índiceDeParte}. -1 = elegido pero todavía sin parte
@@ -6195,15 +6286,15 @@ function renderIntens(g,t,body){
     // Precarga: los contenidos de las evaluaciones que no aprobó. Si no se puede deducir
     // ninguno (no cargó contenidos en las evaluaciones), se cae en el criterio viejo:
     // se lleva todo el cuatrimestre y el profe va sacando lo que sí aprobó.
-    const autoIds=topicsDesaprobados(t,s.id,pm).filter(id=>allTopicIds.includes(id));
-    const d=ensureDeuda(t,s.id,autoIds.length?autoIds:allTopicIds);
-    const owedIds=d.topics||[];
-    const debeCarpeta=!!d.debeCarpeta;
+    const d=migrarDeuda(t,s.id,pm,allTopicIds);
+    const owed=deudaLista(t,s.id,pm).map(k=>({key:k,lbl:deudaLabel(t,topicMap,k)})).filter(x=>x.lbl);
+    const quitadosVivos=(d.quitados||[]).filter(k=>deudaLabel(t,topicMap,k));
     const passedAt=intensPassedAt(t,s.id,ipm);
     const passedIdx=passedAt?PERIODOS.findIndex(p=>p.id===passedAt):-1;
-    const chipsArr=owedIds.map(tid=>`<span class="topicchk on" style="cursor:default;">${esc(topicMap[tid]||tid)}<button class="pc-x" data-rm-topic-sid="${s.id}" data-rm-topic-tid="${tid}" aria-label="Quitar">×</button></span>`);
-    if(debeCarpeta) chipsArr.push(`<span class="topicchk on" style="cursor:default;background:var(--blue-tint);color:var(--blue-ink);">📓 Carpeta / TP<button class="pc-x" data-carpeta-clear-sid="${s.id}" aria-label="Quitar">×</button></span>`);
-    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">Sin contenidos pendientes (${allTopics.length?"ya sacaste todos":"no cargaste contenidos en la ficha del curso"}).</div>`;
+    // Los contenidos van naranjas; lo que se debe entero (una evaluación, un TP, la
+    // carpeta) va azul, para que se distinga de un vistazo.
+    const chipsArr=owed.map(x=>`<span class="topicchk on" style="cursor:default;${x.lbl.kind==="exam"?"background:var(--blue-tint);color:var(--blue-ink);":""}">${esc(x.lbl.text)}<button class="pc-x" data-rm-topic-sid="${s.id}" data-rm-topic-tid="${esc(x.key)}" aria-label="Quitar">×</button></span>`);
+    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">No le queda nada pendiente${quitadosVivos.length?" (sacaste todo a mano)":""}.</div>`;
     const moduloCompleto=d.moduloEstado==="completo";
     const estadoBtns=`<div class="seg" style="margin:0;"><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="1" aria-pressed="${moduloCompleto}">Sí</button><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="0" aria-pressed="${!moduloCompleto}">No</button></div>`;
     const periodsHTML=PERIODOS.map((p,i)=>{
@@ -6217,14 +6308,13 @@ function renderIntens(g,t,body){
     const aprobadoBanner=passedAt?`<div style="font-size:12px;font-weight:700;color:var(--present-ink);background:var(--present-tint);border-radius:8px;padding:6px 10px;margin-top:10px;">✓ Aprobó la intensificación en ${PERIODOS.find(p=>p.id===passedAt).label}</div>`:"";
     return `<div class="card pcard">
       <div class="ptop"><span class="pname">${nameHTML(s,g)}</span><span class="chip ${es.cls}"><span class="cd"></span>${es.label}</span></div>
-      <div class="stat"><span class="s">Pendientes <b>${owedIds.length}</b> contenido${owedIds.length!==1?"s":""}${debeCarpeta?" + Carpeta/TP":""}</span></div>
-      <div class="infield" style="margin-top:8px;"><label>Contenidos pendientes de este cuatrimestre</label>
+      <div class="stat"><span class="s">Se lleva <b>${owed.length}</b> cosa${owed.length!==1?"s":""}</span></div>
+      <div class="infield" style="margin-top:8px;"><label>Qué se lleva de este cuatrimestre</label>
         ${topicsChips}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
-          <button class="btn subtle sm" data-choose-topics="${s.id}">Editar contenidos pendientes</button>
-          <button class="btn ${debeCarpeta?"":"subtle"} sm" data-toggle-carpeta-sid="${s.id}">📓 ${debeCarpeta?"✓ ":""}Solo debe carpeta/TP</button>
-        </div>
-        <button class="link" data-recalc-topics="${s.id}" style="font-size:11.5px;margin-top:8px;">↻ Rehacer la lista con lo que desaprobó</button></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;">
+          <button class="btn subtle sm" data-choose-topics="${s.id}">+ Agregar un contenido</button>
+          ${quitadosVivos.length?`<button class="link" data-undo-quitados="${s.id}" style="font-size:11.5px;">↩ Volver a poner lo que saqué (${quitadosVivos.length})</button>`:""}
+        </div></div>
       <div class="infield" style="margin-top:10px;"><label>¿Completó el módulo? (habilita a rendir)</label>
         ${estadoBtns}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${periodsHTML}</div>
@@ -6232,7 +6322,7 @@ function renderIntens(g,t,body){
     </div>`;
   }).join('');
   body.innerHTML=termSeg+passbar+moduloBanner+`<div id="intensCards">${cards}</div>
-    <div class="pagefoot">Los contenidos pendientes salen solos de las evaluaciones que el alumno no aprobó (ya contando el recuperatorio); podés sacar o agregar a mano los que quieras. Con una nota que llegue al mínimo de ese período (arriba de todo), ese alumno queda aprobado y el resto de los períodos se bloquea. Julio, Noviembre y Diciembre piden 7 por defecto; Febrero y Marzo piden 4 — ajustable si tu escuela usa otro criterio.</div>`;
+    <div class="pagefoot">La lista sale sola de todo lo que el alumno no aprobó, ya contando el recuperatorio: si la evaluación tiene contenidos cargados van los contenidos, y si no, va con el nombre que le pusiste (una carpeta, un TP o un proyecto se deben enteros). Se actualiza sola cuando cargás o corregís una nota; con la × sacás lo que no corresponda. Con una nota que llegue al mínimo de ese período (arriba de todo), ese alumno queda aprobado y el resto de los períodos se bloquea. Julio, Noviembre y Diciembre piden 7 por defecto; Febrero y Marzo piden 4 — ajustable si tu escuela usa otro criterio.</div>`;
   wireIntens(g,t);
   const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"documentos"});
   body.querySelectorAll("[data-modulo-completo-sid]").forEach(b=>b.onclick=()=>{
@@ -6249,45 +6339,30 @@ function renderIntens(g,t,body){
     d.periodos[pid]={...(d.periodos[pid]||{}),nota:v};
     save(); render();
   }));
-  body.querySelectorAll("[data-choose-topics]").forEach(b=>b.onclick=()=>promptChooseTopics(g,t,b.dataset.chooseTopics,allTopics));
-  body.querySelectorAll("[data-recalc-topics]").forEach(b=>b.onclick=()=>{
-    const sid=b.dataset.recalcTopics;
-    const st=g.students.find(x=>x.id===sid);
-    const ids=topicsDesaprobados(t,sid,pm).filter(id=>allTopicIds.includes(id));
-    if(!ids.length){ toast("No encontré evaluaciones desaprobadas con contenidos cargados"); return; }
-    confirmDlg("¿Rehacer la lista?",`Van a quedar los ${ids.length} contenido${ids.length===1?"":"s"} de las evaluaciones que ${dispName(st)} no aprobó. Lo que hayas sacado o agregado a mano en esta lista se pierde.`,"Rehacer",()=>{
-      setDeudasTopics(t,sid,ids); render(); toastSuccess("✓ Lista actualizada","#A9500A");
-    });
-  });
-  body.querySelectorAll("[data-toggle-carpeta-sid]").forEach(b=>b.onclick=()=>{
-    const sid=b.dataset.toggleCarpetaSid;
-    const d=ensureDeuda(t,sid);
-    d.debeCarpeta=!d.debeCarpeta;
-    save(); render();
-  });
-  body.querySelectorAll("[data-carpeta-clear-sid]").forEach(b=>b.onclick=()=>{
-    const sid=b.dataset.carpetaClearSid;
-    const d=ensureDeuda(t,sid);
-    d.debeCarpeta=false;
-    save(); render();
+  body.querySelectorAll("[data-choose-topics]").forEach(b=>b.onclick=()=>promptChooseTopics(g,t,b.dataset.chooseTopics,allTopics,pm));
+  body.querySelectorAll("[data-undo-quitados]").forEach(b=>b.onclick=()=>{
+    const d=ensureDeuda(t,b.dataset.undoQuitados);
+    delete d.quitados; save(); render();
   });
   body.querySelectorAll("[data-rm-topic-sid]").forEach(b=>b.onclick=()=>{
-    const sid=b.dataset.rmTopicSid, tid=b.dataset.rmTopicTid;
-    const d=ensureDeuda(t,sid);
-    d.topics=(d.topics||[]).filter(x=>x!==tid);
-    save(); render();
+    setDeudaItem(t,b.dataset.rmTopicSid,b.dataset.rmTopicTid,false,pm); render();
   });
 }
-function promptChooseTopics(g,t,sid,allTopics){
-  const d=ensureDeuda(t,sid);
-  const sel=new Set(d.topics||[]);
+function promptChooseTopics(g,t,sid,allTopics,pm){
+  const enLista=new Set(deudaLista(t,sid,pm));
   const s=g.students.find(x=>x.id===sid);
   openDlg("Contenidos pendientes — "+dispName(s),
-    `<div class="topicchecks" id="ct_topics">${allTopics.length?allTopics.map(tp=>`<button class="topicchk ${sel.has(tp.id)?"on":""}" data-tid="${tp.id}">${esc(tp.text)}</button>`).join(""):`<div style="font-size:12px;color:var(--faint);">Este curso no tiene contenidos cargados todavía. Cargálos en la ficha del curso, en Contenidos.</div>`}</div>
+    `<div class="topicchecks" id="ct_topics">${allTopics.length?allTopics.map(tp=>`<button class="topicchk ${enLista.has(tp.id)?"on":""}" data-tid="${tp.id}">${esc(tp.text)}</button>`).join(""):`<div style="font-size:12px;color:var(--faint);">Este curso no tiene contenidos cargados todavía. Cargálos en la ficha del curso, en Contenidos.</div>`}</div>
      <div class="dlg-actions"><button class="btn subtle" id="ct_cancel">Cancelar</button><button class="btn" id="ct_ok">Guardar</button></div>`,
-    "Marcá los contenidos de este cuatrimestre que este alumno todavía no aprobó.");
+    "La lista sale sola de lo que no aprobó. Acá podés sumar o sacar contenidos a mano.");
   $("#dlgBody").querySelectorAll("[data-tid]").forEach(b=>b.onclick=()=>b.classList.toggle("on"));
-  $("#ct_ok").onclick=()=>{ const ids=[...$("#dlgBody").querySelectorAll(".topicchk.on")].map(b=>b.dataset.tid); setDeudasTopics(t,sid,ids); closeDlg(); render(); };
+  $("#ct_ok").onclick=()=>{
+    // Se guarda sólo la diferencia contra lo que sale solo, no la lista entera.
+    $("#dlgBody").querySelectorAll("[data-tid]").forEach(b=>{
+      setDeudaItem(t,sid,b.dataset.tid,b.classList.contains("on"),pm);
+    });
+    closeDlg(); render();
+  };
   $("#ct_cancel").onclick=closeDlg;
 }
 function wireIntens(g,t){ wirePass(g); }

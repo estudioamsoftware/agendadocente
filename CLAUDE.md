@@ -302,6 +302,49 @@ contenidos y el alumno saca 4, no hay forma de saber cuáles falló — se lleva
 docente saca con la × los que no correspondan. La lista de Intensificación siempre fue un
 punto de partida, no un veredicto.
 
+## Intensificación: la lista de lo que se lleva sale sola, cargue contenidos o no (30/8/2026)
+
+Pedido de la dueña, y cambio de fondo de la pestaña: **cargar contenidos tiene que seguir
+siendo opcional.** "Algunos profes son medio vagos y no van a querer cargar todos los
+contenidos de la materia, y la idea es que les funcione igual." Y la pestaña estaba pensada
+para carga manual de todo, cuando debería salir sola con lo que el alumno debe.
+
+**Cómo se nombra cada cosa pendiente ahora** (`deudaAuto()` en `index.html`):
+- Evaluación **con** contenidos cargados → van los contenidos (y si están atados a cada
+  nota, sólo los de las notas que se llevó — ver la sección de arriba).
+- Evaluación **sin** contenidos, partida en notas → va la nota con su nombre:
+  *"✏️ Evaluación escrita — Grammar"*. Si se llevó todas las notas, va la evaluación
+  entera (más corto de leer que repetir todas las partes).
+- Evaluación **sin** contenidos ni partes → va entera, con el nombre que le puso la
+  docente: *"🎤 Unidad 2 — oral"*.
+- **Carpeta, TP y proyecto** nunca se dividen en contenidos: si no los aprobó los debe
+  enteros, con su nombre (*"📓 Carpeta"*, *"📋 TP de escritura"*, *"🧩 Proyecto final"*).
+- Los recuperatorios y las evaluaciones de intensificación no entran (el recu ya se refleja
+  en la nota de su evaluación; las de intensificación son de la instancia siguiente).
+
+**El modelo de datos cambió: la lista ya no se guarda, se calcula.** Antes se guardaba
+entera en `d.topics` y se editaba a mano (por eso había un botón "↻ Rehacer la lista", que
+ya no existe: la lista está siempre al día sola). Ahora se guardan **sólo las excepciones**:
+`d.quitados` (lo que la docente sacó con la ×) y `d.extra` (lo que agregó a mano). La lista
+que se ve es `deudaAuto() − quitados + extra` (`deudaLista()`), así que **se actualiza sola
+al cargar o corregir cualquier nota**.
+
+Cada cosa pendiente es una clave de texto: un id de contenido, `"ex:<idExamen>"` (algo que
+se debe entero), `"ex:<idExamen>#<n>"` (una nota suelta de una evaluación partida) o
+`"carpeta"` (la marca vieja de "solo debe carpeta/TP"). `deudaLabel()` devuelve **null** si
+la cosa ya no existe (se borró la evaluación, o el contenido) — así la deuda se limpia sola
+sin dejar restos raros.
+
+**Migración (`migrarDeuda()`), corre una sola vez por alumno:** si la lista guardada
+coincide con lo que la versión vieja habría puesto sola (`deudaLegacy()`), se entiende que
+la docente nunca la tocó y arranca limpia con el criterio nuevo. Si la había editado, se
+conserva exactamente lo que sacó y lo que agregó, como excepciones. El `debeCarpeta` que se
+marcaba a mano pasa a ser una cosa pendiente más. Probado con los tres casos.
+
+Se borraron `getOwed()` y `hasAnyDeuda()` (código muerto que leía el formato viejo y habría
+confundido a cualquiera que lo leyera después), y `topicsDesaprobados()` quedó reemplazada
+por `deudaAuto()`.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
