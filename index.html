@@ -439,6 +439,17 @@
   .pcard .stat{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
   .pcard .stat .s{background:var(--line-soft);border-radius:9px;padding:6px 10px;font-size:12.5px;color:var(--muted);font-weight:600;}
   .pcard .stat .s b{color:var(--ink);font-weight:700;}
+  /* Intensificación: lo que el alumno se lleva, agrupado por la evaluación (y la nota)
+     de la que viene, así se ve de dónde sale cada contenido. */
+  .dgroup{margin-bottom:10px;}
+  .dgroup:last-child{margin-bottom:0;}
+  .dgroup-h{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--muted);margin:0 0 5px 2px;line-height:1.25;}
+  .dgroup-h .n{background:var(--line-soft);border-radius:99px;padding:1px 7px;font-size:10px;color:var(--faint);flex:none;}
+  .dbox{background:var(--line-soft);border-radius:12px;padding:10px 11px;}
+  /* La nota del período en curso va destacada: es la que se completa cuando el alumno
+     viene a rendir, y con cinco casilleros iguales había que buscarla. */
+  .pnow{border-color:var(--primary)!important;box-shadow:0 0 0 3px var(--primary-tint);}
+  .pnow-lbl{color:var(--primary)!important;}
   .infield label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--faint);margin:0 2px 6px;}
   .noteIn{width:100%;height:44px;border:1.5px solid var(--line);border-radius:11px;padding:0 12px;background:#fff;font-size:15px;margin-top:10px;}
   .noteIn:focus{outline:none;border-color:var(--primary);} .noteIn::placeholder{color:var(--faint);font-weight:500;}
@@ -803,7 +814,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-19';
+const APP_VER='v2026.08.30-20';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2182,10 +2193,21 @@ function examPartEffective(t,sid,e,pi,pm){
 function deudaKeyExam(id,pi){ return pi==null?("ex:"+id):("ex:"+id+"#"+pi); }
 // Los que no se rinden por contenidos: se deben enteros, con su nombre.
 const DEUDA_ENTEROS=["carpeta","tp","proyecto"];
-function deudaAuto(t,sid,pm){
+// Igual que deudaAuto pero diciendo de dónde salió cada cosa: [{key,origen}], donde
+// "origen" es el título de la evaluación (y de la nota, si está partida) del que viene ese
+// contenido. Se usa para agrupar la lista en Intensificación, así se ve qué se lleva de
+// Grammar y qué de Vocabulary.
+function deudaAutoDetalle(t,sid,pm){
   const out=[];
-  const add=k=>{ if(k&&!out.includes(k)) out.push(k); };
-  const addAll=arr=>(arr||[]).forEach(add);
+  const yaEsta=k=>out.some(x=>x.key===k);
+  const add=(k,origen)=>{ if(k&&!yaEsta(k)) out.push({key:k,origen:origen||null}); };
+  const addAll=(arr,origen)=>(arr||[]).forEach(k=>add(k,origen));
+  const origenDe=(e,pi)=>{
+    const meta=examTypeMeta(e.type);
+    const nombre=(e.name||"").trim()||meta.label;
+    const parte=(pi!=null&&Array.isArray(e.parts)&&e.parts[pi])?" — "+e.parts[pi]:"";
+    return {text:meta.icon+" "+nombre+parte,id:e.id+(pi!=null?"#"+pi:"")};
+  };
   (t.exams||[]).forEach(e=>{
     if(e.recuOf) return; // el recu ya se refleja en la nota de su evaluación
     if(String(e.type||"").startsWith("intens_")) return; // son de la instancia siguiente
@@ -2209,26 +2231,27 @@ function deudaAuto(t,sid,pm){
       if(!hayAtadura&&fallaron.length===e.parts.length){ if(fallaron.length) add(deudaKeyExam(e.id)); }
       else fallaron.forEach(pi=>{
         const arr=grupos[pi]||[];
-        if(arr.length) addAll(arr);         // con contenidos atados: van los contenidos
+        if(arr.length) addAll(arr,origenDe(e,pi)); // con contenidos atados: van los contenidos
         else add(deudaKeyExam(e.id,pi));    // sin contenidos: va la nota con su nombre
       });
       // Un contenido elegido que quedó sin nota (ej.: se borró una parte después) entra si
       // la evaluación no se aprobó — el criterio de siempre.
       if(!aprobo){
         const atados=grupos.reduce((a,b)=>a.concat(b||[]),[]);
-        addAll((e.topicIds||[]).filter(id=>!atados.includes(id)));
+        addAll((e.topicIds||[]).filter(id=>!atados.includes(id)),origenDe(e));
       }
       return;
     }
     // Sin partes (o partida pero con los contenidos sin atar a cada nota): no hay forma de
     // saber qué parte pesó, así que se lleva todo lo de esa evaluación.
     if(!aprobo){
-      if(tieneContenidos) addAll(e.topicIds);
+      if(tieneContenidos) addAll(e.topicIds,origenDe(e));
       else add(deudaKeyExam(e.id)); // sin contenidos cargados: debe la evaluación entera
     }
   });
   return out;
 }
+function deudaAuto(t,sid,pm){ return deudaAutoDetalle(t,sid,pm).map(x=>x.key); }
 // Cómo se muestra cada cosa pendiente. Devuelve null si ya no existe (ej.: se borró la
 // evaluación o el contenido) — así la deuda se limpia sola, sin dejar restos raros.
 function deudaLabel(t,topicMap,key){
@@ -6294,42 +6317,64 @@ function renderIntens(g,t,body){
     const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"documentos"});
     return;
   }
+  // El período en curso, para destacar el casillero que se completa cuando el alumno viene
+  // a rendir (con cinco iguales había que buscarlo).
+  const periodoHoy=guessIntensPeriodByDate(todayISO());
   const cards=failing.map(s=>{
-    // Precarga: los contenidos de las evaluaciones que no aprobó. Si no se puede deducir
-    // ninguno (no cargó contenidos en las evaluaciones), se cae en el criterio viejo:
-    // se lleva todo el cuatrimestre y el profe va sacando lo que sí aprobó.
     const d=migrarDeuda(t,s.id,pm,allTopicIds);
-    const owed=deudaLista(t,s.id,pm).map(k=>({key:k,lbl:deudaLabel(t,topicMap,k)})).filter(x=>x.lbl);
+    const detalle=deudaAutoDetalle(t,s.id,pm);
+    const origenDe={}; detalle.forEach(x=>{ if(x.origen) origenDe[x.key]=x.origen; });
+    const owed=deudaLista(t,s.id,pm).map(k=>({key:k,lbl:deudaLabel(t,topicMap,k),origen:origenDe[k]||null})).filter(x=>x.lbl);
     const quitadosVivos=(d.quitados||[]).filter(k=>deudaLabel(t,topicMap,k));
     const passedAt=intensPassedAt(t,s.id,ipm);
     const passedIdx=passedAt?PERIODOS.findIndex(p=>p.id===passedAt):-1;
-    // Los contenidos van naranjas; lo que se debe entero (una evaluación, un TP, la
-    // carpeta) va azul, para que se distinga de un vistazo.
-    const chipsArr=owed.map(x=>`<span class="topicchk on" style="cursor:default;${x.lbl.kind==="exam"?"background:var(--blue-tint);color:var(--blue-ink);":""}">${esc(x.lbl.text)}<button class="pc-x" data-rm-topic-sid="${s.id}" data-rm-topic-tid="${esc(x.key)}" aria-label="Quitar">×</button></span>`);
-    const topicsChips=chipsArr.length?`<div class="topicchecks">${chipsArr.join("")}</div>`:`<div style="font-size:12px;color:var(--faint);margin-top:2px;">No le queda nada pendiente${quitadosVivos.length?" (sacaste todo a mano)":""}.</div>`;
+    const chip=x=>`<span class="topicchk on" style="cursor:default;${x.lbl.kind==="exam"?"background:var(--blue-tint);color:var(--blue-ink);":""}">${esc(x.lbl.text)}<button class="pc-x" data-rm-topic-sid="${s.id}" data-rm-topic-tid="${esc(x.key)}" aria-label="Quitar">×</button></span>`;
+    // Los contenidos se agrupan por la evaluación (y la nota) de la que vienen: así se ve
+    // cuáles se lleva de Grammar y cuáles de Vocabulary. Lo que se debe entero (la
+    // carpeta, un TP, una evaluación sin contenidos) va suelto arriba, sin encabezado.
+    const sueltos=owed.filter(x=>!x.origen);
+    const grupos=[];
+    owed.filter(x=>x.origen).forEach(x=>{
+      let gr=grupos.find(y=>y.id===x.origen.id);
+      if(!gr){ gr={id:x.origen.id,text:x.origen.text,items:[]}; grupos.push(gr); }
+      gr.items.push(x);
+    });
+    const listaHTML=owed.length?`<div class="dbox">
+      ${sueltos.length?`<div class="dgroup"><div class="topicchecks">${sueltos.map(chip).join("")}</div></div>`:""}
+      ${grupos.map(gr=>`<div class="dgroup">
+        <div class="dgroup-h"><span>${esc(gr.text)}</span><span class="n">${gr.items.length}</span></div>
+        <div class="topicchecks">${gr.items.map(chip).join("")}</div>
+      </div>`).join("")}
+    </div>`:`<div style="font-size:12.5px;color:var(--faint);">No le queda nada pendiente${quitadosVivos.length?" (lo sacaste todo a mano)":""}.</div>`;
     const moduloCompleto=d.moduloEstado==="completo";
-    const estadoBtns=`<div class="seg" style="margin:0;"><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="1" aria-pressed="${moduloCompleto}">Sí</button><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="0" aria-pressed="${!moduloCompleto}">No</button></div>`;
     const periodsHTML=PERIODOS.map((p,i)=>{
       const pr=d.periodos[p.id]||{nota:null};
       const locked=passedIdx>=0&&i>passedIdx;
       const isPassedHere=passedIdx===i;
-      if(locked) return `<div class="infield" style="flex:1;min-width:76px;"><label>${p.label}</label><div style="height:38px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:16px;">—</div></div>`;
-      return `<div class="infield" style="flex:1;min-width:76px;"><label>${p.label}</label><input class="numin ${isPassedHere?"gnum-blue":""}" inputmode="decimal" data-pnota-sid="${s.id}" data-pnota-pid="${p.id}" placeholder="–" value="${typeof pr.nota==="number"?fmtNum(pr.nota):""}" style="width:100%;"></div>`;
+      const esHoy=!locked&&passedIdx<0&&p.id===periodoHoy;
+      const corto=p.label.slice(0,3);
+      if(locked) return `<div class="infield" style="margin:0;"><label style="text-align:center;">${corto}</label><div style="height:38px;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:16px;">—</div></div>`;
+      return `<div class="infield" style="margin:0;"><label class="${esHoy?"pnow-lbl":""}" style="text-align:center;">${corto}</label><input class="numin ${isPassedHere?"gnum-blue":""} ${esHoy?"pnow":""}" inputmode="decimal" data-pnota-sid="${s.id}" data-pnota-pid="${p.id}" placeholder="–" value="${typeof pr.nota==="number"?fmtNum(pr.nota):""}" style="width:100%;"></div>`;
     }).join("");
     const es=estado(g,t,s.id);
-    const aprobadoBanner=passedAt?`<div style="font-size:12px;font-weight:700;color:var(--present-ink);background:var(--present-tint);border-radius:8px;padding:6px 10px;margin-top:10px;">✓ Aprobó la intensificación en ${PERIODOS.find(p=>p.id===passedAt).label}</div>`:"";
+    const aprobadoBanner=passedAt?`<div style="font-size:12.5px;font-weight:700;color:var(--present-ink);background:var(--present-tint);border-radius:9px;padding:8px 11px;margin-top:12px;">✓ Aprobó la intensificación en ${PERIODOS.find(p=>p.id===passedAt).label}</div>`:"";
     return `<div class="card pcard">
       <div class="ptop"><span class="pname">${nameHTML(s,g)}</span><span class="chip ${es.cls}"><span class="cd"></span>${es.label}</span></div>
-      <div class="stat"><span class="s">Se lleva <b>${owed.length}</b> cosa${owed.length!==1?"s":""}</span></div>
-      <div class="infield" style="margin-top:8px;"><label>Qué se lleva de este cuatrimestre</label>
-        ${topicsChips}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;">
-          <button class="btn subtle sm" data-choose-topics="${s.id}">+ Agregar un contenido</button>
-          ${quitadosVivos.length?`<button class="link" data-undo-quitados="${s.id}" style="font-size:11.5px;">↩ Volver a poner lo que saqué (${quitadosVivos.length})</button>`:""}
-        </div></div>
-      <div class="infield" style="margin-top:10px;"><label>¿Completó el módulo? (habilita a rendir)</label>
-        ${estadoBtns}</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${periodsHTML}</div>
+      <div class="infield">
+        <label>Qué se lleva <span style="color:var(--muted);">· ${owed.length}</span></label>
+        ${listaHTML}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+          <button class="link" data-choose-topics="${s.id}" style="font-size:12px;">+ Agregar un contenido</button>
+          ${quitadosVivos.length?`<button class="link" data-undo-quitados="${s.id}" style="font-size:12px;">↩ Volver a poner lo que saqué (${quitadosVivos.length})</button>`:""}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);">
+        <span style="flex:1;min-width:150px;font-size:12.5px;font-weight:600;color:var(--muted);">¿Entregó el módulo? <span style="font-weight:500;color:var(--faint);">Lo habilita a rendir</span></span>
+        <div class="seg" style="margin:0;flex:none;"><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="1" aria-pressed="${moduloCompleto}">Sí</button><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="0" aria-pressed="${!moduloCompleto}">No</button></div>
+      </div>
+      <div class="infield" style="margin-top:14px;"><label>Nota de la instancia${periodoHoy&&passedIdx<0?` <span class="pnow-lbl">· estamos en ${PERIODOS.find(p=>p.id===periodoHoy).label}</span>`:""}</label>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">${periodsHTML}</div>
+      </div>
       ${aprobadoBanner}
     </div>`;
   }).join('');

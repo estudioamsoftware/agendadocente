@@ -356,6 +356,26 @@ Se borraron `getOwed()` y `hasAnyDeuda()` (código muerto que leía el formato v
 confundido a cualquiera que lo leyera después), y `topicsDesaprobados()` quedó reemplazada
 por `deudaAuto()`.
 
+### Cómo quedó la tarjeta de cada alumno (30/8/2026)
+
+Pedido de la dueña: que la pestaña quede prolija y **fácil de completar cuando el alumno
+viene a rendir**, y que se vea de qué nota viene cada contenido.
+
+- **La lista va agrupada por la evaluación (y la nota) de la que viene cada contenido**:
+  *"✏️ Evaluación escrita — Grammar"* con sus contenidos debajo, *"— Vocabulary"* con los
+  suyos. Lo que se debe entero (la carpeta, un TP, una evaluación sin contenidos) va suelto
+  arriba, sin encabezado. Para eso `deudaAutoDetalle()` devuelve `[{key,origen}]` y
+  `deudaAuto()` pasó a ser `deudaAutoDetalle(...).map(x=>x.key)` — una sola pasada, sin
+  duplicar la lógica.
+- **El período en curso va destacado** (`guessIntensPeriodByDate`): el casillero de esa
+  instancia queda con borde naranja y el título dice "· estamos en Julio". Con cinco
+  casilleros iguales había que buscar cuál tocar. Si el mes no es de ninguna instancia
+  (agosto, por ejemplo) no se destaca nada, que es lo honesto.
+- Los cinco períodos van en **una grilla de 5 columnas** con el mes abreviado (JUL, NOV,
+  DIC, FEB, MAR): antes eran flex y "Marzo" caía solo en un segundo renglón, a lo ancho.
+- "¿Entregó el módulo?" pasó a una fila compacta con el Sí/No a la derecha, en vez de
+  ocupar un bloque propio.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
