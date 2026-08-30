@@ -793,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-12';
+const APP_VER='v2026.08.30-14';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -6537,30 +6537,59 @@ function promptEditExam(g,t,e){
       ${(eeTopics.length||eeExtraTopics.length)?`<div class="topicchecks">${eeTopics.map(tp=>`<span class="topicchk on" style="cursor:default;">${esc(tp.text)}</span>`).join("")}${eeExtraTopics.map(t2=>`<span class="topicchk on" style="cursor:default;background:var(--blue-tint);color:var(--blue-ink);">${esc(t2)}</span>`).join("")}</div>`:`<div style="font-size:12.5px;color:var(--faint);">Sin contenidos seleccionados.</div>`}
       <button type="button" class="link" id="ee_topics_edit" style="font-size:12.5px;margin-top:8px;">${(eeTopics.length||eeExtraTopics.length)?"Editar contenidos":"+ Agregar contenidos"}</button>
     </div>`;
-  // El nombre y la fecha van primero: es lo que se viene a cambiar casi siempre. La lista
-  // de tipos ocupaba media pantalla arriba de todo y con el teclado abierto no quedaba
-  // lugar para nada, así que ahora arranca cerrada, mostrando sólo el tipo actual.
-  const tipoRowHTML=`<div class="dlg-field"><label>Tipo</label>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  // Tipo y Fecha van juntos arriba, en una sola fila: la fecha ya no necesita su propio
+  // renglón. La lista de tipos arranca cerrada, mostrando sólo el actual — ocupaba media
+  // pantalla arriba de todo y con el teclado abierto no quedaba lugar para nada.
+  const tipoRowHTML=`<div class="dlg-field">
+      <label>Tipo</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
         <span class="mchip on" id="ee_type_cur" style="display:inline-flex;align-items:center;">${EXAM_TYPE_META[e.type]?EXAM_TYPE_META[e.type].icon+" "+EXAM_TYPE_META[e.type].label:"Evaluación"}</span>
-        <button type="button" class="link" id="ee_type_edit" style="font-size:12.5px;">Cambiar tipo</button>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <label style="margin:0;font-size:10.5px;">Fecha</label>
+          <input id="ee_date" type="date" value="${e.date||""}" style="width:auto;height:38px;">
+        </div>
       </div>
+      <button type="button" class="link" id="ee_type_edit" style="font-size:12.5px;margin-top:8px;">Cambiar tipo</button>
       <div id="ee_type_wrap" style="display:none;margin-top:8px;background:var(--line-soft);border-radius:13px;padding:12px;">
         <div class="chiprow" id="ee_type_row" style="flex-wrap:wrap;">${Object.keys(EXAM_TYPE_META).map(tid=>`<button class="mchip ${tid===e.type?"on":""}" data-extype="${tid}">${EXAM_TYPE_META[tid].icon} ${EXAM_TYPE_META[tid].label}</button>`).join("")}</div>
         <div style="font-size:11px;color:var(--faint);margin-top:8px;">Si cambiás entre "TP/Carpeta" y "Evaluación/Recuperatorio" se pierde el estado S/E cargado, no las notas numéricas.</div>
       </div>
     </div>`;
-  openDlg("Editar",`<div class="dlg-field"><label>Nombre</label><input id="ee_name" value="${esc(e.name)}" autocomplete="off"></div>
-    <div class="dlg-field"><label>Fecha</label><input id="ee_date" type="date" value="${e.date||""}"></div>
-    ${tipoRowHTML}
+  // El nombre casi siempre queda igual al tipo (ej.: "Evaluación escrita" y listo) — mostrar
+  // los dos era repetir lo mismo dos veces. Ahora el campo arranca escondido salvo que ya
+  // tenga un nombre propio distinto del tipo; un lápiz al lado lo abre para escribir uno.
+  const metaCur0=EXAM_TYPE_META[e.type]||{label:"Evaluación"};
+  const nameCustomized=(e.name||"").trim()&&(e.name||"").trim()!==metaCur0.label;
+  const nameRowHTML=`<div class="dlg-field">
+      <div style="display:flex;align-items:center;">
+        <label style="margin:0;">Nombre</label>
+        <button type="button" class="titleEdit" id="ee_name_edit" aria-label="Cambiar nombre" style="width:26px;height:26px;">${I.pencil}</button>
+      </div>
+      <input id="ee_name" value="${esc(e.name)}" autocomplete="off" style="${nameCustomized?"":"display:none;"}margin-top:6px;">
+    </div>`;
+  // La mayoría de las profes no cargan examen online, así que el link también arranca
+  // escondido salvo que ya tenga uno cargado.
+  const linkRowHTML=`<div class="dlg-field">
+      <div style="display:flex;align-items:center;">
+        <label style="margin:0;">Link del examen online</label>
+        <button type="button" class="titleEdit" id="ee_link_edit" aria-label="Cambiar link" style="width:26px;height:26px;">${I.pencil}</button>
+      </div>
+      <input id="ee_link" value="${esc(e.link||"")}" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off" style="${e.link?"":"display:none;"}margin-top:6px;">
+    </div>`;
+  openDlg("Editar",`${tipoRowHTML}
+    ${nameRowHTML}
     ${periodRowHTML}
-    <div class="dlg-field"><label>Link del examen online (opcional)</label><input id="ee_link" value="${esc(e.link||"")}" placeholder="Ej.: Google Forms, Classroom, Kahoot…" autocomplete="off"></div>
+    ${linkRowHTML}
     ${partsRowHTML}
     ${contentsRowHTML}
     <div class="dlg-actions"><button class="btn subtle" id="ee_cancel">Cancelar</button><button class="btn danger" id="ee_del">Eliminar</button><button class="btn" id="ee_ok">Guardar</button></div>`,
     "La nota aparece sola en “Clase a clase” el día que coincide con una clase.");
   const eeTopicsEdit=$("#ee_topics_edit");
   if(eeTopicsEdit) eeTopicsEdit.onclick=()=>promptEditExamTopics(e,allTopics0,()=>{ closeDlg(); promptEditExam(g,t,e); });
+  const eeNameEdit=$("#ee_name_edit"), eeNameInp=$("#ee_name");
+  if(eeNameEdit) eeNameEdit.onclick=()=>{ const abrir=eeNameInp.style.display==="none"; eeNameInp.style.display=abrir?"":"none"; if(abrir) eeNameInp.focus(); };
+  const eeLinkEdit=$("#ee_link_edit"), eeLinkInp=$("#ee_link");
+  if(eeLinkEdit) eeLinkEdit.onclick=()=>{ const abrir=eeLinkInp.style.display==="none"; eeLinkInp.style.display=abrir?"":"none"; if(abrir) eeLinkInp.focus(); };
   // Sin foco automático: si se abre el teclado solo, tapa medio cuadro antes de que la
   // docente elija qué quiere tocar.
   let selType=e.type;

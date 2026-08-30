@@ -221,6 +221,24 @@ Se sacó el diálogo de elegir contenidos a una función aparte (`promptEditExam
   elegidos (o "Sin contenidos seleccionados.") y un link "+ Agregar contenidos" / "Editar
   contenidos". Al guardar, vuelve al mismo cuadro "Editar" con la lista actualizada.
 
+## El cuadro "Editar" de un examen, más liviano (30/8/2026)
+
+Pedido de la dueña: el nombre casi siempre queda igual al tipo (ej.: "Evaluación
+escrita" y listo), así que mostrar los dos por separado era repetir lo mismo. Y "Link del
+examen online" ocupaba un campo grande siempre visible aunque la mayoría de las docentes
+no cargan examen online. Se achicó el cuadro (`promptEditExam()` en `index.html`):
+
+- **Tipo y Fecha van en la misma fila** (el tipo elegido a la izquierda, la fecha a la
+  derecha), y **"Cambiar tipo" queda debajo** de esa fila, no al lado del chip — así no
+  compite por el mismo renglón angosto.
+- **Nombre y Link arrancan colapsados**: sólo el título del campo con un lápiz al lado
+  (mismo patrón `.titleEdit` que se usa para el nombre del curso). Tocar el lápiz abre el
+  campo para escribir. Si ya tienen algo cargado que no sea el default (un nombre propio
+  distinto del tipo, o ya hay un link), arrancan abiertos de una — nunca se esconde algo
+  que ya está cargado.
+- Esto además deja lugar para el campo "Contenidos evaluados" (ver más abajo) sin que el
+  cuadro se vuelva interminable.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
