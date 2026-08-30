@@ -341,6 +341,17 @@ la docente nunca la tocó y arranca limpia con el criterio nuevo. Si la había e
 conserva exactamente lo que sacó y lo que agregó, como excepciones. El `debeCarpeta` que se
 marcaba a mano pasa a ser una cosa pendiente más. Probado con los tres casos.
 
+🚨 **Ojo con la lista vieja vacía (arreglado el 30/8/2026, lo encontró la dueña):** una
+lista vieja vacía **no** significa "no debe nada". Podía ser que nunca se hubiera llenado,
+o que se hubiera usado el viejo botón "Solo debe carpeta/TP", que la vaciaba. La primera
+versión de la migración la arrastraba como "sacó todo a mano" y la lista nueva nacía en
+blanco: en la pantalla se veía sólo "📓 Carpeta" y un "↩ Volver a poner lo que saqué (5)".
+Ahora, si la lista vieja estaba vacía, no se guarda ningún `quitados`. Y como esa migración
+ya había corrido en el celular de la dueña (y borraba `d.topics`, así que no se puede
+recalcular), la marca pasó de `d.migrado=true` a `d.migrado=2`, con una reparación: si los
+`quitados` tapan **todo** lo que sale solo, se borran. Una curación de verdad (sacar
+algunos, no todos) no se toca.
+
 Se borraron `getOwed()` y `hasAnyDeuda()` (código muerto que leía el formato viejo y habría
 confundido a cualquiera que lo leyera después), y `topicsDesaprobados()` quedó reemplazada
 por `deudaAuto()`.

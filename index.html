@@ -803,7 +803,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-18';
+const APP_VER='v2026.08.30-19';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2267,20 +2267,32 @@ function deudaLegacy(t,sid,pm,allTopicIds){
 // agregó.
 function migrarDeuda(t,sid,pm,allTopicIds){
   const d=ensureDeuda(t,sid);
-  if(d.migrado) return d;
-  if(Array.isArray(d.topics)){
+  if(d.migrado===2) return d;
+  if(!d.migrado&&Array.isArray(d.topics)){
     const vieja=d.topics;
-    const base=deudaLegacy(t,sid,pm,allTopicIds);
-    const quitados=base.filter(k=>!vieja.includes(k));
-    const extra=vieja.filter(k=>!base.includes(k));
-    if(quitados.length) d.quitados=quitados;
-    if(extra.length) d.extra=extra;
+    // Una lista vieja vacía no quiere decir "no debe nada": puede ser que nunca se haya
+    // llenado, o que se haya usado el viejo "Solo debe carpeta/TP", que la vaciaba. Si la
+    // arrastráramos como cosas sacadas a mano, la lista nueva nacería en blanco y no se
+    // vería nada de lo que el alumno sí debe.
+    if(vieja.length){
+      const base=deudaLegacy(t,sid,pm,allTopicIds);
+      const quitados=base.filter(k=>!vieja.includes(k));
+      const extra=vieja.filter(k=>!base.includes(k));
+      if(quitados.length) d.quitados=quitados;
+      if(extra.length) d.extra=extra;
+    }
     delete d.topics;
+  }
+  // Reparación de las deudas que ya se habían migrado con la regla de arriba mal aplicada
+  // (quedaron con TODO quitado, así que no se veía nada de lo que el alumno debe).
+  if(d.migrado===true&&(d.quitados||[]).length){
+    const auto=deudaAuto(t,sid,pm);
+    if(auto.length&&auto.every(k=>d.quitados.includes(k))) delete d.quitados;
   }
   // El "solo debe carpeta/TP" que se marcaba a mano pasa a ser una cosa pendiente más.
   if(d.debeCarpeta){ d.extra=(d.extra||[]).concat("carpeta"); delete d.debeCarpeta; }
   delete d.topicsInit;
-  d.migrado=true; save();
+  d.migrado=2; save();
   return d;
 }
 // La lista que se ve: lo que sale solo, menos lo que la docente sacó, más lo que agregó.
