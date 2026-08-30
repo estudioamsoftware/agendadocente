@@ -814,7 +814,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-20';
+const APP_VER='v2026.08.30-21';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -6306,9 +6306,12 @@ function renderIntens(g,t,body){
     ${PERIODOS.map(p=>`<span style="display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);font-weight:600;">${p.label}<input data-ipm-period="${p.id}" inputmode="numeric" value="${ipm[p.id]}" style="width:34px;height:30px;text-align:center;border:1.5px solid var(--line);border-radius:7px;padding:0;"></span>`).join("")}
   </div>`;
   const modDocs=(ensureDocs(g).intensifModulos)||[];
+  // Si hay módulo, tienen que entregarlo hecho para poder rendir. Si no subiste ninguno,
+  // no hay nada que entregar: rinden directamente, así que ni se pregunta.
+  const hayModulo=modDocs.length>0;
   const moduloBanner=`<div class="card pad" style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span style="flex:1;font-size:13px;color:var(--muted);">📎 Módulo de intensificación${modDocs.length?": "+modDocs.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);">${esc(f.name)}</a>`).join(", "):" — todavía no subiste ninguno"}</span>
-    <button class="btn subtle sm" id="goModuloDocs" style="width:auto;">${modDocs.length?"Ver / subir más":"Subir módulo"} en Documentos →</button></div>`;
+    <span style="flex:1;font-size:13px;color:var(--muted);">📎 Módulo de intensificación${hayModulo?": "+modDocs.map(f=>`<a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);">${esc(f.name)}</a>`).join(", "):" — no subiste ninguno, así que rinden sin entregar nada"}</span>
+    <button class="btn subtle sm" id="goModuloDocs" style="width:auto;">${hayModulo?"Ver / subir más":"Subir módulo"} en Documentos →</button></div>`;
   const failing=g.students.filter(s=>finalOf(t,s.id,pm)!=null&&finalOf(t,s.id,pm)<pm);
   if(failing.length===0){
     const anyFinal=g.students.some(s=>finalOf(t,s.id,pm)!=null);
@@ -6368,10 +6371,10 @@ function renderIntens(g,t,body){
           ${quitadosVivos.length?`<button class="link" data-undo-quitados="${s.id}" style="font-size:12px;">↩ Volver a poner lo que saqué (${quitadosVivos.length})</button>`:""}
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);">
+      ${hayModulo?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);">
         <span style="flex:1;min-width:150px;font-size:12.5px;font-weight:600;color:var(--muted);">¿Entregó el módulo? <span style="font-weight:500;color:var(--faint);">Lo habilita a rendir</span></span>
         <div class="seg" style="margin:0;flex:none;"><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="1" aria-pressed="${moduloCompleto}">Sí</button><button data-modulo-completo-sid="${s.id}" data-modulo-completo-val="0" aria-pressed="${!moduloCompleto}">No</button></div>
-      </div>
+      </div>`:""}
       <div class="infield" style="margin-top:14px;"><label>Nota de la instancia${periodoHoy&&passedIdx<0?` <span class="pnow-lbl">· estamos en ${PERIODOS.find(p=>p.id===periodoHoy).label}</span>`:""}</label>
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">${periodsHTML}</div>
       </div>

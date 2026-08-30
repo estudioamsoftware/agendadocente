@@ -374,7 +374,11 @@ viene a rendir**, y que se vea de qué nota viene cada contenido.
 - Los cinco períodos van en **una grilla de 5 columnas** con el mes abreviado (JUL, NOV,
   DIC, FEB, MAR): antes eran flex y "Marzo" caía solo en un segundo renglón, a lo ancho.
 - "¿Entregó el módulo?" pasó a una fila compacta con el Sí/No a la derecha, en vez de
-  ocupar un bloque propio.
+  ocupar un bloque propio. Y **sólo aparece si hay un módulo subido** en Documentos
+  (decisión de la dueña, 30/8): si hay módulo tienen que entregarlo hecho para poder
+  rendir; si no subió ninguno no hay nada que entregar, así que ni se pregunta y el aviso
+  de arriba dice "no subiste ninguno, así que rinden sin entregar nada". El toggle es
+  informativo — `estado()` no lo mira —, así que esconderlo no cambia ningún cálculo.
 
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
