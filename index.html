@@ -793,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-8';
+const APP_VER='v2026.08.30-9';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -6521,9 +6521,9 @@ function promptEditExam(t,e){
         <span class="mchip on" id="ee_type_cur" style="display:inline-flex;align-items:center;">${EXAM_TYPE_META[e.type]?EXAM_TYPE_META[e.type].icon+" "+EXAM_TYPE_META[e.type].label:"Evaluación"}</span>
         <button type="button" class="link" id="ee_type_edit" style="font-size:12.5px;">Cambiar tipo</button>
       </div>
-      <div id="ee_type_wrap" style="display:none;margin-top:8px;">
+      <div id="ee_type_wrap" style="display:none;margin-top:8px;background:var(--line-soft);border-radius:13px;padding:12px;">
         <div class="chiprow" id="ee_type_row" style="flex-wrap:wrap;">${Object.keys(EXAM_TYPE_META).map(tid=>`<button class="mchip ${tid===e.type?"on":""}" data-extype="${tid}">${EXAM_TYPE_META[tid].icon} ${EXAM_TYPE_META[tid].label}</button>`).join("")}</div>
-        <div style="font-size:11px;color:var(--faint);margin-top:4px;">Si cambiás entre "TP/Carpeta" y "Evaluación/Recuperatorio" se pierde el estado S/E cargado, no las notas numéricas.</div>
+        <div style="font-size:11px;color:var(--faint);margin-top:8px;">Si cambiás entre "TP/Carpeta" y "Evaluación/Recuperatorio" se pierde el estado S/E cargado, no las notas numéricas.</div>
       </div>
     </div>`;
   openDlg("Editar",`<div class="dlg-field"><label>Nombre</label><input id="ee_name" value="${esc(e.name)}" autocomplete="off"></div>
