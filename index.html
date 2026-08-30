@@ -204,6 +204,8 @@
   .datecur{flex:1;height:44px;border-radius:11px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;}
   .datecur .dnum{font-weight:700;font-size:14px;letter-spacing:-.01em;} .datecur .ddow{font-size:11px;color:var(--muted);font-weight:600;margin-top:1px;}
   .revtag{display:inline-block;background:var(--amber-tint);color:var(--amber);font-size:9px;font-weight:800;letter-spacing:.03em;padding:2px 6px;border-radius:99px;vertical-align:middle;margin-left:2px;}
+  .revnote{display:flex;align-items:flex-start;gap:8px;background:var(--amber-tint);border:1px solid var(--amber-bd);border-radius:11px;padding:9px 12px;margin:0 0 12px;font-size:12.5px;line-height:1.35;color:var(--ink);}
+  .revnote .revtag{flex:none;margin:1px 0 0;background:#fff;}
   .datecur.istoday{border-color:var(--primary);background:var(--primary-tint);} .datecur.istoday .dnum{color:var(--primary);}
   .datecur.iscanc{background:var(--canc-bg);border-color:var(--canc-bd);} .datecur.iscanc .dnum{color:var(--canc-ink);}
   .datecur.locked{border-color:var(--line);background:#E8EAED;} .datecur.locked .dnum{color:#5F6368;}
@@ -791,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-4';
+const APP_VER='v2026.08.30-5';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -4123,20 +4125,34 @@ function wireFechasSection(g,body){
 }
 
 /* ---- date header pieces ---- */
-function isRevisionClass(t,iso){
+// Una clase es "de revisión" cuando la clase siguiente tiene una PRUEBA: una evaluación,
+// un recuperatorio o una evaluación de intensificación. Un TP, una carpeta o un proyecto
+// no cuentan (no se hace una clase de repaso para entregar la carpeta). Y el día que tiene
+// la prueba nunca es de revisión, aunque a la clase siguiente le toque otra: ese día ya es
+// el examen. Por eso nunca pueden quedar dos días de revisión seguidos.
+const PRUEBA_TYPES=["eval_escrita","eval_oral","recu_escrito","recu_oral","intens_eval"];
+function revisionExam(t,iso){
+  if(t.exams.some(e=>e.date===iso||e.recuDate===iso)) return null;
   const real=t.sessions.filter(s=>!s.cancelled).map(s=>s.date).sort();
-  const idx=real.indexOf(iso); if(idx<0||idx>=real.length-1) return false;
+  const idx=real.indexOf(iso); if(idx<0||idx>=real.length-1) return null;
   const nextDate=real[idx+1];
-  return t.exams.some(e=>e.date===nextDate);
+  return t.exams.find(e=>e.date===nextDate&&PRUEBA_TYPES.includes(e.type))||null;
+}
+function isRevisionClass(t,iso){ return !!revisionExam(t,iso); }
+// El aviso de revisión va acá abajo, junto a los temas del día — en la barra de fechas
+// va sólo la fecha.
+function revisionNoteHTML(t,date){
+  const e=revisionExam(t,date); if(!e) return "";
+  return `<div class="revnote"><span class="revtag">REVISIÓN</span>
+    <span>Clase de repaso: la clase que viene, el <b>${fmtTop(e.date)}</b>, hay ${examTypeMeta(e.type).icon} <b>${esc(e.name)}</b>.</span></div>`;
 }
 function dateBarHTML(t,date,locked){
   const idx=t.sessions.findIndex(s=>s.date===date); const isToday=date===todayISO(); const ses=getSession(t,date)||{}; const canc=!!ses.cancelled;
-  const revision=!canc&&isRevisionClass(t,date);
   return `<div class="datebar">
       <button class="datestep" id="firstDate" ${idx<=0?"disabled":""} aria-label="Primera clase" style="font-size:12px;">⏮</button>
       <button class="datestep" id="prevDate" ${idx<=0?"disabled":""} aria-label="Fecha anterior">${I.left}</button>
-      <div class="datecur ${canc?"iscanc":(locked&&isToday?"locked":(isToday?"istoday":""))}"><span class="dnum">${fmtTop(date)}${revision?' <span class="revtag">REVISIÓN</span>':''}</span>
-        <span class="ddow">${revision?"Clase de revisión":isToday?"Hoy":""}</span></div>
+      <div class="datecur ${canc?"iscanc":(locked&&isToday?"locked":(isToday?"istoday":""))}"><span class="dnum">${fmtTop(date)}</span>
+        <span class="ddow">${isToday?"Hoy":""}</span></div>
       <button class="datestep" id="nextDate" ${idx>=t.sessions.length-1?"disabled":""} aria-label="Fecha siguiente">${I.right}</button>
       <button class="datestep" id="lastDate" ${idx>=t.sessions.length-1?"disabled":""} aria-label="Última clase" style="font-size:12px;">⏭</button></div>`;
 }
@@ -4878,7 +4894,7 @@ function renderClase(g,t,body){
   const examsToday=t.exams.filter(e=>e.date===date).map(e=>({ex:e,field:"nota"}))
     .concat(t.exams.filter(e=>e.recuDate===date&&e.date!==date).map(e=>({ex:e,field:"recu"})));
   if(examsToday.length){ return renderClaseExam(g,t,body,date,ses,examsToday); }
-  body.innerHTML=`${termSeg}${dateBarHTML(t,date,locked)}${temasHTML(ses,false)}
+  body.innerHTML=`${termSeg}${dateBarHTML(t,date,locked)}${revisionNoteHTML(t,date)}${temasHTML(ses,false)}
     <div class="rows" id="rows"></div>
     <div class="tally" style="margin-top:8px;"><div class="pill tp">Calificados <span id="cCal">0</span></div><div class="pill ta">Ausentes <span id="cAu">0</span></div></div>
     ${locked?`<div class="savedbar"><span class="savedtag">🔒 Lista bloqueada</span><button class="btn subtle sm" id="editDay">Editar</button></div>`

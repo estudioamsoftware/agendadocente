@@ -178,6 +178,23 @@ Dos ajustes de ancho de esa grilla (30/8/2026, pedidos por la dueña):
   Carpeta, por ejemplo— la tabla quedaba con un vacío grande al costado y los apellidos
   partidos en dos renglones al pedo. Vale para las dos pantallas.
 
+## La "clase de revisión" (corregida el 30/8/2026)
+
+Corrección de la dueña: **revisión es sólo el día anterior a la prueba, y no puede haber
+dos días seguidos marcados.** Antes se marcaba cualquier clase cuya clase siguiente
+tuviera algo cargado en Exámenes, así que una carpeta o un TP también la disparaban, y el
+día del examen quedaba marcado "revisión" porque a la clase siguiente le tocaba otra cosa.
+Ahora (`revisionExam()` en `index.html`):
+
+- Sólo cuentan las **pruebas** (`PRUEBA_TYPES`: evaluación escrita/oral, recuperatorio
+  escrito/oral, evaluación de intensificación). Un TP, una carpeta o un proyecto no.
+- **El día que tiene la prueba nunca es de revisión**, aunque a la clase siguiente le toque
+  otra. Con esas dos reglas no pueden quedar dos días de revisión seguidos.
+
+Y **en la barra de fechas va sólo la fecha**: el aviso salió de ahí y ahora aparece abajo,
+junto a los temas del día (`revisionNoteHTML()`, arriba de "Temas y páginas de la clase"),
+diciendo qué prueba viene y qué día.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
