@@ -788,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-2';
+const APP_VER='v2026.08.30-3';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5115,17 +5115,19 @@ function renderClaseExam(g,t,body,date,ses,items){
     // original: los que no lo rindieron quedan con "–".
     const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
     const hasParts=field==="nota"&&Array.isArray(ex.parts)&&ex.parts.length>=2;
-    const headLabels=hasParts?ex.parts.map(l=>l.toUpperCase()):["NOTA"];
-    if(claseRecu) headLabels.push("RECUP.");
+    // Igual que en Exámenes: si la evaluación va partida en notas y su recuperatorio
+    // lleva las mismas, la columna RECUP. se abre en una columna por parte.
+    const recuParts=(hasParts&&claseRecu&&Array.isArray(claseRecu.parts)&&claseRecu.parts.length===ex.parts.length)?claseRecu.parts:null;
+    const notaHead=hasParts?ex.parts.map(l=>`<span class="eg-col eg-col-nota">${esc(l.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-nota">NOTA</span>`;
+    const recuHead=claseRecu?(recuParts?recuParts.map(l=>`<span class="eg-col eg-col-recu">RECUP.<br>${esc(l.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-recu">RECUP.</span>`):"";
     return `<div class="examday"><span class="ed-ic" style="font-size:20px;">${kindIcon}</span><div style="min-width:0;flex:1;"><div class="ed-k">${kind}</div><div class="ed-n">${esc(ex.name)}</div></div>
         <button class="btn subtle sm" data-toexam="${ex.id}">Ver en Exámenes</button></div>
       ${contPanel}
       <div class="tally"><div class="pill tp">Con nota <span id="cN_${idx}">0</span></div><div class="pill ta">Ausentes <span id="cA_${idx}">0</span></div></div>
-      ${(hasParts||claseRecu)?`<div class="arow" style="background:transparent;border:none;box-shadow:none;padding:0 6px 2px 10px;font-size:9px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;">
-        <span class="nm" style="visibility:hidden;">·</span>
-        ${headLabels.map(l=>`<span class="numin" style="background:transparent;border:none;box-shadow:none;white-space:normal;word-break:break-word;overflow-wrap:break-word;height:auto;min-height:18px;line-height:1.05;padding:2px 1px;">${esc(l)}</span>`).join("")}
-      </div>`:""}
-      <div class="rows" id="rows_${idx}"></div>`;
+      <div class="examgrid-wrap"><div class="examgrid">
+        <div class="eg-row eg-head"><span class="eg-nm">Alumno</span>${notaHead}${recuHead}</div>
+        <div id="rows_${idx}"></div>
+      </div></div>`;
   };
   body.innerHTML=`${termSeg}${dateBarHTML(t,date,anyLocked)}
     ${items.map((it,idx)=>`<div class="card pad" style="margin-bottom:14px;">${blockHTML(it.ex,it.field,idx)}</div>`).join("")}
@@ -5135,32 +5137,51 @@ function renderClaseExam(g,t,body,date,ses,items){
     const rows=$("#rows_"+idx);
     const claseRecu=field==="nota"?linkedRecuExam(t,ex.id):null;
     const hasParts=field==="nota"&&Array.isArray(ex.parts)&&ex.parts.length>=2;
+    const recuParts=(hasParts&&claseRecu&&Array.isArray(claseRecu.parts)&&claseRecu.parts.length===ex.parts.length)?claseRecu.parts:null;
+    const pmHere=g.passMark||7;
+    // Si el bloque de hoy ES un recuperatorio partido en notas, la parte que ya venía
+    // aprobada no se rinde: va con "–", igual que en la pantalla del examen.
+    const parentEx=ex.recuOf?(t.exams.find(x=>x.id===ex.recuOf)||null):null;
+    const soyRecuPorPartes=hasParts&&!!parentEx&&Array.isArray(parentEx.parts)&&parentEx.parts.length===ex.parts.length;
+    const rayita=`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`;
     rows.innerHTML=g.students.map((s,i)=>{
       const c=getGrade(t,s.id,ex.id); const val=c[field]; const se=field==="nota"&&!!c.se;
       const motivo=getGradeMotivo(t,s.id,ex.id,field);
-      const pmHere=g.passMark||7;
       const approved=field==="nota"&&(hasParts?examPartsAllPassed(t,s.id,ex,pmHere):(typeof c.nota==="number"&&c.nota>=pmHere));
       const ausente=!approved&&gradeAusenteEffective(t,g,s.id,ex.id,field,field==="recu"?ex.recuDate:ex.date);
-      const partsCells=hasParts?ex.parts.map((_,pi)=>{
-        const pf="p"+pi; const pv=c[pf];
+      const notaCells=hasParts?ex.parts.map((_,pi)=>{
+        const pf="p"+pi;
+        if(soyRecuPorPartes){ const orig=getGrade(t,s.id,parentEx.id)[pf]; if(typeof orig==="number"&&orig>=pmHere) return `<div class="eg-col eg-col-nota">${rayita}</div>`; }
         const pAus=gradeAusenteEffective(t,g,s.id,ex.id,pf,ex.date);
-        const pMotivo=getGradeMotivo(t,s.id,ex.id,pf);
-        return displayGrade(pv,pMotivo,false,pAus);
-      }).join(""):"";
-      let recuCell="";
-      if(claseRecu){
+        return `<div class="eg-col eg-col-nota">${displayGrade(c[pf],getGradeMotivo(t,s.id,ex.id,pf),false,pAus)}</div>`;
+      }).join(""):`<div class="eg-col eg-col-nota">${displayGrade(val,motivo,se,ausente)}</div>`;
+      // Una columna RECUP. por parte: "–" si ya la tenía aprobada o no la rindió, la
+      // nota si la recuperó, "A" si faltó al recuperatorio.
+      const recuPartCell=(pi)=>{
+        const orig=c["p"+pi];
+        if(typeof orig==="number"&&orig>=pmHere) return rayita;
+        const rv=getGrade(t,s.id,claseRecu.id)["p"+pi];
+        if(typeof rv==="number") return `<span class="numin ${gradeTierClass(rv,g.passMark)}" style="display:inline-flex;align-items:center;justify-content:center;">${fmtNum(rv)}</span>`;
+        return gradeAusenteEffective(t,g,s.id,claseRecu.id,"p"+pi,claseRecu.date)
+          ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;">A</span>`
+          :`<span class="eg-na">–</span>`;
+      };
+      let recuCells="";
+      if(claseRecu&&recuParts){ recuCells=recuParts.map((l,pi)=>`<div class="eg-col eg-col-recu">${recuPartCell(pi)}</div>`).join(""); }
+      else if(claseRecu){
         const rv=getGrade(t,s.id,claseRecu.id).nota;
-        if(approved){ recuCell=`<span class="numin" style="display:inline-flex;align-items:center;justify-content:center;background:var(--blue-tint);color:var(--blue-ink);" title="Ya aprobó, no rinde recuperatorio">–</span>`; }
-        else if(typeof rv==="number"){ recuCell=`<span class="numin ${gradeTierClass(rv,g.passMark)}" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">${fmtNum(rv)}</span>`; }
+        let inner;
+        if(approved){ inner=rayita; }
+        else if(typeof rv==="number"){ inner=`<span class="numin ${gradeTierClass(rv,g.passMark)}" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">${fmtNum(rv)}</span>`; }
         else{
           const ausRecu=gradeAusenteEffective(t,g,s.id,claseRecu.id,"nota",claseRecu.date);
-          recuCell=ausRecu
+          inner=ausRecu
             ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;" title="Recuperatorio">A</span>`
-            :`<span class="numin" style="display:inline-flex;align-items:center;justify-content:center;background:var(--line-soft);color:var(--faint);" title="No rindió el recuperatorio">–</span>`;
+            :`<span class="eg-na" title="No rindió el recuperatorio">–</span>`;
         }
+        recuCells=`<div class="eg-col eg-col-recu">${inner}</div>`;
       }
-      return `<div class="arow"><span class="nm">${i+1}. ${nameHTML(s,g)}</span>
-        ${hasParts?partsCells:displayGrade(val,motivo,se,ausente)}${recuCell}</div>`;}).join("");
+      return `<div class="eg-row"><span class="eg-nm">${i+1}. ${nameHTML(s,g)}</span>${notaCells}${recuCells}</div>`;}).join("");
     function tally(){ let n=0,au=0; g.students.forEach(s=>{ if(attOf(t,s.id,date,g)==="A")au++; if(getGrade(t,s.id,ex.id)[field]!=null)n++; }); $("#cN_"+idx).textContent=n; $("#cA_"+idx).textContent=au; }
     tally();
   });

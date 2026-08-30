@@ -159,6 +159,15 @@ queda fija (`position:sticky`) y las de notas corren al costado**. El borde y el
 viven en `.examgrid-wrap` (el que scrollea), no en `.examgrid`, porque si no el sticky no
 funciona.
 
+**En Clases se ve igual (30/8/2026).** El reflejo del examen del día (`renderClaseExam`)
+usaba una lista de `.arow` con las notas apretadas al lado del nombre: con dos partes + recu
+mostraba una sola columna RECUP. y no entraba nada. Ahora usa **la misma grilla
+`.examgrid-wrap` / `.examgrid` de Exámenes** (columna de alumnos fija, notas que corren al
+costado) y **abre RECUP. en una columna por parte**, así se ven las cuatro columnas
+(VOCABULARY, GRAMMAR, RECUP. VOCABULARY, RECUP. GRAMMAR). Sigue siendo de sólo lectura: se
+carga desde Exámenes. Si el bloque del día ES el recuperatorio, la parte que el alumno ya
+tenía aprobada sale con "–" azul, igual que en la pantalla del examen.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
