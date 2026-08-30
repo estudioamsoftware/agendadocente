@@ -159,6 +159,27 @@ queda fija (`position:sticky`) y las de notas corren al costado**. El borde y el
 viven en `.examgrid-wrap` (el que scrollea), no en `.examgrid`, porque si no el sticky no
 funciona.
 
+## Intensificación: los contenidos pendientes salen solos (29/8/2026)
+
+Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
+tienen que aparecerle **los contenidos de las evaluaciones que no aprobó**, sin cargarlos
+a mano.
+
+- `topicsDesaprobados(t,sid,pm)` en `index.html`: recorre las evaluaciones del cuatrimestre
+  y junta los `topicIds` de cada una cuya **nota efectiva** (ya con el recuperatorio
+  aplicado) queda debajo del mínimo. **Sin nota también cuenta** como pendiente (no la
+  rindió, no la aprobó). Se saltea los recuperatorios (`recuOf` — ya se reflejan en la nota
+  de su evaluación) y las evaluaciones de intensificación (`intens_*`, que son de la
+  instancia siguiente).
+- Esa lista es la **precarga** de `ensureDeuda()` la primera vez que el alumno aparece en
+  Intensificación. Si no se puede deducir ninguno (las evaluaciones no tienen contenidos
+  cargados), se cae en el criterio viejo: se lleva **todos** los contenidos del cuatrimestre
+  y la docente va sacando los que sí aprobó.
+- La precarga corre **una sola vez** por alumno (`topicsInit`), para no pisar lo que la
+  docente saque o agregue a mano después. Para los alumnos que ya venían con la lista vieja
+  (todos los contenidos), cada tarjeta tiene el link **"↻ Rehacer la lista con lo que
+  desaprobó"**, que la recalcula pidiendo confirmación.
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.

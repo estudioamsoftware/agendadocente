@@ -788,7 +788,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-28-compra-play-d';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.29-52';
+const APP_VER='v2026.08.29-53';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2147,6 +2147,21 @@ function getOwed(t,sid,pid){
   let rem=[...d.topics];
   for(let i=0;i<idx;i++){ const cl=(d.periodos[order[i]]||{}).cleared||[]; rem=rem.filter(id=>!cl.includes(id)); }
   return rem;
+}
+// Los contenidos que el alumno se lleva: los de cada evaluación del cuatrimestre que no
+// terminó aprobando (mirando la nota efectiva, o sea ya con el recuperatorio aplicado).
+// Sin nota también cuenta como pendiente: si no la rindió, no la aprobó. Las evaluaciones
+// de intensificación no entran — son de la instancia siguiente, no del cuatrimestre.
+function topicsDesaprobados(t,sid,pm){
+  const ids=[];
+  (t.exams||[]).forEach(e=>{
+    if(e.recuOf) return; // el recu ya se refleja en la nota de su evaluación
+    if(String(e.type||"").startsWith("intens_")) return;
+    if(!Array.isArray(e.topicIds)||!e.topicIds.length) return;
+    const eff=examEffective(t,sid,e.id,pm);
+    if(eff==null||eff<pm) e.topicIds.forEach(tid=>{ if(!ids.includes(tid)) ids.push(tid); });
+  });
+  return ids;
 }
 function hasAnyDeuda(t,sid){ return !!(t.deudas&&t.deudas[sid]&&t.deudas[sid].topics&&t.deudas[sid].topics.length); }
 function setFinal(t,sid,v){ if(v==null) delete t.final[sid]; else t.final[sid]=v; save(); }
@@ -5986,7 +6001,11 @@ function renderIntens(g,t,body){
     return;
   }
   const cards=failing.map(s=>{
-    const d=ensureDeuda(t,s.id,allTopicIds);
+    // Precarga: los contenidos de las evaluaciones que no aprobó. Si no se puede deducir
+    // ninguno (no cargó contenidos en las evaluaciones), se cae en el criterio viejo:
+    // se lleva todo el cuatrimestre y el profe va sacando lo que sí aprobó.
+    const autoIds=topicsDesaprobados(t,s.id,pm).filter(id=>allTopicIds.includes(id));
+    const d=ensureDeuda(t,s.id,autoIds.length?autoIds:allTopicIds);
     const owedIds=d.topics||[];
     const debeCarpeta=!!d.debeCarpeta;
     const passedAt=intensPassedAt(t,s.id,ipm);
@@ -6013,7 +6032,8 @@ function renderIntens(g,t,body){
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
           <button class="btn subtle sm" data-choose-topics="${s.id}">Editar contenidos pendientes</button>
           <button class="btn ${debeCarpeta?"":"subtle"} sm" data-toggle-carpeta-sid="${s.id}">📓 ${debeCarpeta?"✓ ":""}Solo debe carpeta/TP</button>
-        </div></div>
+        </div>
+        <button class="link" data-recalc-topics="${s.id}" style="font-size:11.5px;margin-top:8px;">↻ Rehacer la lista con lo que desaprobó</button></div>
       <div class="infield" style="margin-top:10px;"><label>¿Completó el módulo? (habilita a rendir)</label>
         ${estadoBtns}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${periodsHTML}</div>
@@ -6021,7 +6041,7 @@ function renderIntens(g,t,body){
     </div>`;
   }).join('');
   body.innerHTML=termSeg+passbar+moduloBanner+`<div id="intensCards">${cards}</div>
-    <div class="pagefoot">Con una nota que llegue al mínimo de ese período (arriba de todo), ese alumno queda aprobado y el resto de los períodos se bloquea. Julio, Noviembre y Diciembre piden 7 por defecto; Febrero y Marzo piden 4 — ajustable si tu escuela usa otro criterio.</div>`;
+    <div class="pagefoot">Los contenidos pendientes salen solos de las evaluaciones que el alumno no aprobó (ya contando el recuperatorio); podés sacar o agregar a mano los que quieras. Con una nota que llegue al mínimo de ese período (arriba de todo), ese alumno queda aprobado y el resto de los períodos se bloquea. Julio, Noviembre y Diciembre piden 7 por defecto; Febrero y Marzo piden 4 — ajustable si tu escuela usa otro criterio.</div>`;
   wireIntens(g,t);
   const gmd=$("#goModuloDocs"); if(gmd) gmd.onclick=()=>go({screen:"group",groupId:g.id,term:tk,tab:"documentos"});
   body.querySelectorAll("[data-modulo-completo-sid]").forEach(b=>b.onclick=()=>{
@@ -6039,6 +6059,15 @@ function renderIntens(g,t,body){
     save(); render();
   }));
   body.querySelectorAll("[data-choose-topics]").forEach(b=>b.onclick=()=>promptChooseTopics(g,t,b.dataset.chooseTopics,allTopics));
+  body.querySelectorAll("[data-recalc-topics]").forEach(b=>b.onclick=()=>{
+    const sid=b.dataset.recalcTopics;
+    const st=g.students.find(x=>x.id===sid);
+    const ids=topicsDesaprobados(t,sid,pm).filter(id=>allTopicIds.includes(id));
+    if(!ids.length){ toast("No encontré evaluaciones desaprobadas con contenidos cargados"); return; }
+    confirmDlg("¿Rehacer la lista?",`Van a quedar los ${ids.length} contenido${ids.length===1?"":"s"} de las evaluaciones que ${dispName(st)} no aprobó. Lo que hayas sacado o agregado a mano en esta lista se pierde.`,"Rehacer",()=>{
+      setDeudasTopics(t,sid,ids); render(); toastSuccess("✓ Lista actualizada","#A9500A");
+    });
+  });
   body.querySelectorAll("[data-toggle-carpeta-sid]").forEach(b=>b.onclick=()=>{
     const sid=b.dataset.toggleCarpetaSid;
     const d=ensureDeuda(t,sid);
