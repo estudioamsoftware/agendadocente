@@ -196,6 +196,16 @@ Y **en la barra de fechas va sólo la fecha**: el aviso salió de ahí y ahora a
 junto a los temas del día (`revisionNoteHTML()`, arriba de "Temas y páginas de la clase"),
 diciendo qué prueba viene y qué día.
 
+## El contador "X/Y cargadas" del listado de Exámenes no contaba a los Ausentes (30/8/2026)
+
+Bug encontrado por la dueña: en la lista de Exámenes y recup, el número (ej. "17/19
+cargadas") nunca llegaba al total en un curso con faltas, aunque no quedara nada por
+cargar — todas las filas tenían nota o "A". `examEffective()` devuelve `null` cuando el
+alumno está marcado Ausente (el campo `nota` se borra, no se pone en 0 ni en ningún valor),
+y el contador sólo miraba `examEffective()!=null`. Arreglado (`renderExam()` en
+`index.html`): ahora también cuenta a los ausentes con `gradeAusenteEffective(...,"nota",
+e.date)` — un alumno resuelto con "A" ya está resuelto, no le falta nada por cargar.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación

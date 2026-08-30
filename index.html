@@ -793,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-10';
+const APP_VER='v2026.08.30-11';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5246,7 +5246,12 @@ function renderExam(g,t,body){
   if(g.students.length===0){ body.innerHTML=emptyBox(I.users,"Sin alumnos","Agregá alumnos desde la ficha del curso para cargar exámenes.","Ir a Alumnos","toAl"); $("#toAl").onclick=()=>{view.tab="alumnos";render();}; return; }
   const termSeg=examTermSegHTML();
   const examsSorted=t.exams.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
-  const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examEffective(t,s.id,e.id,g.passMark||7)!=null).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
+  // "Cargadas" cuenta alumnos resueltos, no sólo con nota numérica: uno marcado Ausente
+  // (a mano o porque faltó según Asistencia) ya está resuelto — su casillero queda con
+  // "A", no vacío — así que también cuenta. Si no, el contador nunca llegaba al total en
+  // un curso con faltas, aunque no quedara nada por cargar.
+  const examResuelto=(s,e)=>examEffective(t,s.id,e.id,g.passMark||7)!=null||gradeAusenteEffective(t,g,s.id,e.id,"nota",e.date);
+  const list=t.exams.length?`<div class="evallist">`+examsSorted.map(e=>{ const c=g.students.filter(s=>examResuelto(s,e)).length; const recu=g.students.some(s=>getGrade(t,s.id,e.id).recu!=null);
     const icon=examTypeMeta(e.type).icon;
     return `<button class="erow" data-eval="${e.id}"><span class="einfo"><span class="ename">${icon} ${esc(e.name)}</span>
       <span class="edate">${fmtLong(e.date)} · ${c}/${g.students.length} cargadas${recu?" · con recu":""}</span></span><span class="echev">${I.chev}</span></button>`;}).join("")+`</div>`:emptyInline(I.book,"Todavía no hay evaluaciones en este cuatrimestre.");
