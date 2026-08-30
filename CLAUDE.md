@@ -206,6 +206,21 @@ y el contador sólo miraba `examEffective()!=null`. Arreglado (`renderExam()` en
 `index.html`): ahora también cuenta a los ausentes con `gradeAusenteEffective(...,"nota",
 e.date)` — un alumno resuelto con "A" ya está resuelto, no le falta nada por cargar.
 
+## Elegir los contenidos de un examen ya creado, desde "Editar" (30/8/2026)
+
+Pedido de la dueña: cuando se olvida elegir los contenidos evaluados al crear el examen
+(y ya tiene notas cargadas), no encontraba dónde volver a elegirlos. Existía un link
+"+ Agregar"/"Editar" en la tarjeta "Contenidos evaluados" de la pantalla del examen, y
+funcionaba bien — el problema era que no estaba en el cuadro **"Editar"** (el lápiz de
+arriba, `promptEditExam`), que es donde ella iba a buscarlo.
+
+Se sacó el diálogo de elegir contenidos a una función aparte (`promptEditExamTopics()` en
+`index.html`) para no duplicar el código, y ahora se usa desde los dos lugares:
+- La tarjeta "Contenidos evaluados" de la pantalla del examen (como antes).
+- Un campo nuevo "Contenidos evaluados" **dentro del cuadro "Editar"**, con los chips ya
+  elegidos (o "Sin contenidos seleccionados.") y un link "+ Agregar contenidos" / "Editar
+  contenidos". Al guardar, vuelve al mismo cuadro "Editar" con la lista actualizada.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
