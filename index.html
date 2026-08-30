@@ -793,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-9';
+const APP_VER='v2026.08.30-10';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5300,7 +5300,10 @@ function renderExamEntry(g,t,e,body){
   const typeLabel=`${typeMetaHere.icon} ${typeMetaHere.label}`;
   const periodLabel=e.type==="intens_eval"?(e.period==="otro"?(e.periodOtro||"Otro mes"):(e.period?(INTENS_PERIOD_OPTIONS.find(p=>p.id===e.period)||{}).label:null)):null;
   const periodBadge=periodLabel?`<span style="display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--primary);background:var(--primary-tint);padding:1px 8px;border-radius:99px;vertical-align:middle;">${esc(periodLabel)}</span>`:(e.type==="intens_eval"?`<span style="display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--absent-ink);background:var(--absent-tint);padding:1px 8px;border-radius:99px;vertical-align:middle;">Sin período — tocá ✎ para elegir</span>`:"");
-  body.innerHTML=`${examTermSegHTML()}<button class="link" id="backEx" style="margin:-4px 0 8px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">${I.left} Exámenes y recup</button>
+  // El texto decía "Exámenes y recup", pero es el botón para VOLVER al listado — con esa
+  // etiqueta parecía un título de sección y no un botón de volver. Ahora dice "Atrás",
+  // como el resto de los botones de volver de la app.
+  body.innerHTML=`${examTermSegHTML()}<button class="link" id="backEx" style="margin:-4px 0 8px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">${I.left} Atrás</button>
     <div class="card pad" style="margin-bottom:14px;"><div style="display:flex;align-items:flex-start;gap:10px;">
       <div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;">${typeLabel}${periodBadge}</div>
       <div style="font-weight:600;font-size:17px;word-break:break-word;">${esc(e.name)}</div>
