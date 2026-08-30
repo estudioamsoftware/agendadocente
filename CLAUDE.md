@@ -322,6 +322,23 @@ para carga manual de todo, cuando debería salir sola con lo que el alumno debe.
 - Los recuperatorios y las evaluaciones de intensificación no entran (el recu ya se refleja
   en la nota de su evaluación; las de intensificación son de la instancia siguiente).
 
+🚨 **La lista NO se edita a mano (decisión de la dueña, 30/8/2026).** No se puede sacar un
+contenido, ni "Carpeta", ni agregar nada: es un espejo de las notas. "Si por algún motivo
+el alumno ya mejoró la nota y el profe quiere sacarla de Intensificación, debe ir a
+Exámenes y notas y modificarlo desde ahí para que repique acá." Lo único editable por
+alumno es un **comentario libre** (`d.comentario`), que se guarda al salir del cuadro (sin
+volver a dibujar la pantalla, para no perder el foco mientras se escribe).
+
+Por eso se borraron `d.quitados` / `d.extra` / `setDeudaItem()` / `promptChooseTopics()` /
+`deudaLegacy()` y el botón "↩ Volver a poner lo que saqué": `deudaLista()` quedó como un
+alias de `deudaAuto()`. `migrarDeuda()` ahora sólo limpia los campos de los formatos viejos
+(`topics`, `topicsInit`, `quitados`, `extra`, `debeCarpeta`) y marca `migrado=3`.
+
+**Historia, por si aparece algo raro en datos viejos:** la lista pasó por tres formas —
+guardada entera (`d.topics`), después como excepciones sobre lo automático
+(`d.quitados`/`d.extra`), y ahora puramente calculada. La versión de excepciones duró unas
+horas el 30/8.
+
 **El modelo de datos cambió: la lista ya no se guarda, se calcula.** Antes se guardaba
 entera en `d.topics` y se editaba a mano (por eso había un botón "↻ Rehacer la lista", que
 ya no existe: la lista está siempre al día sola). Ahora se guardan **sólo las excepciones**:
