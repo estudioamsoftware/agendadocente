@@ -793,7 +793,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-6';
+const APP_VER='v2026.08.30-7';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -4125,18 +4125,18 @@ function wireFechasSection(g,body){
 }
 
 /* ---- date header pieces ---- */
-// Una clase es "de revisión" cuando la clase siguiente tiene una PRUEBA: una evaluación,
-// un recuperatorio o una evaluación de intensificación. Un TP, una carpeta o un proyecto
-// no cuentan (no se hace una clase de repaso para entregar la carpeta). Y el día que tiene
-// la prueba nunca es de revisión, aunque a la clase siguiente le toque otra: ese día ya es
-// el examen. Por eso nunca pueden quedar dos días de revisión seguidos.
-const PRUEBA_TYPES=["eval_escrita","eval_oral","recu_escrito","recu_oral","intens_eval"];
+// Una clase es "de revisión" cuando la clase siguiente tiene una EVALUACIÓN, escrita u
+// oral. Nada más (decisión de la dueña, 30/8/2026): ni un recuperatorio, ni una carpeta,
+// ni un TP, ni un proyecto, ni una evaluación de intensificación la disparan. Y el día que
+// tiene la evaluación nunca es de revisión, aunque a la clase siguiente le toque otra: ese
+// día ya es el examen. Por eso nunca pueden quedar dos días de revisión seguidos.
+const REVISION_TYPES=["eval_escrita","eval_oral"];
 function revisionExam(t,iso){
   if(t.exams.some(e=>e.date===iso||e.recuDate===iso)) return null;
   const real=t.sessions.filter(s=>!s.cancelled).map(s=>s.date).sort();
   const idx=real.indexOf(iso); if(idx<0||idx>=real.length-1) return null;
   const nextDate=real[idx+1];
-  return t.exams.find(e=>e.date===nextDate&&PRUEBA_TYPES.includes(e.type))||null;
+  return t.exams.find(e=>e.date===nextDate&&REVISION_TYPES.includes(e.type))||null;
 }
 function isRevisionClass(t,iso){ return !!revisionExam(t,iso); }
 // El aviso de revisión va acá abajo, junto a los temas del día — en la barra de fechas

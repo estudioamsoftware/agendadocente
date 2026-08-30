@@ -186,8 +186,9 @@ tuviera algo cargado en Exámenes, así que una carpeta o un TP también la disp
 día del examen quedaba marcado "revisión" porque a la clase siguiente le tocaba otra cosa.
 Ahora (`revisionExam()` en `index.html`):
 
-- Sólo cuentan las **pruebas** (`PRUEBA_TYPES`: evaluación escrita/oral, recuperatorio
-  escrito/oral, evaluación de intensificación). Un TP, una carpeta o un proyecto no.
+- Sólo cuentan las **evaluaciones, escrita u oral** (`REVISION_TYPES`). **Nada más**
+  (precisión de la dueña, misma fecha): ni un recuperatorio, ni una carpeta, ni un TP, ni
+  un proyecto, ni una evaluación de intensificación la disparan.
 - **El día que tiene la prueba nunca es de revisión**, aunque a la clase siguiente le toque
   otra. Con esas dos reglas no pueden quedar dos días de revisión seguidos.
 
