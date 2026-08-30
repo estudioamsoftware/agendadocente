@@ -239,6 +239,23 @@ no cargan examen online. Se achicó el cuadro (`promptEditExam()` en `index.html
 - Esto además deja lugar para el campo "Contenidos evaluados" (ver más abajo) sin que el
   cuadro se vuelva interminable.
 
+## Los contenidos de un examen ya no se pueden escribir sueltos ahí mismo (30/8/2026)
+
+Pedido de la dueña: en "Contenidos del examen" (tanto al crear el examen como al editarlo)
+había un campo para escribir un contenido extra directo ahí, sin haberlo cargado antes en
+"Contenidos". El problema: ese contenido suelto (`e.extraTopics`, texto libre) no tiene el
+`id` de la ficha del curso, así que `topicsDesaprobados()` — que arma sola la lista de
+pendientes en Intensificación — nunca lo puede detectar como algo que el alumno desaprobó,
+porque esa función sólo mira `e.topicIds` (ver `index.html`). Un contenido cargado así
+quedaba invisible para Intensificación aunque se viera bien en la pantalla del examen.
+
+Se sacó el campo de texto libre de los dos lugares (`promptNewExam()` y
+`promptEditExamTopics()`, compartida entre la tarjeta "Contenidos evaluados" y el cuadro
+"Editar"): ahora sólo se puede tildar contenidos que ya estén cargados en "Contenidos". Si
+falta algo, el mensaje de ayuda dice cargarlo ahí primero y volver a elegirlo. Los
+contenidos sueltos que ya existían de antes (antes de este cambio) se siguen mostrando y se
+pueden sacar, sólo que no se pueden agregar más.
+
 ## Intensificación: los contenidos pendientes salen solos (29/8/2026)
 
 Pedido de la dueña: si un alumno terminó el cuatrimestre desaprobado, en Intensificación
