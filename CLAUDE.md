@@ -948,11 +948,48 @@ Node ni JDK. Pasos:
 - **Producto:** ID `agenda_completa` (con prefijo del nombre de la app, a propósito — ver
   `PLAY-STORE-GUIA.md` sobre por qué, si se agregan más apps vendibles a futuro).
   Nombre visible: "Agenda Docente completa".
-- **Plan básico mensual:** ID `mensual`, renovación automática, **$2.99 USD**, cargado con
-  "Set prices" a los 177 países de una — Argentina queda en pesos, convertido automático
-  por Google. **Ya activado.**
-- **Plan anual:** ID `anual`, renovación automática, **$25 USD** (~30% menos que 12 meses
-  sueltos del mensual). **Ya activado.**
+- **Plan básico mensual:** ID `mensual`, renovación automática, **$5.99 USD**, cargado con
+  "Set prices" a los 177 países de una. **Ya activado.** Es el plan marcado
+  **"Retrocompatibilidad"**, o sea el único que la app puede cobrar hoy (ver el issue de
+  Bubblewrap #830 más arriba).
+- **Plan anual:** ID `anual`, renovación automática, **$50 USD** (~30% menos que 12 meses
+  sueltos del mensual). **Ya activado**, pero **no se puede comprar desde la app** — está
+  cargado para el día que Google habilite vender los dos planes.
+
+**Precios subidos el 31/8/2026** (antes: mensual $2.99, anual $25). Motivo, en palabras de
+la dueña: a 4.500 pesos por mes "no me van a tomar en serio con ese número". Se descartó
+empujar el anual como plan principal porque, con descuento y todo, son ~75 lucas de un
+saque y una docente argentina eso lo piensa dos veces. Se aprovechó que **no había ni un
+suscriptor**: en Play bajar un precio es libre, pero subirlo con gente ya suscripta obliga
+a avisarles y a que muchos acepten, y ahí es cuando se dan de baja. Si hay que volver a
+tocarlo, cuanto antes mejor.
+
+🚨 **ARGENTINA NO TIENE PRECIO EN PESOS EN PLAY — se cobra en dólares** (verificado en
+pantalla el 31/8/2026, no volver a suponer lo contrario). En la tabla de precios del plan,
+Argentina **no aparece con fila propia**: está adentro del grupo **"Otros países o
+regiones"** (hay que desplegarlo con la flechita ▶ para verla), con el precio en **USD** y
+marcada "Sin IVA". O sea:
+- La docente paga **en dólares** con su tarjeta argentina; la conversión a pesos la hace su
+  banco, al "dólar tarjeta", que es más caro que el oficial. El número de su resumen va a
+  ser bastante más alto que el precio en dólares por el cambio oficial. Las alícuotas
+  argentinas cambian seguido — no anotar un porcentaje acá, se desactualiza.
+- **No se puede fijar un precio redondo en pesos** aunque se quiera: el campo de esa fila
+  es en dólares. Por eso la landing anuncia el precio en USD y aclara lo del banco, en vez
+  de prometer un número en pesos que después no se cumple.
+
+⚠️ **Y los precios NO siguen al tipo de cambio solos.** Google convierte una sola vez, en
+el momento de guardar, y ese número queda congelado hasta que se lo cambie a mano (como
+mucho manda un aviso sugiriendo actualizarlo). Para los países que sí tienen moneda local,
+eso significa revisarlos cada tanto. (En una sesión anterior se dijo lo contrario acá — era
+falso.)
+
+**Cómo se cambia un precio, por si hay que repetirlo** (cuesta encontrarlo): Monetiza con
+Play → Productos → Suscripciones → `agenda_completa` → tocar el plan base (`mensual`) →
+scrollear hasta abajo del todo, pasando período de gracia / suspensión / "Volver a
+suscribirse", hasta la tabla de países → tildar el casillero del encabezado (ojo con la
+paginación de 10 filas: confirmar que diga "Se eligieron 177 países") → botón **"Definir
+precio"** → poner el valor en **USD** → **Actualizar** → **Guardar cambios**. Conviene
+hacerlo en la compu: en el celular la tabla scrollea de costado y es un suplicio.
 - Los beneficios cargados en la ficha del producto (visibles para la compradora): Cursos
   ilimitados, Licencias/paros y eventos administrativos, Alertas automáticas de
   vencimientos, Respaldo en tu Google Drive. El diálogo `licPaywall()` en `index.html` ya
@@ -1433,8 +1470,8 @@ Node ni JDK. Pasos:
       "Pronto en Google Play". Cuando se pase a prueba abierta o producción (pendiente 8),
       hay un comentario en `landing.html`, dentro de la tarjeta del plan pago, con el
       `<a>` ya escrito para reemplazar ese cartel.
-    - **La landing anuncia SOLO el plan mensual (USD 2,99), a propósito.** El anual de
-      USD 25 está creado y activo en Play Console, pero hoy Google no deja comprarlo
+    - **La landing anuncia SOLO el plan mensual (USD 5,99), a propósito.** El anual de
+      USD 50 está creado y activo en Play Console, pero hoy Google no deja comprarlo
       desde la app (por la Digital Goods API solo se puede comprar el plan marcado
       "Compatible con versiones anteriores", que es el mensual — ver más arriba, issue
       de Bubblewrap #830). Anunciarlo sería prometer algo que la app no puede cobrar.
@@ -1442,6 +1479,11 @@ Node ni JDK. Pasos:
       algún día Google lo habilita, o si se cambia cuál plan está marcado compatible,
       ahí se suma. El precio está escrito a mano: si se cambia en Play Console, hay que
       cambiarlo también ahí.
+    - **El precio va en dólares, no en pesos** (ver arriba: Argentina cae en "Otros países
+      o regiones" y Play la cobra en USD). La letra chica de la tarjeta lo aclara: "tu
+      banco lo pasa a pesos al cambio de tu tarjeta". A propósito **no** se anuncia un
+      número en pesos — con los recargos del dólar tarjeta se le erraría por bastante, y
+      quedaría desactualizado en cuanto se mueva el cambio.
     - Los beneficios del plan pago son **los mismos cuatro** que están cargados en la
       ficha del producto de Play Console y en `licPaywall()`. Si se toca uno, tocar los
       tres lugares.
