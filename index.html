@@ -77,6 +77,13 @@
     border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top);}
   .topbar-in{display:flex;align-items:center;gap:10px;min-height:75px;padding:8px 0;}
   .clockbar{text-align:right;font-size:15px;font-weight:700;color:var(--muted);padding:0;letter-spacing:.01em;text-transform:capitalize;flex:0 0 auto;line-height:1.2;white-space:nowrap;}
+  /* En el celular la fecha y la hora van una debajo de la otra: en una sola
+     línea se comían el ancho y el nombre de la app quedaba cortado ("Agenda D…"). */
+  @media (max-width:460px){
+    .clockbar{font-size:13.5px;line-height:1.25;}
+    .clockbar .ck-sep{display:none;}
+    .clockbar .ck-d,.clockbar .ck-h{display:block;}
+  }
   .brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto;}
   .brand .mark{width:48px;height:48px;border-radius:12px;flex:none;object-fit:contain;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);}
   .brand .name-accent{color:var(--accent);}
@@ -573,17 +580,23 @@
   .fecha-lbl{font-weight:700;font-size:15.5px;min-width:120px;flex:none;}
   .fecha-val{font-size:14px;color:var(--primary);font-weight:700;flex:1;min-width:60px;}
   .fecha-empty{font-size:13.5px;color:var(--faint);flex:1;}
-  .docrow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
+  /* Dos renglones fijos por fila, iguales en todas: arriba el nombre del
+     documento con su fecha y sus botones a la derecha; abajo el clip para subir
+     y el archivo. Antes era un flex que envolvía distinto en cada fila según lo
+     largo del nombre, así que los clips quedaban escalonados y las filas con
+     fecha medían el doble que las otras. */
+  .docrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+    column-gap:10px;row-gap:6px;padding:9px 14px;border-bottom:1px solid var(--line-soft);}
   .docrow:last-child{border-bottom:none;}
-  .docrow-lbl{display:flex;align-items:center;gap:6px;flex:none;min-width:132px;}
+  .docrow-lbl{grid-column:1;grid-row:1;display:flex;align-items:center;gap:8px;min-width:0;}
   .doc-lbl{font-weight:600;font-size:13px;color:var(--ink);}
-  .doc-files{display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:90px;}
-  .docrow-right{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;}
+  .doc-files{grid-column:1/-1;grid-row:2;display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;}
+  .docrow-right{grid-column:2;grid-row:1;display:flex;align-items:center;gap:8px;justify-self:end;}
+  .docrow > .docrow-pencil{grid-column:2;grid-row:1;justify-self:end;}
   .docrow-date{display:flex;align-items:center;gap:6px;flex:none;white-space:nowrap;}
   .docrow-pencil{flex:none;}
-  .doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--primary-tint);border-radius:99px;padding:3px 10px 3px 10px;font-size:12px;max-width:100%;box-sizing:border-box;}
-  .doc-chip a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
-  .doc-chip a{color:var(--primary);font-weight:600;text-decoration:none;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .doc-chip{display:inline-flex;align-items:center;gap:4px;background:var(--primary-tint);border-radius:99px;padding:3px 10px;font-size:12px;max-width:100%;min-width:0;box-sizing:border-box;}
+  .doc-chip a{color:var(--primary);font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
   .doc-chip a:hover{text-decoration:underline;}
   .doc-del{background:#fdeaea;color:#c0392b;font-size:16px;font-weight:700;padding:4px;line-height:1;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:2px;}
   .doc-del:active{background:#f5c6c6;}
@@ -678,7 +691,7 @@
   .schedule-course .school{font-size:10px;font-weight:800;opacity:.85;letter-spacing:.04em;text-transform:uppercase;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .schedule-course .name{font-weight:700;font-size:13px;}
   .schedule-course .time{font-size:11.5px;opacity:.9;}
-  .schedule-course .status{font-size:10.5px;font-weight:800;opacity:.95;margin-top:2px;background:rgba(255,255,255,.28);padding:1px 6px;border-radius:99px;letter-spacing:.01em;}
+  .schedule-course .status{font-size:10.5px;font-weight:800;opacity:.95;margin-top:2px;background:rgba(255,255,255,.28);padding:1px 6px;border-radius:99px;letter-spacing:.01em;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
   .schedule-course .status-pend{animation:pendBlink 1.8s ease-in-out infinite;}
   @keyframes pendBlink{0%,100%{opacity:.95;}50%{opacity:.4;}}
   
@@ -690,7 +703,16 @@
     .schedule-course{padding:4px;font-size:11px;gap:1px;left:3px;right:3px;}
     .schedule-course .name{font-size:11px;}
     .schedule-course .time{font-size:10px;}
-    .schedule-course .status{font-size:9px;padding:0 4px;margin-top:1px;}
+    .schedule-course .status{font-size:8.5px;padding:0 3px;margin-top:1px;letter-spacing:-.02em;}
+    /* En el celular el bloque mide ~50px: con el símbolo adelante no entra
+       "Finalizada" y se partía en dos renglones cortando la palabra. */
+    .schedule-course .status .st-ic{display:none;}
+  }
+  /* Celulares angostos (360px y menos): el bloque mide ~51px y "Finalizada" no
+     entraba ni sin el símbolo — se achica un punto más para que no se recorte. */
+  @media (max-width:400px){
+    .schedule-course{padding:3px;}
+    .schedule-course .status{font-size:8px;padding:0 2px;letter-spacing:-.03em;}
   }
   
   .splash{position:fixed;inset:0;background:#F7EFE7;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .5s ease;}
@@ -814,7 +836,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-08-30-resumen-tools';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.30-22';
+const APP_VER='v2026.08.31-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -2893,11 +2915,12 @@ function renderScheduleTable(activeGroups){
           const todaySes=["1","2"].flatMap(k=>g.terms[k].sessions).find(s=>s.date===todayISO_);
           const canc=todaySes&&todaySes.cancelled;
           let label;
-          if(canc) label="✕ Anulada";
-          else if(nowMin>=hor.startMin&&nowMin<=hor.endMin) label="● En clase";
-          else if(nowMin>hor.endMin) label="✓ Finalizada";
-          else{ label="· Pendiente"; }
-          statusHTML=`<div class="status${label==="· Pendiente"?" status-pend":""}">${label}</div>`;
+          let icon;
+          if(canc){ icon="✕"; label="Anulada"; }
+          else if(nowMin>=hor.startMin&&nowMin<=hor.endMin){ icon="●"; label="En clase"; }
+          else if(nowMin>hor.endMin){ icon="✓"; label="Finalizada"; }
+          else{ icon="·"; label="Pendiente"; }
+          statusHTML=`<div class="status${label==="Pendiente"?" status-pend":""}"><span class="st-ic">${icon} </span>${label}</div>`;
         }
 
         // La celda abarca "rowspan" horas: ubicamos el bloque en % según los minutos reales
@@ -3760,7 +3783,7 @@ function docsHTML(g){
   const FECHA_CATS=["diagnostico","contrato","planificacion","programa"];
   return `<div class="card" style="margin-bottom:16px;">`+DOC_CATS.map(cat=>{
     const files=docs[cat.key]||[];
-    const filesHTML=files.length?files.map(f=>`<span class="doc-chip"><a href="${esc(f.url)}" target="_blank" title="${esc(f.name)}">${esc(f.name.length>22?f.name.slice(0,20)+'…':f.name)}</a>
+    const filesHTML=files.length?files.map(f=>`<span class="doc-chip"><a href="${esc(f.url)}" target="_blank" title="${esc(f.name)}">${esc(f.name)}</a>
       <button class="doc-del" data-cat="${cat.key}" data-fid="${f.id}" data-fname="${esc(f.name)}" data-furl="${esc(f.url)}" title="Eliminar">${I.trash}</button></span>`).join(''):`<span style="font-size:12px;color:var(--faint);">Sin subir</span>`;
     // "Toma de posesión" no tiene fecha propia acá: muestra la misma que ya se
     // cargó en Situación de revista, de solo lectura (se edita desde ahí).
@@ -3777,12 +3800,14 @@ function docsHTML(g){
         <button class="doc-entregado ${entregado?"on":""}" data-ek="${cat.key}">${entregado?"✓":""}</button>`;
     }
     const pencilCell=hasFechaField?`<button class="btn subtle sm fecha-btn" data-fk="${cat.key}" style="font-size:11px;padding:0 8px;height:26px;">${I.pencil}</button>`:"";
+    // El clip va en el renglón de abajo, junto al archivo: así queda en la misma
+    // columna en todas las filas, en vez de correrse según lo largo del nombre.
     return `<div class="docrow">
-      <div class="docrow-lbl"><span class="doc-lbl">${cat.label}</span>
+      <div class="docrow-lbl"><span class="doc-lbl">${cat.label}</span></div>
+      <div class="doc-files">
         <label class="doc-up-btn" title="${cat.key==='tomaPosesion'?'Subir foto o PDF del comprobante':'Subir PDF (podés elegir varios a la vez)'}">
           <input type="file" accept="${cat.key==='tomaPosesion'?'.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf':'application/pdf,.pdf'}" multiple data-cat="${cat.key}" style="display:none;">${I.clip}</label>
-      </div>
-      <div class="doc-files">${filesHTML}</div>
+        ${filesHTML}</div>
       <div class="docrow-right">
         <div class="docrow-date">${dateCell}</div>
         <div class="docrow-pencil">${pencilCell}</div>
@@ -4995,7 +5020,7 @@ function renderClase(g,t,body){
   // La escala de valoración se elige una sola vez para todo el cuatrimestre, no clase a
   // clase: por eso va como un enlace chico al lado del selector de cuatrimestre (antes
   // estaba en su propia línea, más abajo), y sigue abriendo el mismo cuadro de siempre.
-  const termSegInner=`<div class="seg" role="group" aria-label="Cuatrimestre" style="justify-content:center;flex:1;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
+  const termSegInner=`<div class="seg" role="group" aria-label="Cuatrimestre" style="justify-content:center;flex:1;margin-bottom:0;"><button data-term="1" aria-pressed="${k==="1"}">1° Cuatrimestre</button><button data-term="2" aria-pressed="${k==="2"}">2° Cuatrimestre</button></div>`;
   const schemeLink=`<button type="button" class="link" id="valSchemeBtn" style="font-size:12px;flex:none;">Valoraciones</button>`;
   const termSeg=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">${termSegInner}${schemeLink}</div>`;
   let date=defaultDate(t); view.date=date;
@@ -7647,7 +7672,7 @@ function initClock(){
     const mm=String(d.getMonth()+1).padStart(2,"0");
     const fecha=diasAbbr[d.getDay()]+" "+dd+"/"+mm;
     const hora=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
-    el.textContent=fecha+" · "+hora;
+    el.innerHTML=`<span class="ck-d">${fecha}</span><span class="ck-sep"> · </span><span class="ck-h">${hora}</span>`;
   }
   tick();
   setInterval(tick,15000);

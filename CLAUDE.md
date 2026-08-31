@@ -418,6 +418,46 @@ a mano.
   (todos los contenidos), cada tarjeta tiene el link **"↻ Rehacer la lista con lo que
   desaprobó"**, que la recalcula pidiendo confirmación.
 
+## Repaso de diseño en el celular (31/8/2026)
+
+Pedido de la dueña: que la app se vea prolija en el teléfono. Se recorrió entera con
+Chromium a 360, 390 y 430 px de ancho (Playwright, que ya viene instalado en el entorno
+de Claude Code — ver abajo). **Resultado general: no hay ni una pantalla que desborde a lo
+ancho**, y el único texto que se recorta es el de la columna fija de nombres en Resumen,
+que es a propósito (para eso está la columna sticky). Lo que sí había eran cuatro
+problemas de alineación, ya arreglados:
+
+- **Documentos: las filas quedaban escalonadas.** Era un flex que envolvía distinto en
+  cada fila según lo largo del nombre del documento, así que el clip de subir archivo
+  caía en una `x` distinta en cada renglón y las filas con fecha medían el doble que las
+  otras. Ahora `.docrow` es una **grilla de dos renglones fijos, iguales en todas las
+  filas**: arriba el nombre con la fecha y los botones a la derecha, abajo el clip y el
+  archivo. 🚨 **El clip va en el renglón de abajo a propósito** — es lo que lo mantiene en
+  una sola columna; si alguien lo devuelve al lado del nombre, vuelve el escalonado.
+  De paso, el nombre del archivo ya no se corta a 20 caracteres a mano (`f.name.slice`):
+  ahora tiene el renglón entero y lo recorta el CSS sólo si de verdad no entra.
+- **"✓ Finalizada" se partía en dos** en el bloque del horario de Inicio ("Finalizad" /
+  "a"): el chip heredaba el `word-break:break-word` del bloque. Ahora va `nowrap`, y en el
+  celular **se esconde el símbolo** (`.st-ic`) y se achica la letra, porque el bloque mide
+  ~50 px y con el símbolo delante la palabra no entra. Por eso el símbolo va en su propio
+  `<span>`: no es decoración al pedo.
+- **El nombre de la app salía cortado ("Agenda D…")** en la barra de arriba. El reloj se
+  comía el ancho. Ahora, en pantallas de menos de 460 px, **la fecha y la hora van una
+  debajo de la otra** y "Agenda Docente" entra entero.
+- **El atajo "Valoraciones" de Clases** estaba 6 px más abajo que los botones de
+  cuatrimestre: el `margin-bottom` de `.seg` desbalanceaba el centrado vertical de la fila.
+
+**Cómo repetir el recorrido** (sirve para cualquier cambio de diseño futuro): en el
+entorno de Claude Code hay Chromium y Playwright ya instalados
+(`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`,
+`/opt/node22/lib/node_modules/playwright`). Se levanta un servidor local
+(`npx http-server -p 8099`), se abre `index.html` a 390x844, se siembran datos de prueba
+llamando a las **funciones de la propia app** (`addGroup`, `addStudent`, `addSession`,
+`addExam`…) en vez de inventar el JSON a mano, y se navega con `go({screen,groupId,term,tab})`.
+Las 10 secciones del curso están en `GRP_SEC`. Conviene medir (`scrollWidth>clientWidth`,
+`document.documentElement.scrollWidth`) además de mirar capturas: varias cosas de acá se
+veían "casi bien" y sólo aparecían midiendo.
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
