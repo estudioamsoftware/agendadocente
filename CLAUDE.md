@@ -1480,10 +1480,16 @@ hacerlo en la compu: en el celular la tabla scrollea de costado y es un suplicio
       ahí se suma. El precio está escrito a mano: si se cambia en Play Console, hay que
       cambiarlo también ahí.
     - **El precio va en dólares, no en pesos** (ver arriba: Argentina cae en "Otros países
-      o regiones" y Play la cobra en USD). La letra chica de la tarjeta lo aclara: "tu
-      banco lo pasa a pesos al cambio de tu tarjeta". A propósito **no** se anuncia un
-      número en pesos — con los recargos del dólar tarjeta se le erraría por bastante, y
-      quedaría desactualizado en cuanto se mueva el cambio.
+      o regiones" y Play la cobra en USD). A propósito **no** se anuncia un número en
+      pesos: con los recargos del dólar tarjeta se le erraría por bastante y quedaría
+      viejo en cuanto se mueva el cambio.
+    - 🚨 **Y tampoco se aclara en la landing que la conversión la hace el banco**
+      (decisión de la dueña, 31/8/2026, textual: "no aclares lo del banco, que lo vean al
+      pagar... cómo hace Netflix"). Hubo una versión de la letra chica que lo explicaba y
+      se sacó. Sostiene la decisión que **Play muestra el importe final antes de
+      confirmar la compra**, así que nadie se entera después de pagar. Hay un comentario
+      en `landing.html` avisándolo, para que a nadie se le ocurra "mejorarlo" volviendo a
+      agregar la explicación.
     - Los beneficios del plan pago son **los mismos cuatro** que están cargados en la
       ficha del producto de Play Console y en `licPaywall()`. Si se toca uno, tocar los
       tres lugares.
