@@ -360,8 +360,14 @@
   .ur-btn span{font-size:8px;font-weight:700;color:var(--muted);line-height:1;}
   .ur-btn:active{background:var(--line-soft);}
   .undoredo-strip{justify-content:flex-end;margin:0 0 10px;}
-  .gh-sep{background:var(--primary-tint);color:var(--primary);font-weight:800;width:18px;min-width:18px;text-align:center;padding:0 2px;}
-  .gc-sep{background:var(--primary-tint);width:18px;min-width:18px;}
+  /* Línea gruesa negra entre cuatrimestres, no un color relleno: el tinte clarito que
+     tenía antes (parecido al beige de "clases sin dictado") se confundía con una clase
+     anulada al verlo en el celular real (30/8/2026, aviso de la dueña). El selector
+     necesita "th.gh-sep"/"td.gc-sep" (no la clase sola) para pisar el min-width:46px y
+     el background de "thead th" de más arriba, que si no ganan por especificidad y la
+     columna queda ancha y clara en vez de una línea angosta y oscura. */
+  .grid th.gh-sep,.grid td.gc-sep{background:var(--ink);width:7px;min-width:7px;max-width:7px;padding:0;}
+  .grid th.gh-sep{color:transparent;font-size:0;}
   .av-opt{height:32px;padding:0 10px;border-radius:8px;font-weight:700;font-size:12px;border:none;cursor:pointer;}
   .av-opt.on{outline:2px solid var(--ink);outline-offset:1px;}
   .gh-tot{background:var(--line-soft);font-size:10px;font-weight:700;color:var(--muted);white-space:nowrap;}
@@ -851,10 +857,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-09-01-resumen-cuatrimestres-diferenciados';
+const APP_BUILD='2026-09-01-separador-cuatrimestres-linea-negra';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-4';
+const APP_VER='v2026.09.01-5';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -5995,7 +6001,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     </table>`;
   }
   body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-    <div class="gridkey">· = separador entre cuatrimestres · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Nota C1°/C2°" para ponerle fecha de cierre del cuatrimestre · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
+    <div class="gridkey">La franja negra separa el 1° del 2° cuatrimestre · Intens. se habilita si nota final ≤ 6 · Promedio = (nota 1° + nota 2°) ÷ 2 · "Nota C1°/C2°" se calcula sola como promedio de las notas cargadas — tocá la celda si necesitás subirla o bajarla a mano · Tocá el encabezado "Nota C1°/C2°" para ponerle fecha de cierre del cuatrimestre · Tocá el encabezado "Notas de avance" para ponerle fecha, y una celda de esa columna para cargar la nota de ese alumno · El tilde ✓ es para marcar que ya la pasaste al cuaderno de comunicaciones</div>
     <div class="pagefoot">Tocá una celda de Notas de avance o Nota C1°/C2° para cargar o ajustar la nota de ese alumno. Con "Notas de avance" ya con fecha puesta, se ordena sola entre los exámenes según cuándo fue.</div>
     <div class="grid-stats" id="statsFooter">${statsFooterHTML()}</div>
     ${gridToolsHTML(null)}
@@ -6233,7 +6239,7 @@ function renderGrid(g,t,body){
   let statsFooter="";
 
   body.innerHTML=`${modeSeg}<div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-    <div class="gridkey">${mode==="asist"?"• presente · A ausente · F. = faltas en módulos · columna central = separador de cuatrimestre":schemeFootNote(valScheme)+" A ausente · amarillo: anulada"}</div>
+    <div class="gridkey">${mode==="asist"?"• presente · A ausente · F. = faltas en módulos · la franja negra separa el 1° del 2° cuatrimestre":schemeFootNote(valScheme)+" A ausente · amarillo: anulada"}</div>
     ${cancList?`<div class="gridblk"><div class="gridblk-t">Clases sin dictado</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">${cancList}</div></div>`:""}
     ${statsFooter}
     ${gridToolsHTML(mode)}
