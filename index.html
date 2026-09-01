@@ -840,10 +840,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-09-01-fechas-guardado';
+const APP_BUILD='2026-09-01-bienvenida-inicial';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-1';
+const APP_VER='v2026.09.01-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -7752,9 +7752,33 @@ function promptUserName(){
     <div class="dlg-actions"><button class="btn" id="un_ok">Listo</button></div>`,
     "Así te saludamos cada vez que abras la agenda.");
   setTimeout(()=>{ const inp=$("#un_name"); if(inp) inp.focus(); },80);
-  const go=()=>{ const inp=$("#un_name"); const v=inp?inp.value.trim().split(/\s+/)[0]:""; if(!v) return; state.userName=v; save(); closeDlg(); runSplashGreeting(v); };
+  const go=()=>{ const inp=$("#un_name"); const v=inp?inp.value.trim().split(/\s+/)[0]:""; if(!v) return; state.userName=v; save(); closeDlg(); promptWelcomeIntro(v); };
   $("#un_ok").onclick=go;
   $("#un_name").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+}
+function promptWelcomeIntro(name){
+  const gdConnected=!!(gd.tok);
+  openDlg(`¡Bienvenida, ${esc(name)}!`,`
+    <div style="font-size:13.5px;line-height:1.6;color:var(--ink);">
+      <div style="font-weight:700;margin-bottom:10px;">Así se usa la Agenda Docente:</div>
+      <div class="onboard-steps" style="margin-bottom:16px;">
+        <div class="onboard-step"><span class="step-n">1</span><span>Creá un curso con <b>+ Agregar curso</b> y cargá tus alumnos</span></div>
+        <div class="onboard-step"><span class="step-n">2</span><span>En <b>La ficha del curso</b> cargás los días de clase y generás las clases del cuatrimestre</span></div>
+        <div class="onboard-step"><span class="step-n">3</span><span>Día a día: pasás <b>Asistencia</b>, cargás <b>Exámenes y notas</b>, y en <b>Resumen</b> se arma todo solo</span></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Podés volver a ver esta guía completa cuando quieras en Menú ⋯ → "Cómo usar la Agenda".</div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0;">
+      ${gdConnected?"":`
+      <div style="background:var(--primary-tint);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--ink);">
+        💾 <b>Recomendación:</b> conectá tu Google Drive para que tus cursos queden respaldados solos. Si el día de mañana cambiás de celular o se te rompe, no perdés nada de lo que cargaste.
+      </div>
+      <button class="btn" id="wi_gd" style="width:100%;margin-bottom:10px;">Conectar Google Drive ahora</button>
+      `}
+      <button class="btn ${gdConnected?"":"ghost"}" id="wi_ok" style="width:100%;">${gdConnected?"Listo, ¡vamos!":"Ahora no, más tarde"}</button>
+    </div>`);
+  $("#wi_ok").onclick=()=>{ closeDlg(); runSplashGreeting(name); };
+  const gdBtn=$("#wi_gd");
+  if(gdBtn) gdBtn.onclick=()=>{ closeDlg(); runSplashGreeting(name); gdConnect(); };
 }
 function runSplashGreeting(name){
   const el=$("#splash"); if(!el) return;
