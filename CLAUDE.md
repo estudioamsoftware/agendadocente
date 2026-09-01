@@ -1114,17 +1114,23 @@ qué es ni cómo se usa. Quedó anotado ahora para que no se vuelva a perder.
   usuaria misma desde su propia cuenta). Así que hoy, con `LIC_ENFORCE=false` y casi
   nadie tocando el flujo de compra, esta tabla probablemente esté vacía o casi vacía —
   eso es esperable, no un error del panel.
-- **Sin confirmar si `adminListUsers` está desplegada de verdad.** El resto de
-  `functions/index.js` (`verifyPurchase`, `playRtdn`) se desplegó el 28/8/2026 desde
-  Cloud Shell (ver más abajo), pero no hay ninguna anotación de que se haya vuelto a
-  desplegar después de agregar `adminListUsers` — y el historial de git de este repo
-  arranca de golpe en un solo commit gigante (`d62edba`, 29/8/2026, con **todo** el
-  proyecto adentro), así que tampoco sirve para saber cuándo se agregó de verdad. **Si al
-  entrar al panel tira error después de loguearse**, lo más probable es que falte
-  desplegar: repetir desde Cloud Shell `git clone` del repo → `npm install -g
-  firebase-tools` → `firebase login --no-localhost` → `firebase deploy --only
-  functions:adminListUsers --project agenda-docente-8c53d` (o `--only functions` para
-  redesplegar las tres juntas, no hace daño).
+- **✅ Confirmado desplegada y funcionando (1/9/2026), probado en el celular real de la
+  dueña.** Entrando con `estudioam.dev@gmail.com` la tabla cargó bien: mostró **2 cuentas
+  conectadas** (`estudioam.dev@gmail.com`, primera conexión 29 ago 2026, y
+  `englishbeatsclasesyrecursos@gmail.com`, primera conexión 19 ago 2026) y **0 con
+  suscripción activa**. Si en algún momento el panel se queda trabado en "Cargando…" sin
+  llegar a mostrar nada, **antes de sospechar del despliegue, revisar con qué cuenta se
+  entró** — fue la causa real la primera vez que pareció fallar: se había entrado con
+  `englishbeatsclasesyrecursos@gmail.com` (una cuenta de prueba, sin permiso) en vez de
+  `estudioam.dev@gmail.com` (la única autorizada, ver `ADMIN_EMAIL` en
+  `functions/index.js`). 🐛 **Bug de `admin.html` encontrado en el camino:** `cargarDatos()`
+  atrapa sus propios errores en un `try/catch` interno y nunca los vuelve a lanzar, así que
+  el `.catch(...)` de `onAuthStateChanged` que debería mostrar "La cuenta ... no tiene
+  permiso para ver este panel" (`renderNoAutorizada`) **es código muerto, nunca se
+  dispara** — con una cuenta sin permiso, en la práctica lo que se ve es el cartel genérico
+  "No se pudo cargar: ...". No se tocó, porque no molesta (el mensaje genérico ya deja en
+  claro que algo falló), pero si algún día se quiere el cartel específico, hay que hacer
+  que `cargarDatos()` relance el error en vez de tragárselo.
 
 ### Pendientes en orden (actualizado 27/8/2026 — el orden cambió)
 
