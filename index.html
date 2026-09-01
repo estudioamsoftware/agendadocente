@@ -840,10 +840,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-09-01-bienvenida-inicial';
+const APP_BUILD='2026-09-01-arrancar-en-2do-cuatrimestre';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-2';
+const APP_VER='v2026.09.01-3';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3219,7 +3219,10 @@ function renderHome(){
   const ta=$("#toggleArch"); if(ta) ta.onclick=()=>{ view.showArchived=!view.showArchived; render(); };
   // Las tarjetas de archivados se abren en el índice del curso, desde donde se llega a
   // "Escuela y horarios", que es donde están "Desarchivar" y "Eliminar"
-  app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:"1",tab:"indice"}));
+  // El cuatrimestre con el que arranca es el de HOY (activeTermToday()), no siempre el
+  // 1° — si no, una docente que arranca en agosto/septiembre caía siempre en el 1°
+  // cuatrimestre (vacío, sin nada suyo) cada vez que tocaba su curso.
+  app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"indice"}));
 }
 
 /* ---- EVENTOS GENERALES (pantalla propia) ---- */
@@ -4152,7 +4155,14 @@ function wireInfoSection(g,body){
 function cicloSectionHTML(g){
   const allSes=["1","2"].flatMap(k=>g.terms[k].sessions);
   const anyGenerated=allSes.length>0;
-  const cicloIni=anyGenerated?allSes.reduce((min,s)=>s.date<min?s.date:min,allSes[0].date):cicloStartDefault(g);
+  // Curso nuevo, armado cuando el año ya está en el 2° cuatrimestre (una docente que
+  // recién arranca a probar la agenda a mitad de año, por ejemplo): el default de
+  // Inicio NO es marzo. Si lo fuera, "Generar clases" tal cual crearía también todo
+  // el 1° cuatrimestre ya pasado, con clases sin asistencia ni notas que nadie va a
+  // cargar. Arranca directo en el 2° para que probarla sea liviano — quien sí quiera
+  // cargar el año completo puede cambiar la fecha de Inicio a mano.
+  const empiezaEnC2=!anyGenerated&&activeTermToday()==="2";
+  const cicloIni=anyGenerated?allSes.reduce((min,s)=>s.date<min?s.date:min,allSes[0].date):(empiezaEnC2?termStartDefault("2"):cicloStartDefault(g));
   const cicloFin=anyGenerated?allSes.reduce((max,s)=>s.date>max?s.date:max,allSes[0].date):cicloEndDefault(g);
   const showCicloView=!view.editCiclo&&anyGenerated;
   const cicloStr=`${fmtItemDate(cicloIni)} → ${fmtItemDate(cicloFin)}`;
@@ -4165,6 +4175,7 @@ function cicloSectionHTML(g){
       ${avisoDias}
       ${showCicloView?`<div class="kvrow"><span class="kv-ic">${I.cal}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Del primer al último día</div><div class="kv-val">${cicloStr}</div></div><button class="iconbtn" id="ciclo_edit" aria-label="Editar el ciclo lectivo">${I.pencil}</button></div>`:``}
       <div id="cicloForm" style="${showCicloView?"display:none;":"padding:2px 0 14px;"}">
+        ${empiezaEnC2?`<div style="font-size:11.5px;color:var(--muted);background:var(--line-soft);border-radius:9px;padding:8px 10px;margin-bottom:10px;line-height:1.45;">💡 Como ya estamos en el 2° cuatrimestre, el Inicio arranca ahí directo — así no se generan de más las clases del 1° que ya pasó. Si igual querés cargar el año completo, cambiá la fecha de Inicio a marzo.</div>`:""}
         <div class="sched-row2">
           <div class="sched-field"><label>Inicio</label><input id="ciclo_first" type="date" value="${cicloIni}"></div>
           <div class="sched-field"><label>Fin</label><input id="ciclo_end" type="date" value="${cicloFin}"></div>
@@ -6622,7 +6633,7 @@ function promptNewGroup(){
     }
     save(); closeDlg();
     if(selDias.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
-    else { go({screen:"group",groupId:g.id,term:"1",tab:"indice"}); }
+    else { go({screen:"group",groupId:g.id,term:activeTermToday(),tab:"indice"}); }
   };
   $("#f_ok").onclick=ok;
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); });
