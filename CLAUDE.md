@@ -1084,6 +1084,48 @@ hacerlo en la compu: en el celular la tabla scrollea de costado y es un suplicio
   — se resolvió igual armando la cuenta de servicio directo en Google Cloud e invitándola
   como "usuario" en Play Console con el permiso puntual.
 
+### El panel de administración (`admin.html`) — EXISTE, no estaba anotado acá
+
+🚨 **Encontrado el 1/9/2026 porque la dueña se acordaba de un link que una sesión anterior
+le había dado y esta sesión no tenía anotado en ningún lado — moraleja de siempre: lo que
+no se commitea acá, se pierde.** El archivo ya estaba en el repo (`admin.html` +
+`exports.adminListUsers` en `functions/index.js`), pegado a `main`, pero nunca se escribió
+qué es ni cómo se usa. Quedó anotado ahora para que no se vuelva a perder.
+
+- **Link:** `https://estudioamsoftware.github.io/agendadocente/admin.html` — no está
+  linkeado desde ningún lado de la app ni de la landing (a propósito, y trae
+  `<meta name="robots" content="noindex, nofollow">`), hay que guardarlo aparte.
+- **Cómo se entra:** un botón "Iniciar sesión con Google". Sólo funciona con
+  `estudioam.dev@gmail.com` — el mail está escrito a mano en `functions/index.js`
+  (`const ADMIN_EMAIL = "estudioam.dev@gmail.com"`) y la Cloud Function rechaza a
+  cualquier otra cuenta con "No autorizada". Si el día de mañana hay que darle acceso a
+  alguien más, hay que agregar su mail ahí y volver a desplegar.
+- **Qué muestra:** una tabla con mail, primera conexión, última conexión, y estado de
+  suscripción (activa / sin suscripción) con fecha de vencimiento.
+- ⚠️ **OJO, esto NO es "quién conectó Google Drive".** Es la lista de Firebase
+  Authentication del proyecto `agenda-docente-8c53d` — o sea, quién alguna vez inició
+  sesión con Google **adentro de la app**, cosa que hoy sólo pasa en un momento puntual:
+  cuando alguien toca "Comprar" en el cuadro de "Mi suscripción" (`playComprar()` llama a
+  `window.fbSignIn()` recién ahí, ver `index.html`). **Conectar Google Drive es un flujo
+  totalmente aparte** (otro `GD_CID`, sin Firebase de por medio — ver "El login de
+  Google / Drive" más arriba) y no genera ningún registro en ningún lado: eso no se
+  puede ver, ni con este panel ni con ningún otro, porque no queda guardado en
+  ningún servidor nuestro (Google tampoco se lo muestra al desarrollador, sólo a la
+  usuaria misma desde su propia cuenta). Así que hoy, con `LIC_ENFORCE=false` y casi
+  nadie tocando el flujo de compra, esta tabla probablemente esté vacía o casi vacía —
+  eso es esperable, no un error del panel.
+- **Sin confirmar si `adminListUsers` está desplegada de verdad.** El resto de
+  `functions/index.js` (`verifyPurchase`, `playRtdn`) se desplegó el 28/8/2026 desde
+  Cloud Shell (ver más abajo), pero no hay ninguna anotación de que se haya vuelto a
+  desplegar después de agregar `adminListUsers` — y el historial de git de este repo
+  arranca de golpe en un solo commit gigante (`d62edba`, 29/8/2026, con **todo** el
+  proyecto adentro), así que tampoco sirve para saber cuándo se agregó de verdad. **Si al
+  entrar al panel tira error después de loguearse**, lo más probable es que falte
+  desplegar: repetir desde Cloud Shell `git clone` del repo → `npm install -g
+  firebase-tools` → `firebase login --no-localhost` → `firebase deploy --only
+  functions:adminListUsers --project agenda-docente-8c53d` (o `--only functions` para
+  redesplegar las tres juntas, no hace daño).
+
 ### Pendientes en orden (actualizado 27/8/2026 — el orden cambió)
 
 1. ~~Revisar y juntar las dos ramas~~ ✅ hecho.
