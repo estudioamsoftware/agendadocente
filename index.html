@@ -857,10 +857,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-09-01-agregar-evento-abajo-de-la-lista';
+const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-7';
+const APP_VER='v2026.09.01-8';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3382,10 +3382,10 @@ function renderEventos(){
     <div style="font-size:11.5px;color:var(--muted);line-height:1.5;margin:-6px 0 16px;">📍 Feriados y licencias configurados para <b>Argentina</b> (Provincia de Buenos Aires). Si sos de otra provincia o país, <a href="mailto:${FB_MAIL}?subject=${encodeURIComponent("Agenda Docente — Ajustar a mi ciudad/país")}" style="color:var(--primary);font-weight:600;">escribinos</a> y vemos de ajustarlo.</div>
     ${listadosHTML}
     ${tallyHTML}
+    <button class="btn" id="addGlobalEvent2" style="width:100%;margin-bottom:16px;">${I.plus} Agregar licencia, paro o suspensión</button>
     ${derivedNoteHTML}
     <div class="gevents-list">${proximosHTML}</div>
     ${pastToggleHTML}
-    <button class="btn" id="addGlobalEvent2" style="width:100%;margin:16px 0;">${I.plus} Agregar licencia, paro o suspensión</button>
     ${archToggleHTML}
     ${archBtnHTML}
     ${vacInvCardHTML}
