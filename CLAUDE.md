@@ -1,5 +1,13 @@
 # Agenda Docente — cómo trabajar en este repo
 
+🚨 **ESTE REPO ES PÚBLICO.** Cualquiera puede leer este archivo entero desde
+`github.com/estudioamsoftware/agendadocente`. Por eso acá **no van**: contraseñas,
+el contenido de `signing-key-info.txt`, claves JSON de cuentas de servicio, ni mails
+de otras personas (los de la dueña sí, son públicos igual en la ficha de Play y en la
+política de privacidad). Los IDs que sí están anotados (`GD_CID`, la config de
+Firebase, la huella SHA-256) son públicos por diseño — ver la sección "Qué es público
+y qué no" más abajo. Si algún día el repo pasa a privado, actualizar este aviso.
+
 ## Cómo comunicarse con la dueña del proyecto
 
 - **Nunca usar los cuadros de opciones para preguntar** (el widget de preguntas con
@@ -483,6 +491,141 @@ Las 10 secciones del curso están en `GRP_SEC`. Conviene medir (`scrollWidth>cli
 `document.documentElement.scrollWidth`) además de mirar capturas: varias cosas de acá se
 veían "casi bien" y sólo aparecían midiendo.
 
+## Qué es público y qué no (revisión de seguridad, 1/9/2026)
+
+Se revisó `index.html` buscando credenciales, a pedido de la dueña, antes de pasarle la
+app a una colega para que la testee. **No hay ningún secreto filtrado.** Lo que hay son
+dos identificadores que son públicos por diseño — están pensados para viajar al
+navegador, y taparlos no aportaría nada:
+
+- **`GD_CID`** (línea ~7852): el client ID de OAuth del login de Google Drive,
+  `186098387728-efdun1mckj6jcil78b6hnn9pbpgij9dr.apps.googleusercontent.com`.
+  No es una contraseña: es el "nombre" con el que la app se presenta ante Google. Lo que
+  lo protege es la lista de **orígenes autorizados** en Google Cloud: si alguien copia el
+  ID y lo usa desde otro dominio, Google le rechaza el pedido. **No hay client secret en
+  el archivo, y está bien que no lo haya** — este tipo de app (pública, sin servidor) usa
+  el flujo que no lleva secreto.
+- **La config de Firebase** (línea ~8191): `apiKey`, `authDomain`, `projectId`, etc.
+  La `apiKey` de Firebase **no es una clave secreta** pese al nombre (está documentado por
+  Google): sólo identifica el proyecto. Lo que protege los datos son las **reglas de
+  Firestore** (`firestore.rules`, ya publicadas: cada docente lee sólo su propio doc de
+  suscripción y nadie escribe salvo el Admin SDK) y la lista de **dominios autorizados**
+  de Firebase Auth.
+
+**Lo que NO está en el repo, y tiene que seguir así:** `signing.keystore` y
+`signing-key-info.txt` (contraseñas en texto plano) y el JSON de la cuenta de servicio
+`play-store-api@...` — los tres viven en el Drive de la dueña. El secreto
+`PLAY_SERVICE_ACCOUNT` vive en Secret Manager, no en el código.
+
+### Restricciones a poner/confirmar en las consolas
+
+Ninguna es urgente (nada está expuesto hoy), pero conviene tenerlas puestas:
+
+1. **Orígenes autorizados del cliente OAuth de Drive.** En
+   `https://console.cloud.google.com/apis/credentials?project=agenda-docente-506819`,
+   entrar al cliente y confirmar que en "Orígenes autorizados de JavaScript" esté
+   **sólo** `https://estudioamsoftware.github.io`. Si aparece algún dominio viejo de
+   Cloudflare (`agendadocente.pages.dev`) o `localhost`, sacarlos.
+2. **Scopes mínimos.** En `https://console.cloud.google.com/auth/scopes?project=agenda-docente-506819`
+   tienen que estar sólo `.../auth/drive.file` y `.../auth/userinfo.email`. `drive.file`
+   ya es el mínimo posible: da acceso **únicamente a los archivos que creó esta app**, no
+   al resto del Drive de la docente. **No agregar `drive` ni `drive.readonly`** — además
+   de ser peligroso, dispararía la verificación de Google.
+3. **Dominios autorizados de Firebase Auth.** En
+   `https://console.firebase.google.com/project/agenda-docente-8c53d/authentication/settings`,
+   dejar sólo `localhost`, `agenda-docente-8c53d.firebaseapp.com`,
+   `agenda-docente-8c53d.web.app` y `estudioamsoftware.github.io`. (Ya se limpió el
+   28/8/2026, es para reconfirmar.)
+4. **Restringir la API key de Firebase** en
+   `https://console.cloud.google.com/apis/credentials?project=agenda-docente-8c53d`:
+   restricción de aplicación → **Sitios web**, con `estudioamsoftware.github.io/*`. No
+   cambia la seguridad de fondo (las reglas de Firestore son las que mandan) pero evita
+   que alguien use la cuota del proyecto desde otro lado.
+
+### Sobre "esconder el código" — no se puede, y no hace falta
+
+Preguntado por la dueña el 1/9/2026. Una PWA se ejecuta en el navegador, así que el
+navegador tiene que recibir el código en texto plano: cualquiera puede leerlo con "Ver
+código fuente". Ofuscar, minificar o bloquear F12 son molestias, no protecciones, y
+encima complican el mantenimiento (este proyecto no tiene build step justamente para
+poder tocar un archivo y publicar). **La protección real es legal**, y ya está puesta:
+`LICENSE` en la raíz + el bloque de copyright al inicio de `index.html` (ver abajo).
+
+Lo que sí sigue abierto: **el repo es público**, así que hoy cualquiera se baja el
+`index.html` entero, el historial y este mismo archivo. Pasarlo a privado requiere
+**GitHub Pro** (~USD 4/mes) porque publicar Pages desde un repo privado es plan pago.
+**No se recomendó borrar este `CLAUDE.md` del repo:** la dueña trabaja con Claude Code
+desde el celular, donde cada sesión clona el repo — si el archivo no está acá, cada
+sesión empieza sin memoria y se repite el problema que este archivo existe para evitar.
+Sacar el archivo cuesta más de lo que ahorra, sobre todo porque el historial de git ya
+lo tiene publicado igual y borrarlo hoy no lo despublica. El arreglo de verdad es el
+repo privado.
+
+## Licencia y atribución (1/9/2026)
+
+- **`LICENSE`** en la raíz: licencia propietaria, todos los derechos reservados, a nombre
+  de **Ana Teresa Catalina Müller (Estudio AM)**. Permite usar la app y bajar los datos
+  propios; prohíbe copiar, redistribuir, republicar bajo otra cuenta de desarrollador,
+  hacer obras derivadas y explotarla comercialmente. Aclara que los datos que carga cada
+  docente son de ella, no de la autora, y se rige por la Ley 11.723 (Argentina).
+- **Bloque de comentario al inicio de `index.html`** con lo mismo en corto: es lo primero
+  que ve quien abre "Ver código fuente". 🚨 **No sacarlo ni moverlo del inicio del
+  archivo** — es lo que convierte una copia en algo reclamable.
+- **Metas `author` / `copyright` / `license`** en el `<head>`.
+- El punto 4 de `LICENSE` cubre específicamente a quien recibe la app para testearla.
+
+## Refuerzos para el testeo (1/9/2026)
+
+Se endurecieron las zonas que más probablemente fallen en un testeo real. Todo probado
+con Chromium/Playwright a 390 px (33 comprobaciones, todas en verde).
+
+- **Validación de notas** (`parseNumInfo` reemplaza al `parseFloat` pelado). Antes
+  entraba basura en silencio: `"5perros"` guardaba 5, `"-3"` guardaba **0**,
+  `"Infinity"` y `"1e5"` guardaban **10**, `"1 2"` guardaba 1, y `"7.456"` quedaba
+  guardado con más decimales de los que se muestran. Ahora sólo pasa un número de verdad
+  (con coma o punto), se redondea a 2 decimales y se ajusta a la escala 1–10.
+  🚨 **Lo importante: una nota inválida ya NO borra la que estaba cargada** — se repone
+  la anterior y sale un cartel diciendo qué se escribió mal. `aplicarNota(inp,anterior,
+  guardar)` es el único punto por donde pasan todos los casilleros de nota (exámenes,
+  nota final, TP, intensificación por período). Mientras se tipea, el borde se pone rojo
+  (`.numin-bad`) sin borrar nada.
+- **Uso sin conexión y vuelta de la conexión.** Antes cada `save()` disparaba un
+  `gdPushNow()` suelto: sin señal era un cartel rojo por cada tecla, el estado quedaba en
+  "error" para siempre, lo editado sin señal **no subía nunca solo** (esperaba a que
+  hubiera otra edición) y dos subidas simultáneas podían llegar a Drive al revés y pisarse.
+  Ahora hay una sola subida a la vez, con cola (`gdPushPendiente` / `gdPushEnVuelo`),
+  agrupación de ráfagas, reintento espaciado (3s, 6s, 12s… hasta 1 min), el cartel de
+  error una sola vez por racha, y un listener de `online` que sube lo pendiente solo.
+  Sin señal la app dice **"Sin conexión · se sube al volver"** en vez de un error rojo.
+- **`gdSilentRefresh` ya no se cuelga.** Sin internet, `requestAccessToken` podía no
+  llamar nunca a su callback: la promesa quedaba colgada para siempre y con ella todo lo
+  que esperara el token. Ahora corta a los 15 segundos.
+- **`save()` aguanta que se llene la memoria.** Antes, si `localStorage` se llenaba, el
+  cambio quedaba sólo en pantalla con un toast chiquito que se iba solo: al recargar se
+  perdía. Ahora suelta el historial de deshacer (que son copias enteras del estado, lo
+  único prescindible) y reintenta; si igual no entra, abre un cuadro que **se queda
+  quieto** explicando que no se guardó y qué hacer. `save()` devuelve `true`/`false`.
+- **Deshacer/Rehacer encadenado** (`aplicarSnapshot`, una sola función para los dos).
+  Tres bugs: se guardaba en el dispositivo el snapshot **crudo** pero en memoria quedaba
+  el **migrado**, así que disco y memoria podían diferir; un snapshot roto perdía un paso
+  del historial en cada intento fallido; y el doble toque en el celular (facilísimo
+  mientras la pantalla se dibuja) descolocaba las dos pilas. Probado: 3 cambios, deshacer
+  ×3, rehacer ×3, y disco == memoria al final.
+- **Papelera de alumnos.** Faltaba mandar a la papelera, junto con el alumno, las **notas
+  de TP** (`t.tpGrades`, que se guardan por TP y adentro por alumno), lo de
+  **Intensificación** (`t.deudas`) y `t.avanceFecha`. Quedaban sueltas en el cuatrimestre:
+  al borrar al alumno **definitivamente** quedaban restos de alguien que ya no existe, y
+  esos restos viajaban a Drive para siempre. Ahora todo viaja junto (`TERM_MAPS_ALUMNO`),
+  restaurar no puede duplicar un alumno (doble toque) y el borrado definitivo barre lo
+  que hubiera quedado de versiones viejas. Las entradas de papelera creadas antes de este
+  cambio se restauran igual que siempre.
+
+**Cómo volver a correr estas pruebas:** levantar `npx http-server -p 8099`, abrir
+`index.html` a 390x844 con Playwright y llamar a las funciones de la propia app
+(`addGroup`, `addStudent`, `addExam`, `setGradeField`, `moveToTrash`…) — igual que el
+recorrido de diseño del 31/8. Conviene mirar `parseNumInfo`, `aplicarSnapshot`,
+`moveToTrash`/`restoreFromTrash` y la cola de `gdVaciarCola`.
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
@@ -731,7 +874,8 @@ NO volver a preguntar esto ni pedir captura: está acá.** La lista se llama
 
 1. `englishbeatsclasesyrecursos@gmail.com`
 2. `estudioam.dev@gmail.com`
-3. `marcelodanielcordoba74@gmail.com`
+3. el mail del marido de la dueña (no se anota acá: es de un tercero y este repo es
+   público — está cargado en la lista de Play Console, link arriba)
 4. `mullerana2@hotmail.com`
 
 👉 **De acá salió el error del mail fantasma:** alguna sesión anterior leyó
@@ -840,7 +984,7 @@ unificar los dos enfoques:
   con:
   - Países: **todos** (así no se repite el susto de un país que bloquee a un tester).
   - Verificadores: la misma lista **"Verificadores Agenda Docente"** que ya se usa en
-    prueba interna (hoy 4 personas: englishbeats, estudioam.dev, marcelodanielcordoba74,
+    prueba interna (hoy 4 personas: englishbeats, estudioam.dev, el marido de la dueña,
     mullerana2). Se puede seguir sumando gente a esta misma lista — no hace falta crear
     una lista aparte para la prueba cerrada.
   - Versión: se promovió la **misma versión 2 (1.0.1.0)** que ya está en prueba interna
@@ -1469,7 +1613,7 @@ qué es ni cómo se usa. Quedó anotado ahora para que no se vuelva a perder.
    la de englishbeats (que si aparece y se puede bajar, solo falla en el pago).
 
    **Próximo a probar, en orden:** (a) repetir la compra logueada con
-   `marcelodanielcordoba74@gmail.com` (otro tester de la lista, en el celular del marido
+   el mail del marido de la dueña (otro tester de la lista, en su celular
    de la dueña, no disponible el 29/8 a la noche) por si esa cuenta muestra la tarjeta de
    prueba sin el problema de "item not found" que dio mullerana2; (b) si hay tiempo,
    investigar por separado por qué mullerana2 ni aparece en la búsqueda de Play Store
