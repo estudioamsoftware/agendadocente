@@ -1,4 +1,31 @@
 <!DOCTYPE html>
+<!--
+  ============================================================================
+  Agenda Docente
+  Aplicación web para docentes: asistencia, notas, cursada e intensificación.
+
+  Copyright (c) 2026 Ana Teresa Catalina Müller (Estudio AM).
+  Todos los derechos reservados.
+
+  Autora: Ana Teresa Catalina Müller
+  Contacto: estudioam.dev@gmail.com
+  Sitio: https://estudioamsoftware.github.io/agendadocente/
+
+  Este código se publica únicamente para que la aplicación pueda funcionar en
+  el navegador de quienes la usan. Eso NO lo convierte en software libre.
+
+  Queda prohibido, sin autorización escrita previa de la autora:
+    - copiar, reproducir o redistribuir este código, total o parcialmente;
+    - publicarlo bajo otro nombre, marca o cuenta de desarrollador;
+    - crear obras derivadas o versiones modificadas;
+    - usarlo con fines comerciales.
+
+  Se permite: usar la aplicación tal como se publica, y guardar copias de los
+  datos propios desde las opciones de respaldo de la app.
+
+  Ver el archivo LICENSE para el texto completo de la licencia.
+  ============================================================================
+-->
 <html lang="es" style="background:#F7EFE7">
 <head>
 <meta charset="UTF-8">
@@ -10,6 +37,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Agenda Docente">
+<meta name="author" content="Ana Teresa Catalina Müller">
+<meta name="copyright" content="© 2026 Ana Teresa Catalina Müller — Estudio AM. Todos los derechos reservados.">
+<meta name="license" content="https://estudioamsoftware.github.io/agendadocente/LICENSE">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -487,6 +517,8 @@
   .triseg-sm button[aria-pressed="true"][data-av="TED"]{background:var(--absent-tint);color:var(--absent-ink);border-color:var(--absent-bd);}
   .triseg-sm button:active{transform:scale(.96);}
   .numin.bignum{width:100px;height:56px;font-size:24px;border-radius:13px;border-width:2px;}
+  /* Lo escrito no es un número: se avisa mientras se tipea, sin borrar nada. */
+  .numin.numin-bad{border-color:var(--absent);background:var(--absent-tint);color:var(--absent-ink);}
   .intbadge{align-self:flex-end;background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-bd);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:700;white-space:nowrap;}
   .topicchecks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
   /* Elegir contenidos cuando la evaluación se divide en varias notas: una fila por
@@ -860,7 +892,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-8';
+const APP_VER='v2026.09.01-9';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1335,18 +1367,68 @@ let undoStack=[];
 let redoStack=[];
 const UNDO_MAX=20;
 let undoing=false;
+// ¿El navegador se quedó sin espacio? Distinto de cualquier otro error: acá se
+// puede hacer algo (soltar el historial de deshacer) en vez de sólo avisar.
+function esErrorDeEspacio(e){
+  if(!e) return false;
+  return e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014;
+}
 function save(){
+  const prevSnapshot=localStorage.getItem(KEY);
+  const antesLastModified=state.lastModified;
+  if(!undoing){
+    if(prevSnapshot){ undoStack.push(prevSnapshot); if(undoStack.length>UNDO_MAX) undoStack.shift(); }
+    redoStack=[]; // un cambio real nuevo invalida lo que se podía rehacer
+  }
+  state.lastModified=Date.now();
+  let texto;
+  try{ texto=JSON.stringify(state); }
+  catch(e){
+    // Un dato circular o raro: no se puede ni serializar. Se deshace la marca de
+    // tiempo para no dejar el estado diciendo que se guardó algo que no se guardó.
+    state.lastModified=antesLastModified;
+    console.error('save: no se pudo serializar',e);
+    toastError('No se pudo guardar este cambio. Sacale una foto a la pantalla y avisá.');
+    return false;
+  }
   try{
-    if(!undoing){
-      const prevSnapshot=localStorage.getItem(KEY);
-      if(prevSnapshot){ undoStack.push(prevSnapshot); if(undoStack.length>UNDO_MAX) undoStack.shift(); }
-      redoStack=[]; // un cambio real nuevo invalida lo que se podía rehacer
+    localStorage.setItem(KEY,texto);
+  }catch(e){
+    if(esErrorDeEspacio(e)){
+      // El historial de deshacer son copias enteras del estado: es lo primero
+      // que conviene soltar cuando falta lugar, porque es lo único prescindible.
+      undoStack=[]; redoStack=[];
+      try{
+        localStorage.setItem(KEY,texto);
+        updateUndoUI();
+        gdPush();
+        toast("Se guardó, pero se perdió el historial de deshacer (poco espacio)");
+        return true;
+      }catch(e2){
+        state.lastModified=antesLastModified;
+        console.error('save: sin espacio',e2);
+        // Este es el caso grave: el cambio quedó SOLO en pantalla. Hay que decirlo
+        // fuerte, no con un toast que se va solo, porque si recarga lo pierde.
+        try{
+          openDlg("No hay espacio para guardar",
+            '<div style="font-size:13.5px;line-height:1.6;color:var(--muted);">'+
+            'Este cambio quedó en la pantalla pero <b>no se guardó</b> en el dispositivo: si recargás la app, se pierde.'+
+            '<br><br>La memoria del navegador está llena. Lo más rápido: entrá al menú ⋯ → <b>Respaldo</b> → '+
+            '<b>Guardar copia en un archivo</b>, y después vaciá la papelera o borrá algún curso archivado que ya no uses.'+
+            '</div><div style="margin-top:14px;"><button class="btn" id="qx_ok">Entendido</button></div>');
+          const b=document.getElementById('qx_ok'); if(b) b.onclick=closeDlg;
+        }catch(e3){ toastError("SIN ESPACIO: este cambio no se guardó. No recargues la app."); }
+        return false;
+      }
     }
-    state.lastModified=Date.now();
-    localStorage.setItem(KEY,JSON.stringify(state));
-    gdPush();
-    updateUndoUI();
-  }catch(e){ toast("No se pudo guardar (memoria llena)"); }
+    state.lastModified=antesLastModified;
+    console.error('save',e);
+    toastError('No se pudo guardar este cambio.');
+    return false;
+  }
+  gdPush();
+  updateUndoUI();
+  return true;
 }
 function updateUndoUI(){
   const btn=$("#undoBtn"); if(btn) btn.style.display=undoStack.length?"flex":"none";
@@ -1378,38 +1460,57 @@ function mountUndoRedo(){
   $("#redoBtn").onclick=redoLast;
   updateUndoUI();
 }
-function undoLast(){
-  if(!undoStack.length){ toast("No hay nada para deshacer"); return; }
-  const snap=undoStack.pop();
+/* Deshacer / Rehacer, en una sola función porque son lo mismo al revés.
+
+   Tres cosas que estaban mal y saltan al encadenar varios seguidos:
+
+   1. Se guardaba en localStorage el snapshot CRUDO (`snap`) pero en memoria
+      quedaba el migrado (`migrate(...)`). Si migrate tocaba algo, el
+      dispositivo y la memoria quedaban distintos, y el siguiente save()
+      apilaba en el historial la versión cruda — o sea, deshacer dos veces
+      podía traer de vuelta un estado que nunca existió.
+   2. Un snapshot roto (JSON cortado por falta de espacio, por ejemplo) tiraba
+      la excepción DESPUÉS de haber sacado el elemento de la pila: se perdía
+      un paso del historial en cada intento fallido.
+   3. En el celular es facilísimo tocar dos veces el botón mientras la pantalla
+      todavía se está dibujando; sin traba, el segundo toque entraba en el
+      medio y dejaba las dos pilas descolocadas.                              */
+let undoOcupado=false;
+function aplicarSnapshot(pilaOrigen,pilaDestino,verboOk,verboVacio){
+  if(undoOcupado) return;
+  if(!pilaOrigen.length){ toast("No hay nada para "+verboVacio); return; }
+  const snap=pilaOrigen[pilaOrigen.length-1];
+  let nuevo;
+  try{ nuevo=migrate(JSON.parse(snap)); }
+  catch(e){
+    // Snapshot ilegible: se descarta ESE y se sigue, sin romper el resto del
+    // historial ni dejar la app a medio camino.
+    pilaOrigen.pop();
+    console.error("aplicarSnapshot: snapshot ilegible",e);
+    updateUndoUI();
+    toast("Ese paso no se pudo recuperar — probá de nuevo");
+    return;
+  }
+  undoOcupado=true;
   try{
     undoing=true;
-    const current=localStorage.getItem(KEY);
-    if(current){ redoStack.push(current); if(redoStack.length>UNDO_MAX) redoStack.shift(); }
-    state=migrate(JSON.parse(snap));
-    localStorage.setItem(KEY,snap);
+    const actual=localStorage.getItem(KEY);
+    pilaOrigen.pop();
+    if(actual){ pilaDestino.push(actual); if(pilaDestino.length>UNDO_MAX) pilaDestino.shift(); }
+    state=nuevo;
+    // Se guarda el estado YA migrado, para que el dispositivo y la memoria
+    // digan exactamente lo mismo (ver punto 1 de arriba).
+    try{ localStorage.setItem(KEY,JSON.stringify(state)); }
+    catch(e){ if(esErrorDeEspacio(e)){ undoStack=[]; redoStack=[]; } console.error("aplicarSnapshot: no se pudo guardar",e); }
     gdPush();
     render();
     updateUndoUI();
-    toast(undoStack.length?"Deshecho · quedan "+undoStack.length:"Deshecho");
-  }catch(e){ console.error("undoLast",e); toast("No se pudo deshacer"); }
-  finally{ undoing=false; }
+    toast(pilaOrigen.length?verboOk+" · quedan "+pilaOrigen.length:verboOk);
+  }catch(e){ console.error("aplicarSnapshot",e); toast("No se pudo "+verboVacio); }
+  finally{ undoing=false; undoOcupado=false; }
 }
-function redoLast(){
-  if(!redoStack.length){ toast("No hay nada para rehacer"); return; }
-  const snap=redoStack.pop();
-  try{
-    undoing=true;
-    const current=localStorage.getItem(KEY);
-    if(current){ undoStack.push(current); if(undoStack.length>UNDO_MAX) undoStack.shift(); }
-    state=migrate(JSON.parse(snap));
-    localStorage.setItem(KEY,snap);
-    gdPush();
-    render();
-    updateUndoUI();
-    toast(redoStack.length?"Rehecho · quedan "+redoStack.length:"Rehecho");
-  }catch(e){ console.error("redoLast",e); toast("No se pudo rehacer"); }
-  finally{ undoing=false; }
-}
+function undoLast(){ aplicarSnapshot(undoStack,redoStack,"Deshecho","deshacer"); }
+function redoLast(){ aplicarSnapshot(redoStack,undoStack,"Rehecho","rehacer"); }
 
 const PAL=[
  {solid:"#A9500A",press:"#8C4108",tint:"#FCEBDA",bd:"#F0CDA6"},
@@ -1444,14 +1545,70 @@ function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function autoLink(s){ return esc(s).replace(/((https?:\/\/|www\.)[^\s<]+)/gi,(m)=>{ const href=m.startsWith("http")?m:"https://"+m; return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;word-break:break-all;">${m}</a>`; }); }
 function fmtNum(n){ if(n==null||isNaN(n)) return "–"; const r=Math.round(n*100)/100; return Number.isInteger(r)?String(r):String(r).replace(".",","); }
 function gradeTierClass(v,pm){ pm=pm||7; if(v==null||typeof v!=="number"||isNaN(v)) return ""; return v>=pm?"gnum-blue":"gnum-green"; }
-function parseNum(raw){ raw=String(raw).trim().replace(",","."); if(raw==="") return null; const v=parseFloat(raw); if(isNaN(v)) return null; return Math.max(0,Math.min(10,v)); }
+/* ---- Validación de lo que se escribe en un casillero de nota ----
+   Antes esto era un parseFloat pelado, y parseFloat es demasiado permisivo:
+   se comía la basura pegada al número y guardaba cualquier cosa en silencio.
+   Casos reales que entraban mal (encontrados probando):
+     "5perros"  -> guardaba 5
+     "-3"       -> guardaba 0   (Math.max(0,...) lo tapaba)
+     "Infinity" -> guardaba 10  (parseFloat("Infinity") no es NaN)
+     "1e5"      -> guardaba 10
+     "1 2"      -> guardaba 1
+     "7.456"    -> guardaba 7.456, con más decimales de los que se muestran
+   Ahora sólo pasa lo que es de verdad un número, y cuando no lo es se avisa
+   en pantalla en vez de borrar la nota sin decir nada.
+   Devuelve {estado, valor}:
+     "vacio"    -> quedó en blanco a propósito: se borra la nota
+     "ok"       -> número válido
+     "ajustado" -> es un número pero se fue de la escala; se guarda el borde
+     "invalido" -> no es un número: no se guarda nada y se avisa            */
+const NOTA_MIN=1, NOTA_MAX=10;
+function parseNumInfo(raw){
+  const txt=String(raw==null?"":raw).trim().replace(",",".");
+  if(txt==="") return {estado:"vacio",valor:null,texto:""};
+  // Un número y nada más: sin letras pegadas, sin signo, sin notación científica,
+  // sin espacios en el medio. El punto decimal ya viene normalizado desde la coma.
+  if(!/^\d{1,3}(\.\d{1,3})?$/.test(txt)) return {estado:"invalido",valor:null,texto:txt};
+  const v=parseFloat(txt);
+  if(!isFinite(v)) return {estado:"invalido",valor:null,texto:txt};
+  const red=Math.round(v*100)/100;                              // 2 decimales, como se muestra
+  const cl=Math.max(NOTA_MIN,Math.min(NOTA_MAX,red));
+  return {estado:cl!==red?"ajustado":"ok",valor:cl,texto:txt};
+}
+function parseNum(raw){ return parseNumInfo(raw).valor; }
+// ¿Lo que hay escrito ahora mismo es basura? Se usa para pintar el borde en rojo
+// mientras se escribe, sin borrar nada todavía (borrar mientras alguien tipea es
+// peor que dejarlo mal un segundo).
+function notaTextoInvalido(inp){ return parseNumInfo(inp.value).estado==="invalido"; }
 // Corta el valor mientras se escribe si ya se pasó de 10, para que nunca se llegue a ver
 // (ni quede cargado) un "76" — no hace falta esperar a que se vaya del campo.
 function clampNumInputLive(inp){
   const raw=inp.value.trim().replace(",",".");
-  if(raw==="" ) return;
-  const v=parseFloat(raw);
-  if(!isNaN(v)&&v>10) inp.value="10";
+  if(raw===""){ inp.classList.remove("numin-bad"); return; }
+  if(/^\d{1,3}(\.\d{1,3})?$/.test(raw)){
+    const v=parseFloat(raw);
+    if(isFinite(v)&&v>NOTA_MAX) inp.value=String(NOTA_MAX);
+    inp.classList.remove("numin-bad");
+  } else {
+    inp.classList.add("numin-bad");   // el aviso de verdad sale al salir del campo
+  }
+}
+/* Guarda lo escrito en un casillero de nota, avisando cuando no se puede.
+   `anterior` es la nota que había antes (para poder devolverla si lo nuevo es
+   basura: perder la nota que ya estaba cargada por haber tipeado mal es lo peor
+   que puede pasar acá). `guardar` recibe el valor limpio, o null para borrar.
+   Devuelve true si efectivamente se guardó algo. */
+function aplicarNota(inp,anterior,guardar){
+  const r=parseNumInfo(inp.value);
+  inp.classList.remove("numin-bad");
+  if(r.estado==="invalido"){
+    inp.value=(typeof anterior==="number")?fmtNum(anterior):"";   // se deja lo que había
+    toastError('"'+r.texto+'" no es una nota. Va un número del 1 al 10 (con coma si hace falta: 7,5).');
+    return false;
+  }
+  if(r.estado==="ajustado") toast("Las notas van del "+NOTA_MIN+" al "+NOTA_MAX+" — se guardó "+fmtNum(r.valor)+".");
+  guardar(r.valor);
+  return true;
 }
 function dispName(s){ const a=(s.apellido||"").trim(), n=(s.nombre||"").trim(); if(a&&n) return a+", "+n; return a||n||(s.name||"")||"(sin nombre)"; }
 function recBadge(s){ return s.recursa?'<span class="rtag" title="Recursante">R</span>':''; }
@@ -1819,32 +1976,77 @@ function addStudent(g,ap,no){ const s={id:uid(),apellido:(ap||"").trim(),nombre:
 function setStudentName(g,sid,ap,no){ const s=g.students.find(x=>x.id===sid); if(s){ s.apellido=(ap||"").trim(); s.nombre=(no||"").trim(); sortStudents(g); save(); } }
 function setRecursa(g,sid,v){ const s=g.students.find(x=>x.id===sid); if(s){ if(v) s.recursa=true; else delete s.recursa; save(); } }
 function ensureTrash(g){ if(!g.trash) g.trash=[]; return g.trash; }
+/* ---- Papelera de alumnos ----
+   Todo lo del alumno viaja junto a la papelera y vuelve junto: la promesa que le
+   hacemos en el cartel es "sus notas y asistencia se guardan", así que tiene que
+   ser cierto para TODAS las notas.
+
+   Faltaban tres cosas, que quedaban sueltas en el cuatrimestre en vez de irse con
+   el alumno (se veía al borrarlo definitivamente: quedaba basura de un alumno que
+   ya no existe, y esa basura viajaba a Drive en cada sincronización):
+     - las notas de TP (t.tpGrades, que se guardan por TP y adentro por alumno),
+     - lo de Intensificación (t.deudas: notas por período y el comentario),
+     - la fecha de avance (t.avanceFecha).
+   Las entradas viejas de papelera no traen estos campos; para ellas los datos
+   siguen estando en el cuatrimestre, así que restaurarlas anda igual que antes. */
+const TERM_MAPS_ALUMNO=["att","work","grades","avance","avanceFecha","final","intens","catchup","deudas"];
+function tpGradesDe(t,sid){
+  const out={}; const tg=t.tpGrades||{};
+  Object.keys(tg).forEach(tpid=>{ if(tg[tpid]&&tg[tpid][sid]!==undefined) out[tpid]=tg[tpid][sid]; });
+  return Object.keys(out).length?out:undefined;
+}
 function moveToTrash(g,sid){
   const s=g.students.find(x=>x.id===sid); if(!s) return;
   const entry={student:s,data:{}};
-  ["1","2"].forEach(k=>{ const t=g.terms[k];
-    entry.data[k]={att:t.att[sid],work:t.work[sid],grades:t.grades[sid],avance:t.avance[sid],final:t.final[sid],intens:t.intens[sid],catchup:t.catchup&&t.catchup[sid]};
+  ["1","2"].forEach(k=>{
+    const t=(g.terms||{})[k]; if(!t) return;
+    const d={};
+    TERM_MAPS_ALUMNO.forEach(m=>{ if(t[m]&&t[m][sid]!==undefined) d[m]=t[m][sid]; });
+    const tp=tpGradesDe(t,sid); if(tp) d.tpGrades=tp;
+    entry.data[k]=d;
   });
   entry.deletedAt=todayISO();
   ensureTrash(g).push(entry);
   g.students=g.students.filter(x=>x.id!==sid);
-  ["1","2"].forEach(k=>{ const t=g.terms[k]; delete t.att[sid]; delete t.work[sid]; delete t.grades[sid]; delete t.avance[sid]; delete t.final[sid]; delete t.intens[sid]; if(t.catchup) delete t.catchup[sid]; });
+  ["1","2"].forEach(k=>{
+    const t=(g.terms||{})[k]; if(!t) return;
+    TERM_MAPS_ALUMNO.forEach(m=>{ if(t[m]) delete t[m][sid]; });
+    if(t.tpGrades) Object.keys(t.tpGrades).forEach(tpid=>{ if(t.tpGrades[tpid]) delete t.tpGrades[tpid][sid]; });
+  });
   save();
 }
 function restoreFromTrash(g,sid){
   const entry=ensureTrash(g).find(e=>e.student.id===sid); if(!entry) return;
+  // Si por lo que sea el alumno ya está en la lista (doble toque en el celular,
+  // un curso restaurado que ya lo traía), no se duplica: se saca de la papelera
+  // y listo. Dos alumnos con el mismo id rompen notas y asistencia a la vez.
+  if(g.students.some(x=>x.id===sid)){
+    g.trash=(g.trash||[]).filter(e=>e.student.id!==sid);
+    save(); return;
+  }
   g.students.push(entry.student); sortStudents(g);
-  ["1","2"].forEach(k=>{ const t=g.terms[k]; const d=entry.data[k]||{};
-    if(d.att) t.att[sid]=d.att; if(d.work) t.work[sid]=d.work;
-    if(d.grades) t.grades[sid]=d.grades; if(d.avance) t.avance[sid]=d.avance;
-    if(d.final!=null) t.final[sid]=d.final; if(d.intens) t.intens[sid]=d.intens;
-    if(d.catchup){ t.catchup=t.catchup||{}; t.catchup[sid]=d.catchup; }
+  ["1","2"].forEach(k=>{
+    const t=(g.terms||{})[k]; if(!t) return;
+    const d=entry.data[k]||{};
+    TERM_MAPS_ALUMNO.forEach(m=>{ if(d[m]!==undefined){ t[m]=t[m]||{}; t[m][sid]=d[m]; } });
+    if(d.tpGrades){ t.tpGrades=t.tpGrades||{}; Object.keys(d.tpGrades).forEach(tpid=>{ t.tpGrades[tpid]=t.tpGrades[tpid]||{}; t.tpGrades[tpid][sid]=d.tpGrades[tpid]; }); }
   });
-  g.trash=g.trash.filter(e=>e.student.id!==sid);
+  g.trash=(g.trash||[]).filter(e=>e.student.id!==sid);
   save();
 }
 function emptyTrashStudent(g,sid){
-  g.trash=(g.trash||[]).filter(e=>e.student.id!==sid); save();
+  g.trash=(g.trash||[]).filter(e=>e.student.id!==sid);
+  // Barrido por las dudas: si el alumno se borró con una versión vieja de la app,
+  // pudo haber quedado suelto algo suyo en el cuatrimestre. Al borrarlo para
+  // siempre se limpia de verdad, así no se arrastra a Drive para siempre.
+  if(!g.students.some(x=>x.id===sid)){
+    ["1","2"].forEach(k=>{
+      const t=(g.terms||{})[k]; if(!t) return;
+      TERM_MAPS_ALUMNO.forEach(m=>{ if(t[m]) delete t[m][sid]; });
+      if(t.tpGrades) Object.keys(t.tpGrades).forEach(tpid=>{ if(t.tpGrades[tpid]) delete t.tpGrades[tpid][sid]; });
+    });
+  }
+  save();
 }
 // Keep removeStudent for compatibility
 function removeStudent(g,sid){ moveToTrash(g,sid); }
@@ -5772,12 +5974,18 @@ function renderExamEntry(g,t,e,body){
     });
     rowEl.querySelectorAll("input.numin").forEach(inp=>inp.addEventListener("input",()=>clampNumInputLive(inp)));
     rowEl.querySelectorAll(".numin").forEach(inp=>inp.addEventListener("change",()=>{
-      const v=parseNum(inp.value); const sid=inp.dataset.sid; const field=inp.dataset.f;
-      setGradeField(t,sid,e.id,field,v);
-      if(v==null||v>1) setGradeMotivo(t,sid,e.id,field,null);
-      recomputePartsNota(sid);
-      syncIntensEvalGrade(t,sid,e);
-      renderRows();
+      const sid=inp.dataset.sid, field=inp.dataset.f;
+      const anterior=getGrade(t,sid,e.id)[field];
+      // Si lo tipeado no es una nota, aplicarNota devuelve false, repone lo que
+      // había y avisa: no se toca lo guardado ni se redibuja (redibujar acá
+      // borraría el aviso y haría perder el foco del casillero).
+      const ok=aplicarNota(inp,anterior,(v)=>{
+        setGradeField(t,sid,e.id,field,v);
+        if(v==null||v>1) setGradeMotivo(t,sid,e.id,field,null);
+        recomputePartsNota(sid);
+        syncIntensEvalGrade(t,sid,e);
+      });
+      if(ok) renderRows();
     }));
     rowEl.querySelectorAll(".snhbtn").forEach(b=>b.onclick=()=>{
       if(locked) return;
@@ -6100,7 +6308,7 @@ function renderNotasFinalesGrid(g,body,modeSeg){
       const inp=$("#fin_dlg_inp");
       setTimeout(()=>{ inp.focus(); inp.select(); },30);
       inp.addEventListener("input",()=>clampNumInputLive(inp));
-      const doSave=()=>{ const v=parseNum(inp.value); setFinal(tObj,sid,v); closeDlg(); updateRow(sid); };
+      const doSave=()=>{ if(!aplicarNota(inp,(tObj.final||{})[sid],(v)=>setFinal(tObj,sid,v))) return; closeDlg(); updateRow(sid); };
       $("#fin_dlg_save").onclick=doSave;
       inp.addEventListener("keydown",e=>{ if(e.key==="Enter") doSave(); });
       const clearBtn=$("#fin_dlg_clear");
@@ -6378,9 +6586,16 @@ function renderCuatri(g,t,body,fromGrid){
   body.querySelectorAll("[data-gm]").forEach(b=>b.onclick=()=>{ view.gridMode=b.dataset.gm; view.cuatriMode="grilla"; render(); });
   body.querySelectorAll("[data-cs]").forEach(b=>b.onclick=()=>{ view.cuatriSid=b.dataset.cs; render(); });
   body.querySelectorAll(".triseg-sm button").forEach(b=>b.onclick=()=>{ const sid=b.closest(".triseg-sm").dataset.sid; const code=b.dataset.av; const cur=t.avance[sid]; if(cur===code) setAvance(t,sid,null); else setAvance(t,sid,code); render(); });
-  const finInp=$("#fin_inp"); if(finInp) finInp.addEventListener("change",()=>{ const v=parseNum(finInp.value); setFinal(t,view.cuatriSid||g.students[0].id,v); render(); });
-  const intensInp=$("#intens_inp"); if(intensInp) intensInp.addEventListener("change",()=>{ const v=parseNum(intensInp.value); setIntensNota(t,view.cuatriSid||g.students[0].id,v); render(); });
-  body.querySelectorAll("[data-tpg]").forEach(inp=>inp.addEventListener("change",()=>{ const v=parseNum(inp.value); setTpGrade(t,view.cuatriSid||g.students[0].id,inp.dataset.tpg,v); inp.value=v!=null?fmtNum(v):""; const cls=gradeTierClass(v,pm); inp.className="numin "+(cls||""); }));
+  const finInp=$("#fin_inp"); if(finInp) finInp.addEventListener("change",()=>{ const sid=view.cuatriSid||g.students[0].id; if(aplicarNota(finInp,(t.final||{})[sid],(v)=>setFinal(t,sid,v))) render(); });
+  const intensInp=$("#intens_inp"); if(intensInp) intensInp.addEventListener("change",()=>{ const sid=view.cuatriSid||g.students[0].id; if(aplicarNota(intensInp,((t.intens||{})[sid]||{}).nota,(v)=>setIntensNota(t,sid,v))) render(); });
+  body.querySelectorAll("[data-tpg]").forEach(inp=>inp.addEventListener("change",()=>{
+    const sid=view.cuatriSid||g.students[0].id, tpid=inp.dataset.tpg;
+    aplicarNota(inp,getTpGrade(t,sid,tpid),(v)=>{
+      setTpGrade(t,sid,tpid,v);
+      inp.value=v!=null?fmtNum(v):"";
+      const cls=gradeTierClass(v,pm); inp.className="numin "+(cls||"");
+    });
+  }));
 }
 function avTrisegSmall(t,sid){
   const eff=avanceOf(t,sid); const stored=t.avance[sid]; const auto=(stored==null&&eff==="TED");
@@ -6483,10 +6698,10 @@ function renderIntens(g,t,body){
   body.querySelectorAll("[data-pnota-sid]").forEach(inp=>inp.addEventListener("input",()=>clampNumInputLive(inp)));
   body.querySelectorAll("[data-pnota-sid]").forEach(inp=>inp.addEventListener("change",()=>{
     const sid=inp.dataset.pnotaSid, pid=inp.dataset.pnotaPid;
-    const v=parseNum(inp.value);
     const d=ensureDeuda(t,sid);
-    d.periodos[pid]={...(d.periodos[pid]||{}),nota:v};
-    save(); render();
+    const anterior=(d.periodos[pid]||{}).nota;
+    if(!aplicarNota(inp,anterior,(v)=>{ d.periodos[pid]={...(d.periodos[pid]||{}),nota:v}; save(); })) return;
+    render();
   }));
   // El comentario se guarda solo al salir del cuadro; no se vuelve a dibujar la pantalla
   // para no perder el foco mientras se escribe.
@@ -7866,8 +8081,15 @@ function gdClearToken(){ try{ sessionStorage.removeItem('gd_tok'); }catch(e){} }
 function gdSilentRefresh(){
   return new Promise((resolve)=>{
     if(!gd.tc){ resolve(false); return; }
-    gd._pendingResolve=resolve;
-    try{ gd.tc.requestAccessToken({prompt:''}); }catch(e){ gd._pendingResolve=null; resolve(false); }
+    // Sin internet (o con Google caído) requestAccessToken puede no llamar nunca
+    // a su callback: la promesa quedaba colgada para siempre y con ella todo lo
+    // que esperara el token (gdPushNow, gdPull...). Se corta a los 15 segundos.
+    let listo=false;
+    const cerrar=(v)=>{ if(listo) return; listo=true; clearTimeout(reloj); if(gd._pendingResolve===envolver) gd._pendingResolve=null; resolve(v); };
+    const envolver=(v)=>cerrar(v);
+    const reloj=setTimeout(()=>cerrar(false),15000);
+    gd._pendingResolve=envolver;
+    try{ gd.tc.requestAccessToken({prompt:''}); }catch(e){ cerrar(false); }
   });
 }
 // Se llama antes de cualquier operación con Drive: si el token está por vencer
@@ -8018,7 +8240,70 @@ async function gdPushNow(){
   markStamp(LAST_DRIVE_PUSH_KEY);
   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
 }
-function gdPush(){ if(gd.tok) gdPushNow().catch(e=>{ gd.st='error'; gdUI(); console.error('gdPush bg',e); toastError('No se guardó en Drive: '+(e&&e.message?e.message:'')); }); }
+/* ---- Subida a Drive: una por vez, con cola y reintento ----
+   Antes cada save() disparaba un gdPushNow() suelto y sin coordinar. Eso daba
+   tres problemas que aparecen apenas se prueba en serio:
+     1. Sin señal, un cartel rojo de error por CADA cambio (escribir una nota
+        son varios), y encima el estado quedaba en 'error' para siempre.
+     2. Lo editado sin señal no subía nunca solo: se quedaba esperando a que
+        hubiera otra edición más tarde que volviera a disparar el push.
+     3. Dos subidas en vuelo al mismo tiempo podían llegar a Drive en cualquier
+        orden, y la más vieja pisaba a la más nueva.
+   Ahora hay una sola subida a la vez. Lo pendiente no se encola por cambio
+   (sería subir diez veces lo mismo): se marca "hay algo para subir" y cuando
+   le toca sube el estado actual, que siempre es el más nuevo.                */
+let gdPushEnVuelo=false;      // hay una subida corriendo ahora
+let gdPushPendiente=false;    // quedaron cambios sin subir
+let gdPushTimer=null;         // agrupa ráfagas de cambios en una sola subida
+let gdPushFallos=0;           // para espaciar los reintentos y no repetir el cartel
+function estamosSinConexion(){ try{ return navigator.onLine===false; }catch(e){ return false; } }
+// ¿Quedó algo escrito acá que todavía no llegó a Drive? Lo usa el cartel de estado.
+function hayCambiosSinSubir(){ return gdPushPendiente||gdPushEnVuelo; }
+function gdPush(){
+  if(!gd.tok) return;
+  gdPushPendiente=true;
+  clearTimeout(gdPushTimer);
+  gdPushTimer=setTimeout(gdVaciarCola,700);
+  if(estamosSinConexion()) gdUI();
+}
+async function gdVaciarCola(){
+  if(!gd.tok||!gdPushPendiente||gdPushEnVuelo) return;
+  if(estamosSinConexion()){ gdUI(); return; }   // se reintenta solo con el evento "online"
+  gdPushEnVuelo=true; gdPushPendiente=false;
+  try{
+    await gdPushNow();
+    gdPushFallos=0;
+    gd.st='ok';
+  }catch(e){
+    gdPushPendiente=true;                        // sigue pendiente: no se pierde
+    gdPushFallos++;
+    console.error('gdPush bg',e);
+    gd.st=estamosSinConexion()?'ok':'error';
+    // El cartel de error se muestra sólo la primera vez de una racha: repetirlo
+    // en cada reintento tapa la pantalla y no agrega información.
+    if(gdPushFallos===1&&!estamosSinConexion()) toastError('No se guardó en Drive: '+(e&&e.message?e.message:'')+' — tus datos sí quedaron en este dispositivo.');
+  }finally{
+    gdPushEnVuelo=false;
+    gdUI();
+    if(gdPushPendiente&&!estamosSinConexion()){
+      // Reintento espaciado (3s, 6s, 12s… hasta 1 minuto), para no machacar
+      // la red ni la batería cuando Drive está caído.
+      const espera=Math.min(60000,3000*Math.pow(2,Math.max(0,gdPushFallos-1)));
+      clearTimeout(gdPushTimer);
+      gdPushTimer=setTimeout(gdVaciarCola,espera);
+    }
+  }
+}
+// Cuando vuelve la conexión se sube lo que haya quedado pendiente, sin que la
+// docente tenga que hacer nada ni acordarse de que estuvo sin señal.
+if(typeof window!=="undefined"){
+  window.addEventListener('online',()=>{
+    gdPushFallos=0;
+    gdUI();
+    if(gd.tok&&gdPushPendiente){ toastSuccess('Volvió la conexión · subiendo a Drive…','#8C4108'); gdVaciarCola(); }
+  });
+  window.addEventListener('offline',()=>{ gdUI(); });
+}
 
 function fmtDateTime(ts){ if(!ts) return "un momento indefinido"; const d=new Date(ts); return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }
 function showSyncConflictDialog(remote){
@@ -8106,10 +8391,20 @@ function gdUI(){
   const wasConnected=localStorage.getItem('gd_was_connected')==='1';
   const on=!!(gd.tok); const err=gd.st==='error'; const syncing=gd.st==='syncing';
   const needsReconnect=wasConnected&&!on&&!syncing&&!err;
+  // Sin señal no es un error: los datos están guardados en el dispositivo y suben
+  // solos cuando vuelva. Decirlo así evita el susto de un cartel rojo en el aula,
+  // donde muchas veces no hay internet.
+  const sinConexion=estamosSinConexion();
+  const pendiente=hayCambiosSinSubir();
   const ic=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
   let label,sub,bg,ink,rowBg,action;
-  if(on){
-    label=syncing?'Sincronizando con Drive…':(err?'Error en Drive · Reintentar':'✓ Drive conectado');
+  if(on&&sinConexion){
+    label=pendiente?'Sin conexión · se sube al volver':'Sin conexión';
+    sub='Todo se está guardando en este dispositivo';
+    bg='var(--canc-bg)'; ink='var(--canc-ink)'; rowBg='var(--canc-bg)';
+    action=gdDisconnect;
+  } else if(on){
+    label=syncing?'Sincronizando con Drive…':(err?'Error en Drive · Reintentar':(pendiente?'Subiendo a Drive…':'✓ Drive conectado'));
     sub=err?'Tocá para reintentar':(gd.email||'Tocá para desconectar');
     bg=err?'var(--absent-tint)':'#A9500A'; ink=err?'var(--absent-ink)':'#fff';
     rowBg=err?'var(--absent-tint)':'#FCEBDA';
@@ -8130,7 +8425,7 @@ function gdUI(){
   el.onclick=action;
   const syncBtn=$("#actSyncNow"); if(syncBtn) syncBtn.style.display=(on&&!err)?'flex':'none';
   updateSavedStamps();
-  updateGdBanner(needsReconnect,on&&err);
+  updateGdBanner(needsReconnect,on&&err&&!sinConexion);
 }
 
 function updateGdBanner(needsReconnect,hasError){

@@ -1,0 +1,101 @@
+Licencia de uso — Agenda Docente
+Copyright (c) 2026 Ana Teresa Catalina Müller (Estudio AM).
+Todos los derechos reservados.
+
+Autora: Ana Teresa Catalina Müller
+Contacto: estudioam.dev@gmail.com
+Sitio: https://estudioamsoftware.github.io/agendadocente/
+
+
+1. QUÉ ES ESTO
+
+"Agenda Docente" es una aplicación web y móvil para docentes (registro de
+asistencia, notas, cursada, intensificación y documentación de cursos),
+creada y mantenida por Ana Teresa Catalina Müller.
+
+El código fuente de la aplicación queda necesariamente visible en el
+navegador de quien la usa, porque es una aplicación web: el navegador
+necesita recibirlo para poder ejecutarla. Esa visibilidad técnica NO
+convierte a este software en software libre, de código abierto ni de
+dominio público, y no otorga ninguna licencia de uso sobre el código más
+allá de lo indicado en el punto 2.
+
+
+2. QUÉ SE PERMITE
+
+Se permite, sin necesidad de pedir autorización:
+
+  a) Usar la aplicación tal como se publica, en su sitio oficial o a través
+     de la aplicación distribuida en Google Play.
+  b) Instalarla en dispositivos propios como aplicación web progresiva (PWA).
+  c) Descargar, conservar y restaurar copias de los datos propios cargados
+     por quien la usa, mediante las funciones de respaldo de la aplicación.
+     Esos datos son de quien los carga, no de la autora.
+  d) Realizar copias temporales en la memoria caché del navegador, en la
+     medida en que sean necesarias para el funcionamiento normal.
+
+
+3. QUÉ NO SE PERMITE
+
+Queda prohibido, sin autorización escrita y previa de la autora:
+
+  a) Copiar, reproducir, descargar o almacenar el código fuente con fines
+     distintos de los del punto 2.
+  b) Redistribuir el código, total o parcialmente, en cualquier soporte.
+  c) Publicar la aplicación, o una versión modificada, bajo otro nombre,
+     otra marca o en otra cuenta de desarrollador, en Google Play, App Store
+     o cualquier otra plataforma.
+  d) Crear obras derivadas, adaptaciones o traducciones del código.
+  e) Usar el código, o partes sustanciales de él, en otro producto, propio o
+     de terceros, sea gratuito o pago.
+  f) Explotar comercialmente la aplicación o cualquier parte de ella.
+  g) Remover, alterar u ocultar los avisos de autoría, copyright o licencia,
+     incluido el bloque de comentario al inicio de index.html.
+
+
+4. PRUEBAS Y REVISIONES
+
+Quienes reciban acceso a la aplicación para probarla, revisarla o reportar
+errores lo hacen bajo esta misma licencia. La autorización para probar la
+aplicación no incluye ninguno de los usos prohibidos en el punto 3.
+
+
+5. DATOS DE LAS PERSONAS USUARIAS
+
+La autora no reclama ningún derecho sobre los datos que cada docente carga
+en la aplicación (cursos, alumnos, notas, asistencia, documentos). Esos
+datos permanecen en el dispositivo de quien los carga y, si esa persona lo
+decide, en su propia cuenta de Google Drive. El tratamiento de datos se
+detalla en la política de privacidad:
+https://estudioamsoftware.github.io/agendadocente/privacy-policy.html
+
+
+6. SIN GARANTÍA
+
+El software se entrega "tal como está", sin garantía de ningún tipo, expresa
+o implícita, incluidas —sin limitarse a— las garantías de comerciabilidad,
+adecuación a un propósito particular y ausencia de errores. La autora no
+será responsable por reclamos, daños o perjuicios derivados del uso o
+imposibilidad de uso del software. Se recomienda a cada docente conservar
+copias de respaldo de su información.
+
+
+7. MARCAS
+
+"Agenda Docente" y "Estudio AM", junto con sus logotipos e iconos, son
+signos distintivos de la autora. Esta licencia no otorga derecho alguno a
+usarlos.
+
+
+8. LEY APLICABLE
+
+Esta licencia se rige por las leyes de la República Argentina, en particular
+la Ley 11.723 de Propiedad Intelectual, que protege al software como obra.
+Para cualquier controversia serán competentes los tribunales ordinarios de
+la Provincia de Buenos Aires.
+
+
+9. PERMISOS ADICIONALES
+
+Para cualquier uso no contemplado en el punto 2, escribir a
+estudioam.dev@gmail.com. Los permisos se otorgan únicamente por escrito.
