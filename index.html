@@ -629,6 +629,12 @@
   .sheet-item .si{width:38px;height:38px;border-radius:10px;background:var(--primary-tint);color:var(--primary);display:grid;place-items:center;flex:none;} .sheet-item .si svg{width:20px;height:20px;}
   .sheet-item small{display:block;font-weight:500;font-size:12.5px;color:var(--muted);margin-top:3px;}
   .sheet hr{border:none;border-top:1px solid var(--line-soft);margin:8px 0;}
+  /* Fechas de los últimos guardados, arriba de todo en el menú de Respaldo. */
+  .bkstamps{margin:0 0 16px;border:1px solid var(--line-soft);border-radius:13px;padding:6px 12px;background:var(--line-soft);}
+  .bkstamp{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:12.5px;padding:4px 0;}
+  .bkstamp b{font-weight:600;color:var(--muted);}
+  .bkstamp i{font-style:normal;font-weight:700;color:var(--ink);text-align:right;white-space:nowrap;}
+  .bkstamp i.none{font-weight:500;color:var(--faint);}
 
   .dlg-field{margin-bottom:14px;}
   .dlg-field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:0 2px 6px;}
@@ -774,6 +780,7 @@
       <button class="menu-back" id="menuBackBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M15 18l-6-6 6-6"/></svg>Cursos</button>
       <h3>Respaldo</h3>
       <p class="sd">Tus datos se guardan solos en tu Google Drive, carpeta "Agenda Docente". Podés descargar una copia extra cuando quieras.</p>
+      <div class="bkstamps" id="bkStamps"></div>
       <button class="sheet-item" id="gdBtn">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
         <span>Conectar con Google Drive<small>Sincronizá entre la compu y la tablet</small></span>
@@ -833,10 +840,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-08-30-resumen-tools';
+const APP_BUILD='2026-09-01-fechas-guardado';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.08.31-1';
+const APP_VER='v2026.09.01-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1223,6 +1230,53 @@ function saveLocalSnapshot(force){
     localStorage.setItem(SNAP_KEY,JSON.stringify(snaps));
   }catch(e){ /* si no hay espacio no interrumpe: es una red extra */ }
 }
+/* ===== Fechas de los últimos guardados =====
+   La app guarda en varios lados (este dispositivo, el archivo de Drive, los
+   backups fechados de Drive, y la copia que se baja a mano), y hasta ahora no
+   había forma de saber cuándo fue la última vez de cada uno. Las fechas se
+   muestran arriba de todo en el menú ⋯ → Respaldo.
+   Ojo: estas marcas son POR DISPOSITIVO (viven en localStorage, no en state),
+   que es justo lo que se quiere: "la última vez que se guardó desde ACÁ". La
+   única que viaja con los datos es la del guardado local (state.lastModified),
+   porque la escribe save() junto con todo lo demás. */
+const LAST_DRIVE_PUSH_KEY="agendaDocente.lastDrivePush";
+const LAST_DRIVE_BK_KEY="agendaDocente.lastDriveBackupAt";
+const LAST_FILE_EXPORT_KEY="agendaDocente.lastFileExport";
+function markStamp(k){ try{ localStorage.setItem(k,String(Date.now())); }catch(e){} }
+function readStamp(k){ const v=Number(localStorage.getItem(k)||0); return v>0?v:0; }
+/* "hoy 14:32" / "ayer 09:05" / "28/8 10:15" / "28/8/25 10:15" (otro año). */
+function fmtStamp(ts){
+  if(!ts) return null;
+  const d=new Date(ts), now=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  const hora=p(d.getHours())+':'+p(d.getMinutes());
+  const mismoDia=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+  const ayer=new Date(now.getFullYear(),now.getMonth(),now.getDate()-1);
+  if(mismoDia(d,now)) return 'hoy '+hora;
+  if(mismoDia(d,ayer)) return 'ayer '+hora;
+  const anio=d.getFullYear()!==now.getFullYear()?('/'+String(d.getFullYear()).slice(2)):'';
+  return d.getDate()+'/'+(d.getMonth()+1)+anio+' '+hora;
+}
+function savedStampRows(){
+  const driveOn=typeof gd!=="undefined"&&!!gd.tok;
+  return [
+    {label:"En este dispositivo", ts:(state&&state.lastModified)||0, vacio:"todavía nada"},
+    {label:"En tu Google Drive",  ts:readStamp(LAST_DRIVE_PUSH_KEY),  vacio:driveOn?"todavía no":"sin conectar"},
+    {label:"Último backup en Drive", ts:readStamp(LAST_DRIVE_BK_KEY), vacio:driveOn?"todavía no":"sin conectar"},
+    {label:"Copia en un archivo", ts:readStamp(LAST_FILE_EXPORT_KEY), vacio:"nunca"}
+  ];
+}
+function updateSavedStamps(){
+  const box=document.getElementById("bkStamps"); if(!box) return;
+  // gdUI() puede correr antes de que el arranque termine de armar todo: si algo
+  // todavía no existe, se deja el bloque como está y se rearma al abrir el menú.
+  try{
+    box.innerHTML=savedStampRows().map(r=>{
+      const txt=fmtStamp(r.ts);
+      return `<div class="bkstamp"><b>${r.label}</b><i class="${txt?'':'none'}">${txt||r.vacio}</i></div>`;
+    }).join("");
+  }catch(e){}
+}
 /* ===== Copia a un archivo suelto =====
    Las copias de arriba viven en este dispositivo, y el backup de Drive vive
    dentro de la carpeta que creó la app. Ninguna de las dos sobrevive a un
@@ -1232,6 +1286,7 @@ function exportToFile(){
   closeMenu();
   try{
     download("Agenda Docente - copia "+todayStampAD()+".json",JSON.stringify(state),"application/json");
+    markStamp(LAST_FILE_EXPORT_KEY);
     toastSuccess("\u2713 Copia descargada a este dispositivo","#A9500A");
   }catch(e){ toastError("No se pudo descargar la copia"); }
 }
@@ -7318,6 +7373,7 @@ async function backupSnapshotToDrive(st,tag){
   form.append('file',new Blob([body],{type:'application/json'}));
   await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
     {method:'POST',headers:{Authorization:'Bearer '+gd.tok},body:form});
+  markStamp(LAST_DRIVE_BK_KEY);
   pruneDriveBackups().catch(()=>{});
 }
 function adPickBackupsToPrune(files){
@@ -7555,6 +7611,7 @@ function openMenu(){
   ["bnInicio","bnEventos","bnPapelera"].forEach(id=>$("#"+id).classList.remove("on"));
   const subTxt=$("#subEstadoTxt"); if(subTxt) subTxt.textContent=licTienePlanPago()?"Versión completa":"Versión gratis";
   const verTxt=$("#appVersionTxt"); if(verTxt) verTxt.textContent="Versión: "+APP_BUILD;
+  updateSavedStamps();
 }
 function closeMenu(){ $("#menuScrim").classList.remove("open"); wireBottomNav(); }
 $("#menuBackBtn").onclick=closeMenu;
@@ -7873,6 +7930,7 @@ async function gdPushNow(){
   }
   gd.st='ok';
   state.lastSyncedAt=state.lastModified||Date.now();
+  markStamp(LAST_DRIVE_PUSH_KEY);
   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
 }
 function gdPush(){ if(gd.tok) gdPushNow().catch(e=>{ gd.st='error'; gdUI(); console.error('gdPush bg',e); toastError('No se guardó en Drive: '+(e&&e.message?e.message:'')); }); }
@@ -7986,6 +8044,7 @@ function gdUI(){
   el.classList.toggle('gd-needs',needsReconnect);
   el.onclick=action;
   const syncBtn=$("#actSyncNow"); if(syncBtn) syncBtn.style.display=(on&&!err)?'flex':'none';
+  updateSavedStamps();
   updateGdBanner(needsReconnect,on&&err);
 }
 

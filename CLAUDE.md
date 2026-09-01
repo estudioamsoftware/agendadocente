@@ -418,6 +418,31 @@ a mano.
   (todos los contenidos), cada tarjeta tiene el link **"↻ Rehacer la lista con lo que
   desaprobó"**, que la recalcula pidiendo confirmación.
 
+## Las fechas de los últimos guardados (1/9/2026)
+
+Pedido de la dueña. La app guarda en cuatro lados distintos y no había forma de saber
+cuándo fue la última vez de cada uno. Ahora, en el menú ⋯ → **Respaldo**, arriba de todo,
+hay un recuadro (`#bkStamps`, clase `.bkstamps`) con cuatro renglones:
+
+- **En este dispositivo** → `state.lastModified` (lo que escribe `save()` en cada cambio).
+- **En tu Google Drive** → la última subida del archivo principal (`gdPushNow()`).
+- **Último backup en Drive** → el último backup fechado (`backupSnapshotToDrive()`, tanto
+  el automático diario como el manual).
+- **Copia en un archivo** → la última vez que se bajó el `.json` (`exportToFile()`).
+
+Detalles por si se toca (todo en `index.html`):
+- Las tres últimas se guardan en `localStorage` (`LAST_DRIVE_PUSH_KEY`,
+  `LAST_DRIVE_BK_KEY`, `LAST_FILE_EXPORT_KEY`, vía `markStamp()`/`readStamp()`), **no en
+  `state`**, y eso es a propósito: son "la última vez que se guardó desde ACÁ". Si viajaran
+  con los datos, al sincronizar mostrarían la fecha de la compu en el celular.
+- El formato lo arma `fmtStamp()`: "hoy 14:32", "ayer 09:05", "28/8 10:15" y, si es de otro
+  año, "28/8/25 10:15". Sin fecha muestra en gris "todavía nada" / "nunca" / "sin conectar"
+  (esto último cuando Drive no está conectado).
+- El recuadro se rearma en `openMenu()` y también dentro de `gdUI()`, que es lo que hace
+  que la fecha de Drive se actualice sola al tocar "Actualizar Drive" con el menú abierto.
+  `updateSavedStamps()` va envuelta en `try/catch` porque `gdUI()` puede correr antes de que
+  el arranque termine de armar todo.
+
 ## Repaso de diseño en el celular (31/8/2026)
 
 Pedido de la dueña: que la app se vea prolija en el teléfono. Se recorrió entera con
