@@ -336,6 +336,17 @@
   .grid tr.grid-repeat-head td.stick{background:var(--line-soft);}
   .grid thead th.gh-canc{background:var(--canc-bg);color:var(--canc-ink);}
   .grid thead th.gh-exam{background:#E4F3E9;color:var(--present-ink);}
+  /* Fila de arriba que agrupa "1er Cuatrimestre"/"2do Cuatrimestre" en las grillas de
+     Resumen (Asistencia, Calificaciones, Notas finales) — antes el único límite entre
+     los dos era la columnita angosta "·", fácil de pasar de largo arrastrando la tabla. */
+  .grid tr.gh-group th{height:26px;padding:4px 8px;}
+  /* Alineado a la izquierda, pegado al borde de su bloque: si quedara centrado en todo
+     el colspan (puede ser 40+ columnas), el texto cae muy lejos a la derecha y no se ve
+     hasta arrastrar la tabla un buen trecho — así aparece apenas se entra a la pantalla
+     y de nuevo apenas se cruza el separador "·" hacia el 2° cuatrimestre. */
+  .grid tr.gh-group th.gh-term{font-size:11px;font-weight:800;letter-spacing:.02em;text-transform:uppercase;text-align:left;padding-left:10px;}
+  .grid tr.gh-group th.gh-term1{background:var(--blue-tint);color:var(--blue-ink);}
+  .grid tr.gh-group th.gh-term2{background:var(--primary-tint);color:var(--primary);}
   .gc-P{color:var(--present);font-weight:800;} .gc-A{background:var(--absent-tint);color:var(--absent-ink);font-weight:800;}
   .gc-T{background:var(--present-tint);color:var(--present-ink);font-weight:800;}
   .gc-Am{color:var(--faint);font-weight:700;} .gc-canc{background:var(--canc-bg);}
@@ -840,10 +851,10 @@
 "use strict";
 /* ============ Storage + migration ============ */
 const KEY="agendaDocente.v1";
-const APP_BUILD='2026-09-01-arrancar-en-2do-cuatrimestre';
+const APP_BUILD='2026-09-01-resumen-cuatrimestres-diferenciados';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-3';
+const APP_VER='v2026.09.01-4';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -4155,14 +4166,7 @@ function wireInfoSection(g,body){
 function cicloSectionHTML(g){
   const allSes=["1","2"].flatMap(k=>g.terms[k].sessions);
   const anyGenerated=allSes.length>0;
-  // Curso nuevo, armado cuando el año ya está en el 2° cuatrimestre (una docente que
-  // recién arranca a probar la agenda a mitad de año, por ejemplo): el default de
-  // Inicio NO es marzo. Si lo fuera, "Generar clases" tal cual crearía también todo
-  // el 1° cuatrimestre ya pasado, con clases sin asistencia ni notas que nadie va a
-  // cargar. Arranca directo en el 2° para que probarla sea liviano — quien sí quiera
-  // cargar el año completo puede cambiar la fecha de Inicio a mano.
-  const empiezaEnC2=!anyGenerated&&activeTermToday()==="2";
-  const cicloIni=anyGenerated?allSes.reduce((min,s)=>s.date<min?s.date:min,allSes[0].date):(empiezaEnC2?termStartDefault("2"):cicloStartDefault(g));
+  const cicloIni=anyGenerated?allSes.reduce((min,s)=>s.date<min?s.date:min,allSes[0].date):cicloStartDefault(g);
   const cicloFin=anyGenerated?allSes.reduce((max,s)=>s.date>max?s.date:max,allSes[0].date):cicloEndDefault(g);
   const showCicloView=!view.editCiclo&&anyGenerated;
   const cicloStr=`${fmtItemDate(cicloIni)} → ${fmtItemDate(cicloFin)}`;
@@ -4175,7 +4179,6 @@ function cicloSectionHTML(g){
       ${avisoDias}
       ${showCicloView?`<div class="kvrow"><span class="kv-ic">${I.cal}</span><div style="flex:1;min-width:0;"><div class="kv-lbl">Del primer al último día</div><div class="kv-val">${cicloStr}</div></div><button class="iconbtn" id="ciclo_edit" aria-label="Editar el ciclo lectivo">${I.pencil}</button></div>`:``}
       <div id="cicloForm" style="${showCicloView?"display:none;":"padding:2px 0 14px;"}">
-        ${empiezaEnC2?`<div style="font-size:11.5px;color:var(--muted);background:var(--line-soft);border-radius:9px;padding:8px 10px;margin-bottom:10px;line-height:1.45;">💡 Como ya estamos en el 2° cuatrimestre, el Inicio arranca ahí directo — así no se generan de más las clases del 1° que ya pasó. Si igual querés cargar el año completo, cambiá la fecha de Inicio a marzo.</div>`:""}
         <div class="sched-row2">
           <div class="sched-field"><label>Inicio</label><input id="ciclo_first" type="date" value="${cicloIni}"></div>
           <div class="sched-field"><label>Fin</label><input id="ciclo_end" type="date" value="${cicloFin}"></div>
@@ -5887,11 +5890,23 @@ function renderNotasFinalesGrid(g,body,modeSeg){
     const dt=fecha?fmtShort(fecha):"";
     return `<th class="gh-tot" data-finhead-term="${term}" style="cursor:pointer;line-height:1.2;">${dt?`<div>${dt}</div>`:""}<div style="font-size:9px;color:var(--muted);font-weight:600;${dt?"margin-top:1px;":""}">Nota C${term}°</div>${lockToggleHTML("fin"+term,finLocked(term))}</th>`;
   };
-  let head=`<tr><th class="stick">Alumno</th>`;
-  items1.forEach(it=>{ head+=itemHead(it); });
-  head+=`${finalHeadHTML("1")}<th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-sep">·</th>`;
-  items2.forEach(it=>{ head+=itemHead(it); });
-  head+=`${finalHeadHTML("2")}<th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}<th class="gh-tot">Promedio</th></tr>`;
+  const block1=items1.map(it=>itemHead(it)).join("")+`${finalHeadHTML("1")}<th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}`;
+  const block2=items2.map(it=>itemHead(it)).join("")+`${finalHeadHTML("2")}<th class="gh-tot" style="font-size:9.5px;">C.Com</th>${intensHead()}`;
+  // Cada ítem puede aparecer como una sola columna o varias (partes, recu, avance con su
+  // "C.Com"), así que en vez de recalcular a mano cuántas son, se cuentan los <th> que
+  // ya salieron armados — así el ancho del agrupador "1er/2do Cuatrimestre" siempre da
+  // justo, se agregue o saque lo que sea de cada bloque.
+  const countTh=(html)=>(html.match(/<th[\s>]/g)||[]).length;
+  const n1=countTh(block1), n2=countTh(block2);
+  const headGroup=`<tr class="gh-group">
+    <th class="stick" rowspan="2">Alumno</th>
+    <th colspan="${n1}" class="gh-term gh-term1">1er Cuatrimestre</th>
+    <th class="gh-sep" rowspan="2">·</th>
+    <th colspan="${n2}" class="gh-term gh-term2">2do Cuatrimestre</th>
+    <th class="gh-tot" rowspan="2">Promedio</th>
+  </tr>`;
+  let head=`<tr>${block1}${block2}</tr>`;
+  head=headGroup+head;
   function rowCellsHTML(s){
     const idx=g.students.indexOf(s);
     let r=`<td class="stick">${idx+1}. ${nameHTML(s,g)}</td>`;
@@ -6139,21 +6154,36 @@ function renderGrid(g,t,body){
     return (isRecu?"R. ":"")+smartAbbrev(e.name);
   }
   function abbrev(name){ return smartAbbrev(name); }
-  let head=`<tr><th class="stick">Alumno</th>`;
   const sess1=mode==="calif"?t1.sessions.filter(s=>!s.cancelled):t1.sessions;
   const sess2=mode==="calif"?t2.sessions.filter(s=>!s.cancelled):t2.sessions;
+  const n1=sess1.length+((mode==="asist"&&sess1.length)?2:0);
+  const n2=sess2.length+((mode==="asist"&&sess2.length)?2:0);
+  const showSep=!!(sess1.length&&sess2.length);
+  const showTermRow=!!(sess1.length||sess2.length);
+  // Fila de arriba, aparte, con "1er Cuatrimestre"/"2do Cuatrimestre" bien grandes —
+  // antes el único límite entre los dos era la columnita angosta "·" (gh-sep), fácil
+  // de pasar por alto arrastrando la tabla. Alumno y el separador quedan con rowspan=2
+  // para no repetirse en la fila de fechas de abajo.
+  let headTerm=showTermRow?`<tr class="gh-group">
+    <th class="stick" rowspan="2">Alumno</th>
+    ${sess1.length?`<th colspan="${n1}" class="gh-term gh-term1">1er Cuatrimestre</th>`:""}
+    ${showSep?`<th class="gh-sep" rowspan="2">·</th>`:""}
+    ${sess2.length?`<th colspan="${n2}" class="gh-term gh-term2">2do Cuatrimestre</th>`:""}
+  </tr>`:"";
+  let head=`<tr>${showTermRow?"":`<th class="stick">Alumno</th>`}`;
   sess1.forEach(s=>{ const cls=s.cancelled?"gh-canc":((mode==="calif"&&isExamDate(t1,s.date))?"gh-exam":"");
     const examName=mode==="calif"?examNameForDate(t1,s.date):null;
     head+=`<th class="${cls}" style="white-space:nowrap;"><div>${fmtShort(s.date)}</div>${examName?`<div style="font-size:9px;font-weight:600;color:var(--present-ink);margin-top:1px;">${esc(examName)}</div>`:""}`;
     head+=`</th>`; });
   if(mode==="asist"&&sess1.length) head+=`<th class="gh-tot">% Asis</th><th class="gh-tot">Inas</th>`;
-  if(sess1.length&&sess2.length) head+=`<th class="gh-sep">·</th>`;
+  if(!showTermRow&&showSep) head+=`<th class="gh-sep">·</th>`;
   sess2.forEach(s=>{ const cls=s.cancelled?"gh-canc":((mode==="calif"&&isExamDate(t2,s.date))?"gh-exam":"");
     const examName=mode==="calif"?examNameForDate(t2,s.date):null;
     head+=`<th class="${cls}" style="white-space:nowrap;"><div>${fmtShort(s.date)}</div>${examName?`<div style="font-size:9px;font-weight:600;color:var(--present-ink);margin-top:1px;">${esc(examName)}</div>`:""}`;
     head+=`</th>`; });
   if(mode==="asist"&&sess2.length) head+=`<th class="gh-tot">% Asis</th><th class="gh-tot">Inas</th>`;
   head+=`</tr>`;
+  head=headTerm+head;
 
   function cellsForTerm(s,term){
     let r="";
@@ -6244,13 +6274,25 @@ function renderCuatri(g,t,body,fromGrid){
     const typeIcon={"eval_escrita":"✏️","eval_oral":"🎤","tp":"📋","exam":"📝","carpeta":"📓"};
     const items1=[...t1.exams.map(e=>({id:e.id,name:e.name,date:e.date,kind:"exam",type:e.type,term:"1"})),...(t1.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type,term:"1"}))].sort((a,b)=>a.date<b.date?-1:1);
     const items2=[...t2.exams.map(e=>({id:e.id,name:e.name,date:e.date,kind:"exam",type:e.type,term:"2"})),...(t2.tps||[]).map(tp=>({id:tp.id,name:tp.name,date:tp.date,kind:"tp",type:tp.type,term:"2"}))].sort((a,b)=>a.date<b.date?-1:1);
-    let head=`<tr><th class="stick">Alumno</th>`;
+    // n1/n2 = cuántas columnas ocupa cada cuatrimestre (Notas de avance + sus ítems + Nota
+    // final), para la fila de arriba que los agrupa con "1er Cuatrimestre"/"2do Cuatrimestre".
+    const n1=items1.length+2, n2=items2.length+2;
+    const headTerm=`<tr class="gh-group">
+      <th class="stick" rowspan="2">Alumno</th>
+      <th colspan="${n1}" class="gh-term gh-term1">1er Cuatrimestre</th>
+      <th class="gh-sep" rowspan="2">·</th>
+      <th colspan="${n2}" class="gh-term gh-term2">2do Cuatrimestre</th>
+      <th class="gh-tot" rowspan="2">Promedio</th>
+      <th class="gh-tot" rowspan="2">Intens.</th>
+    </tr>`;
+    let head=`<tr>`;
     head+=`<th class="gh-tot">Notas de avance</th>`;
     items1.forEach(it=>head+=`<th style="white-space:nowrap;"><div>${typeIcon[it.type||it.kind]||"📝"} ${fmtShort(it.date)}</div><div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${esc(abbrev(it.name))}</div></th>`);
-    head+=`<th class="gh-tot">Nota 1°</th><th class="gh-sep">·</th>`;
+    head+=`<th class="gh-tot">Nota 1°</th>`;
     head+=`<th class="gh-tot">Notas de avance</th>`;
     items2.forEach(it=>head+=`<th style="white-space:nowrap;"><div>${typeIcon[it.type||it.kind]||"📝"} ${fmtShort(it.date)}</div><div style="font-size:9px;color:var(--muted);font-weight:600;margin-top:1px;">${esc(abbrev(it.name))}</div></th>`);
-    head+=`<th class="gh-tot">Nota 2°</th><th class="gh-tot">Promedio</th><th class="gh-tot">Intens.</th></tr>`;
+    head+=`<th class="gh-tot">Nota 2°</th></tr>`;
+    head=headTerm+head;
 
     const rows=g.students.map(s=>{
       let r=`<tr><td class="stick">${nameHTML(s)}</td>`;
