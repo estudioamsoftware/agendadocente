@@ -892,7 +892,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.03-2';
+const APP_VER='v2026.09.03-3';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1646,10 +1646,36 @@ let lic={plan:"gratis",email:null};
 // en Firestore, ver el <script type="module"> al final del archivo), esta bandera
 // se prende sola vía el evento "subscription-status" — no hace falta recargar.
 let fbSubActive=false;
+// fbSubExpires: fecha (ISO) hasta la que vale el acceso, si el doc de Firestore
+// trae currentPeriodEnd — lo tienen tanto las suscripciones reales de Play
+// (ahí es la fecha de la próxima renovación automática) como los accesos
+// regalados a mano a las verificadoras (ahí sí es un corte de verdad).
+let fbSubExpires=null;
+// fbSubGift: true solo en los accesos regalados a mano (doc con gift:true en
+// Firestore) — así el contador de "te queda menos de tal fecha" se muestra
+// nada más a quien de verdad se le va a cortar, y no confunde a quien paga y
+// se le renueva solo.
+let fbSubGift=false;
 window.addEventListener("subscription-status",e=>{
-  fbSubActive=!!(e.detail&&e.detail.status==="active");
+  const d=e.detail||{};
+  fbSubExpires=d.currentPeriodEnd||null;
+  fbSubGift=!!d.gift;
+  // Si ya pasó la fecha, se trata como vencida acá mismo (sin depender de que
+  // alguien vuelva a tocar el documento en Firestore): así un acceso regalado
+  // por un año se apaga solo en la fecha prometida, ni un día antes ni un día
+  // después de que Ana lo haya puesto.
+  const vencida=fbSubExpires&&new Date(fbSubExpires).getTime()<Date.now();
+  fbSubActive=!!(d.status==="active"&&!vencida);
   if(typeof render==="function") render();
 });
+// Días que le quedan a un acceso REGALADO antes de vencer (null si no aplica:
+// no es un regalo, no tiene fecha cargada, o ya no está activo). Se usa para
+// avisar con tiempo en vez de cortar de sorpresa.
+function licDiasRegaloRestantes(){
+  if(!fbSubActive||!fbSubGift||!fbSubExpires) return null;
+  return Math.max(0,Math.ceil((new Date(fbSubExpires).getTime()-Date.now())/86400000));
+}
+function fmtFechaCorta(iso){ try{ return new Date(iso).toLocaleDateString('es-AR'); }catch(e){ return ""; } }
 
 function licLoad(){ try{ const raw=localStorage.getItem("lic"); if(raw) lic=Object.assign(lic,JSON.parse(raw)); }catch(e){} }
 function licSave(){ try{ localStorage.setItem("lic",JSON.stringify(lic)); }catch(e){} }
@@ -1873,7 +1899,19 @@ async function playComprar(itemId){
 
 async function licPaywall(){
   if(licTienePlanPago()){
+    const dias=licDiasRegaloRestantes();
+    // Un acceso regalado (verificadoras) muestra la fecha límite y la cuenta
+    // regresiva bien claras, para que nadie se lleve una sorpresa el día que
+    // se corte — es justo lo que se les prometió al pedirles que prueben la
+    // app. Quien paga de verdad no ve nada de esto (dias sale null: no hay
+    // gift:true en su doc de Firestore), porque a esa cuenta se le renueva
+    // sola y no hay ninguna fecha "límite" que anunciar.
+    const avisoRegalo=dias!=null?`<div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:12px 14px;margin:0 0 12px;">
+        <p style="margin:0;font-size:13.5px;">Tenés la versión completa <strong>gratis</strong>, como agradecimiento por probar la app.<br>
+        Te vale hasta el <strong>${fmtFechaCorta(fbSubExpires)}</strong> (${dias===0?"vence hoy":`faltan ${dias} día${dias===1?"":"s"}`}).</p>
+      </div>`:"";
     openDlg("Tu suscripción",`<div style="font-size:14.5px;line-height:1.6;color:var(--ink);">
+        ${avisoRegalo}
         <p style="margin:0 0 12px;">Ya tenés la <strong>versión completa</strong>.</p>
         <p style="font-size:13px;color:var(--muted);margin:0;">Para cambiar de plan o cancelar, abrí Play Store → tocá tu foto de perfil → Pagos y suscripciones.</p>
       </div>
@@ -7886,7 +7924,11 @@ function promptAyuda(startTab){
 function openMenu(){
   $("#menuScrim").classList.add("open");
   ["bnInicio","bnEventos","bnPapelera"].forEach(id=>$("#"+id).classList.remove("on"));
-  const subTxt=$("#subEstadoTxt"); if(subTxt) subTxt.textContent=licTienePlanPago()?"Versión completa":"Versión gratis";
+  const subTxt=$("#subEstadoTxt");
+  if(subTxt){
+    const dias=licDiasRegaloRestantes();
+    subTxt.textContent=licTienePlanPago()?("Versión completa"+(dias!=null?` (gratis) · vence el ${fmtFechaCorta(fbSubExpires)}`:"")):"Versión gratis";
+  }
   const verTxt=$("#appVersionTxt"); if(verTxt) verTxt.textContent="Versión: "+APP_BUILD;
   updateSavedStamps();
 }
@@ -8499,9 +8541,9 @@ if("serviceWorker" in navigator){
 
   let unsubSubscription = null;
 
-  function applySubscriptionStatus(status){
+  function applySubscriptionStatus(status, currentPeriodEnd, gift){
     document.documentElement.dataset.subscription = status;
-    window.dispatchEvent(new CustomEvent("subscription-status", { detail: { status } }));
+    window.dispatchEvent(new CustomEvent("subscription-status", { detail: { status, currentPeriodEnd: currentPeriodEnd || null, gift: !!gift } }));
   }
 
   onAuthStateChanged(fbAuth, (user) => {
@@ -8509,7 +8551,9 @@ if("serviceWorker" in navigator){
     if (unsubSubscription) { unsubSubscription(); unsubSubscription = null; }
     if (!user) { applySubscriptionStatus("inactive"); return; }
     unsubSubscription = onSnapshot(doc(fbDb, "subscriptions", user.uid), (snap) => {
-      applySubscriptionStatus(snap.exists() ? snap.data().status : "inactive");
+      const d = snap.exists() ? snap.data() : null;
+      const cpe = d && d.currentPeriodEnd && d.currentPeriodEnd.toDate ? d.currentPeriodEnd.toDate().toISOString() : null;
+      applySubscriptionStatus(d ? d.status : "inactive", cpe, d && d.gift);
     });
   });
 

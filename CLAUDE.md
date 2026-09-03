@@ -919,6 +919,75 @@ juntas en esta rama. Quedaron sumados:
 - `licPaywall()`: hoy el botón "Quiero la completa" abre un mail a `estudioam.dev@gmail.com`.
   Cuando esté Play Billing, tiene que disparar la compra en su lugar.
 
+### Acceso gratis por un año a las verificadoras, con fecha visible (3/9/2026)
+
+Pedido de la dueña: a las ~12+ verificadoras de la prueba cerrada se les prometió la
+versión completa gratis por un año cuando el candado (`LIC_ENFORCE`) se prenda para el
+público general. Cortárselo de golpe al año, sin aviso, "es muy violento" — tienen que
+poder ver desde el arranque hasta qué fecha les dura y no llevarse una sorpresa.
+
+**Cómo quedó (armado, todavía sin probar en producción porque no existe ningún doc de
+este tipo creado de verdad):** se reutiliza el mismo documento `subscriptions/{uid}` de
+Firestore que ya usan las suscripciones reales de Play (`functions/index.js`,
+`saveSubscriptionState`), agregándole a mano, **solo para las regaladas**, dos campos que
+esa función nunca escribe:
+
+- `gift: true` (booleano) — marca que es un regalo a mano, no una compra real. Es lo que
+  hace que el aviso de vencimiento se muestre: a quien paga de verdad (sin este campo) no
+  se le muestra nunca, porque a esa cuenta Play se la renueva sola y no hay ninguna fecha
+  "límite" que anunciarle — mostrarle una cuenta regresiva la asustaría al pedo.
+- `currentPeriodEnd` (tipo **Timestamp**, no texto) — la fecha hasta la que vale el
+  regalo. Ya era un campo que la función de arriba llena sola para las suscripciones
+  reales (ahí es la próxima renovación); para un regalo, Ana lo carga a mano con la fecha
+  de un año después.
+
+**Pasos para regalarle el año a una verificadora (no depende de tocar código):**
+1. Que la persona abra **Mi suscripción** dentro de la app una vez (con la cuenta de
+   Google que va a seguir usando) — así queda registrada en Firebase Authentication y
+   aparece en `admin.html` con su mail y su UID.
+2. Ana busca su UID ahí (o directo en la consola de Firebase → Authentication).
+3. En Firestore (consola de Firebase → Firestore Database) crea a mano el documento
+   `subscriptions/<ese UID>` con:
+   - `status`: `"active"` (string)
+   - `gift`: `true` (boolean)
+   - `currentPeriodEnd`: `timestamp`, con la fecha de un año después de hoy.
+
+Con eso, en el momento en que se guarda el documento la app ya la trata como versión
+completa (el listener de Firestore, en el `<script type="module">` al final del archivo,
+la agarra sola por `onSnapshot` sin que la usuaria recargue nada).
+
+**Cómo se corta solo, sin que Ana tenga que acordarse de nada:** el chequeo de si vale o
+no la fecha se hace **del lado de la app**, no esperando a que alguien vuelva a tocar el
+documento (`fbSubActive` en `index.html`, cerca de la línea 1648): compara `currentPeriodEnd`
+contra la hora actual del dispositivo en cada actualización del documento, y si ya pasó,
+trata la cuenta como vencida aunque el campo `status` siga diciendo `"active"`. Por eso
+alcanza con cargar la fecha una sola vez al regalar el año — no hay que volver a entrar a
+Firestore para apagarlo el día que corresponda.
+
+**Dónde ve la verificadora la fecha, para que no la agarre de sorpresa** (funciones nuevas
+`licDiasRegaloRestantes()` y `fmtFechaCorta()` en `index.html`):
+- En el menú ⋯, debajo de "Mi suscripción", el texto pasa a decir algo como
+  *"Versión completa (gratis) · vence el 3/9/2027"* en vez del genérico "Versión
+  completa" — lo ve cada vez que abre el menú, no hace falta que vaya a buscarlo.
+- Tocando "Mi suscripción" se abre el cuadro de siempre ("Tu suscripción"), y arriba de
+  todo aparece un recuadro aparte explicando que es un regalo, la fecha exacta y los días
+  que le quedan ("faltan 214 días", o "vence hoy" el último día).
+- El día que la fecha pasa, `fbSubActive` da `false` solo y la cuenta vuelve a ver el
+  candado de la versión gratis como cualquier otra — no hace falta borrar ni tocar el
+  documento de Firestore para que deje de tener acceso (aunque no está de más borrarlo
+  después, para no dejar basura).
+
+**Ojo si se toca esto:** el campo `gift` es lo único que distingue un regalo de una
+compra real a los efectos de mostrar el aviso — si alguna vez se quisiera mostrar también
+la fecha de renovación a quien paga de verdad (podría ser útil, "se renueva el..."), hay
+que hacerlo con un texto distinto, porque a esa cuenta `currentPeriodEnd` se le va
+corriendo solo con cada renovación y no es un corte, es solo informativo.
+
+**Pendiente:** esto no se probó todavía contra un documento real en Firestore (no existe
+ninguno con `gift:true` armado a mano) ni contra el candado prendido — cuando llegue el
+momento de regalarle el año a la primera verificadora, conviene probarlo con una cuenta de
+prueba antes de mandarlo a las 12.
+
 ### Qué funciones van a ser premium (decidido, no implementado todavía)
 
 Esta decisión es más amplia que el candado de "un curso" de arriba — quedó pendiente
