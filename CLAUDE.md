@@ -988,6 +988,100 @@ ninguno con `gift:true` armado a mano) ni contra el candado prendido — cuando 
 momento de regalarle el año a la primera verificadora, conviene probarlo con una cuenta de
 prueba antes de mandarlo a las 12.
 
+### Suscripción por Mercado Pago (armado 3/9/2026, todavía SIN probar ni desplegar)
+
+Pedido de la dueña: profes con iPhone (y cualquiera que llegue a la app por el navegador,
+no por Play Store) no pueden pagar por Google Play Billing — eso solo funciona adentro de
+la app instalada de Android. Y no puede ser algo manual ("no puedo ir una por una a las
+personas diciéndoles que paguen"): tiene que cobrarse solo, todos los meses.
+
+**Por qué no hace falta una app nativa de iOS:** la regla de "tiene que pagarse con la
+facturación de la tienda" (Google Play, Apple App Store) aplica solo a lo que se compra
+**dentro de una app bajada de esa tienda**. Como al iPhone la Agenda se le abre por Safari
+(nunca se instala desde ninguna tienda), esa regla no la alcanza — se le puede cobrar por
+un medio de pago común. Se eligió **Mercado Pago** (cuenta ya existente de la dueña,
+monotributista) en vez de Stripe, por ser lo natural para el público argentino y cobrar
+directo en pesos (sin el recargo del "dólar tarjeta" que sí sufre Play).
+
+**Pensado para reusarse en las otras apps de la dueña** (Che Taxi, etc.): una sola cuenta
+de Mercado Pago puede tener varios planes de suscripción distintos, uno por app — no hace
+falta una cuenta de Mercado Pago por app. Lo que sí es por app es el código y la base de
+datos, porque cada app de la dueña ya tiene su propio proyecto de Firebase separado
+(confirmado con ella el 3/9/2026). Así que este mismo par de funciones
+(`crearSuscripcionMP` / `mpWebhook`) es la receta a copiar al `functions/index.js` de cada
+app nueva que se quiera sumar, cambiando nomás el nombre del plan y el precio.
+
+**Precio decidido:** $9000 ARS por mes (plan único, sin anual por ahora). Está escrito en
+**dos lugares que hay que mantener sincronizados**: `MP_PRECIO_ARS` en
+`functions/index.js` (el que de verdad se cobra) y `MP_PRECIO_ARS` en `index.html` (el que
+se muestra en el cuadro de compra, nada más). Si se cambia el precio, cambiar los dos y
+volver a desplegar las funciones.
+
+**Cómo funciona, técnicamente:**
+- Mismo documento de siempre, `subscriptions/{uid}` en Firestore — el que ya usan
+  `verifyPurchase`/`playRtdn` (Play) y los regalos a mano de las verificadoras. La app
+  (`licTienePlanPago()` en `index.html`) no le importa de dónde vino el "sí": mira un solo
+  lugar. Lo único que distingue el origen es el campo nuevo `source` (`"play"` o
+  `"mercadopago"`), que solo se usa para decidir a dónde mandar el botón "Administrar".
+- `crearSuscripcionMP` (Cloud Function callable, `functions/index.js`): la llama la app
+  cuando alguien aprieta "Suscribirme" fuera de la TWA de Android. Crea en Mercado Pago un
+  **preapproval sin plan asociado** (un objeto de suscripción con el monto adentro, la
+  forma más simple para un solo precio — no hace falta pre-crear un "plan" reusable en el
+  panel de Mercado Pago) con `status:"pending"`, y devuelve el `init_point` — el link al
+  que Mercado Pago aloja el formulario para que la persona cargue su tarjeta y autorice.
+  Ningún dato de tarjeta pasa por nuestro código.
+  - Guarda en una colección nueva, `mpPreapprovals/{preapprovalId}`, el UID de Firebase al
+    que corresponde — mismo truco que ya usa `purchaseTokens` para Play, porque el aviso
+    de Mercado Pago después solo trae el id del preapproval, no el UID.
+- `mpWebhook` (Cloud Function HTTP, `functions/index.js`): el endpoint al que Mercado Pago
+  avisa cuando alguien autoriza, paga, pausa o cancela. Valida la firma del aviso (header
+  `x-signature`, con la fórmula de la documentación oficial de Mercado Pago) antes de
+  creerle a nada — si no, cualquiera podría pegarle a esta URL pública diciendo "ya
+  cobré" sin haber cobrado. Si la firma da bien, busca el preapproval en Mercado Pago,
+  mira su `status` (`"authorized"` = activo) y actualiza `subscriptions/{uid}` igual que
+  Play.
+- En `index.html`, `licPaywall()`: cuando la app **no** corre como TWA de Android
+  (`playBillingAvailable()` da falso — o sea: iPhone, o cualquier navegador), el cuadro de
+  "Versión completa" ya no dice "abrí la app de Play Store" y punto — ahora ofrece un
+  botón real de "Suscribirme" (`mpIniciarSuscripcion()`), que pide iniciar sesión con
+  Google si hace falta y manda a la persona al `init_point` de Mercado Pago. Sigue
+  mostrando, más abajo, el link para instalar la app de Play Store por si tiene Android y
+  prefiere esa vía.
+- Volver a la app con la versión completa ya activa depende de que `mpWebhook` haya
+  procesado el aviso — el `onSnapshot` de Firestore ya está armado para que la app se
+  entere sola sin recargar, pero puede tardar unos segundos desde que la persona confirma
+  el pago en Mercado Pago hasta que vuelve a la Agenda.
+
+**Lo que falta para que esto funcione de verdad (nada de esto está hecho todavía):**
+1. La dueña está en el medio de crear la aplicación en el panel de desarrolladores de
+   Mercado Pago (`https://www.mercadopago.com.ar/developers/panel` → "Tus integraciones")
+   para sacar las credenciales.
+2. Cargar esas credenciales como secretos en Firebase (mismo mecanismo que
+   `PLAY_SERVICE_ACCOUNT`, ver esa sección más abajo): `MP_ACCESS_TOKEN` (el Access Token
+   de la aplicación) y `MP_WEBHOOK_SECRET` (la clave para validar la firma del webhook —
+   esta última recién se consigue **después** de desplegar `mpWebhook` una primera vez y
+   cargar su URL en el panel de Mercado Pago como "Webhook", porque ahí es donde Mercado
+   Pago la muestra).
+3. Desplegar `functions/` de nuevo (mismo comando de siempre:
+   `firebase deploy --only functions --project agenda-docente-8c53d`, con los dos
+   secretos nuevos ya cargados).
+4. Cargar la URL de `mpWebhook` (la va a mostrar el despliegue, con forma
+   `https://us-central1-agenda-docente-8c53d.cloudfunctions.net/mpWebhook`) en el panel de
+   Mercado Pago → esta aplicación → Webhooks, suscribiéndose al evento `preapproval` (y de
+   paso ahí es donde aparece la clave para el paso 2).
+5. Probar de punta a punta con las **credenciales de prueba** de Mercado Pago antes de
+   pasar a las de producción — ahí Mercado Pago deja simular pagos aprobados/rechazados
+   sin tarjetas ni plata real. Recién cuando eso ande, pasar a las credenciales de
+   producción (piden completar antes unos datos del negocio en el panel).
+6. No confirmado en pantalla: la URL `MP_MANAGE_URL` en `index.html`
+   (`https://www.mercadopago.com.ar/subscriptions`) — a dónde manda el botón
+   "Administrar" para cancelar o cambiar de plan. Revisarla cuando haya una suscripción de
+   verdad para probar que lleve al lugar correcto.
+7. **A propósito no se tocó `landing.html` todavía.** Se decidió arrancar solo con el
+   botón adentro de la app, probarlo bien, y recién después sumarlo a la landing para que
+   lo vea gente desconocida — no tiene sentido exponerlo a cualquiera antes de haberlo
+   probado de punta a punta.
+
 ### Qué funciones van a ser premium (decidido, no implementado todavía)
 
 Esta decisión es más amplia que el candado de "un curso" de arriba — quedó pendiente
