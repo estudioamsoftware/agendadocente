@@ -920,17 +920,33 @@ volver a tocar el interruptor, ya está prendido.
   decisión a propósito, para no romperle el trabajo a nadie de un día para el otro. Recién
   se topan con el candado si intentan agregar un curso más.
 - `LIC_REGALADAS`: cuentas con la versión completa de regalo, como hash SHA-256 del mail
-  (el repo es público). Hoy solo la cuenta de Estudio AM. Esta lista es un parche
-  provisorio — la idea es que la responda Firebase, no el código público (ver abajo).
-- **Salvaguarda para las verificadoras de la prueba cerrada (3/9/2026):** como al momento
-  de encender el candado **ninguna tenía todavía su año regalado cargado en Firestore**
-  (ver "Acceso gratis por un año..." más abajo), el cuadro de "Versión completa" en
-  `index.html` (`licPaywall()`) agrega una línea antes de mostrar los botones de pago:
-  *"¿Participaste de la prueba cerrada? Escribinos a estudioam.dev@gmail.com antes de
-  pagar — te toca un año gratis."* Sin esto, alguna podría terminar pagando sin saber que
-  le correspondía gratis. **Pendiente real:** contactar a las ~12 verificadoras para que
-  abran "Mi suscripción" una vez y cargarles el regalo antes de que alguna se tope con el
-  candado por su cuenta.
+  en minúsculas (el repo es público — nunca se anota ningún mail en texto plano, ni
+  siquiera en un comentario al lado del hash). Esta lista es un parche provisorio — la
+  idea es que a la larga la responda Firebase, no el código público (ver abajo).
+  🚨 **Ojo: a diferencia del "año regalado" con fecha (ver más abajo), esto es para
+  siempre** — no se corta solo. Si el día de mañana hay que dejar de regalarle la
+  completa a alguien de esta lista, hay que sacar su hash a mano.
+- **Las 10 verificadoras de la prueba cerrada ya están cargadas en `LIC_REGALADAS`
+  (3/9/2026)**, con los mismos mails que la lista "Verificadores Agenda Docente" de Play
+  Console (Estudio AM ya estaba; se sumaron las otras 9). Se activa sola: en el momento en
+  que cada una **conecta su Google Drive** con ese mail (`gdAfterAuth()` llama a
+  `licRefresh()`, que chequea la lista), le queda la versión completa sin límite de
+  cursos, sin que Ana tenga que tocar nada por persona. Para que lo encuentren, el menú ⋯
+  → Respaldo tiene un cartel arriba del botón "Conectar con Google Drive": *"¿Participaste
+  de la prueba cerrada de Agenda Docente? Conectá tu Google Drive con el mismo mail que
+  usaste para probarla — la versión completa te queda activada sola, gratis."*
+  **Se eligió este camino en vez del "año regalado" con fecha visible** (ver más abajo)
+  porque no depende de que cada una abra "Mi suscripción" primero ni de que Ana les cargue
+  algo a mano una por una en Firestore — para 10 personas era mucho más rápido así. La
+  letra chica: no tiene la cuenta regresiva ni la fecha de corte visible que sí tiene el
+  otro mecanismo, y no se apaga sola — si en un año hay que cortarles, hay que sacarlas a
+  mano de `LIC_REGALADAS`. **No probado todavía en un dispositivo real** — falta ver a
+  alguna de estas cuentas conectar Drive y confirmar que efectivamente se desbloquea.
+- El cuadro de "Versión completa" en `index.html` (`licPaywall()`) además agrega, para
+  cualquier otra verificadora que no haya llegado a tiempo a esta lista, una línea antes
+  de mostrar los botones de pago: *"¿Participaste de la prueba cerrada? Escribinos a
+  estudioam.dev@gmail.com antes de pagar — te toca un año gratis."* — ahí sí seguiría el
+  camino del "año regalado" manual, por si aparece alguien no contemplado arriba.
 - `licPaywall()`: ofrece Google Play Billing (si la app corre como TWA de Android) o
   Mercado Pago (si no) — ver la sección de venta más abajo para el detalle completo.
 

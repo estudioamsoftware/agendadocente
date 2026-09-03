@@ -830,6 +830,9 @@
       <h3>Respaldo</h3>
       <p class="sd">Tus datos se guardan solos en tu Google Drive, carpeta "Agenda Docente". Podés descargar una copia extra cuando quieras.</p>
       <div class="bkstamps" id="bkStamps"></div>
+      <div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:10px 12px;margin:0 0 14px;font-size:12.5px;color:var(--ink);line-height:1.5;">
+        ¿Participaste de la prueba cerrada de Agenda Docente? Conectá tu Google Drive con el mismo mail que usaste para probarla — la versión completa te queda activada sola, gratis.
+      </div>
       <button class="sheet-item" id="gdBtn">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
         <span>Conectar con Google Drive<small>Sincronizá entre la compu y la tablet</small></span>
@@ -892,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.03-6';
+const APP_VER='v2026.09.03-7';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1645,6 +1648,19 @@ const LIC_FREE_GROUPS=1;
 // Más adelante esta lista se reemplaza por la consulta a Firebase.
 const LIC_REGALADAS=[
   "e88602ff4db038b3d5f872a8f4a535f9da5db508c267d224c32ed87592cefb9b", // cuenta de Estudio AM
+  // Verificadoras de la prueba cerrada (3/9/2026) — mismos mails que la lista
+  // "Verificadores Agenda Docente" de Play Console. No se anota el mail de
+  // nadie acá al lado del hash, ni siquiera en un comentario: el repo es
+  // público.
+  "c5aba0cf0a56abf3b61af7d0c2f9a4cd74df4a3f1347f9428332e0b1465fd70c",
+  "3f05a8831f70d64384a8beab924d1731f2cda4cae1cbf60fe1b77f59bfc1ec8c",
+  "7630a3a4107e285dfec7def45eed389c3d06d330d48e382c6019bcbfc7a740f9",
+  "9ea8561d503da152a65f1d7589dcc7d39b1c2de66d77fdf713f2716db764c263",
+  "ce4011d58917ef078d34c69e5f237adc744cb6c2ccd4a59805a1000dc4bac7d1",
+  "5ee7b59f59de097310b11a43ccd343243f3f9b0220f1154c36a3a9767f99bca8",
+  "94007fe85c596aab228eb91ccc42a02607f821561a89b4e69cb21af1edec6421",
+  "b99da600c43d52f2eca0b96e3baaf51ac8d7693290b9ccf9066fbde1de1850f4",
+  "23fd89c887f802f3e5650b735546669a37dd25857acc0d89f1cc7d72be463db3",
 ];
 let lic={plan:"gratis",email:null};
 // Si Firebase confirma una suscripción activa (subscriptions/{uid}.status==="active"
