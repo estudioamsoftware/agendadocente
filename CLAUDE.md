@@ -988,7 +988,7 @@ ninguno con `gift:true` armado a mano) ni contra el candado prendido — cuando 
 momento de regalarle el año a la primera verificadora, conviene probarlo con una cuenta de
 prueba antes de mandarlo a las 12.
 
-### Suscripción por Mercado Pago (armado 3/9/2026, todavía SIN probar ni desplegar)
+### Suscripción por Mercado Pago (armado y DESPLEGADO EN PRODUCCIÓN el 3/9/2026)
 
 Pedido de la dueña: profes con iPhone (y cualquiera que llegue a la app por el navegador,
 no por Play Store) no pueden pagar por Google Play Billing — eso solo funciona adentro de
@@ -1052,35 +1052,73 @@ volver a desplegar las funciones.
   entere sola sin recargar, pero puede tardar unos segundos desde que la persona confirma
   el pago en Mercado Pago hasta que vuelve a la Agenda.
 
-**Lo que falta para que esto funcione de verdad (nada de esto está hecho todavía):**
-1. La dueña está en el medio de crear la aplicación en el panel de desarrolladores de
-   Mercado Pago (`https://www.mercadopago.com.ar/developers/panel` → "Tus integraciones")
-   para sacar las credenciales.
-2. Cargar esas credenciales como secretos en Firebase (mismo mecanismo que
-   `PLAY_SERVICE_ACCOUNT`, ver esa sección más abajo): `MP_ACCESS_TOKEN` (el Access Token
-   de la aplicación) y `MP_WEBHOOK_SECRET` (la clave para validar la firma del webhook —
-   esta última recién se consigue **después** de desplegar `mpWebhook` una primera vez y
-   cargar su URL en el panel de Mercado Pago como "Webhook", porque ahí es donde Mercado
-   Pago la muestra).
-3. Desplegar `functions/` de nuevo (mismo comando de siempre:
-   `firebase deploy --only functions --project agenda-docente-8c53d`, con los dos
-   secretos nuevos ya cargados).
-4. Cargar la URL de `mpWebhook` (la va a mostrar el despliegue, con forma
-   `https://us-central1-agenda-docente-8c53d.cloudfunctions.net/mpWebhook`) en el panel de
-   Mercado Pago → esta aplicación → Webhooks, suscribiéndose al evento `preapproval` (y de
-   paso ahí es donde aparece la clave para el paso 2).
-5. Probar de punta a punta con las **credenciales de prueba** de Mercado Pago antes de
-   pasar a las de producción — ahí Mercado Pago deja simular pagos aprobados/rechazados
-   sin tarjetas ni plata real. Recién cuando eso ande, pasar a las credenciales de
-   producción (piden completar antes unos datos del negocio en el panel).
-6. No confirmado en pantalla: la URL `MP_MANAGE_URL` en `index.html`
+**Bug real encontrado y arreglado en el camino (3/9/2026): `playBillingAvailable()` daba
+falso positivo fuera de la TWA.** Probando el botón nuevo en un Chrome común (no la app
+instalada de Play), la app igual entraba a la rama de Google Play y fallaba con
+`getDigitalGoodsService falló: OperationError: unsupported context` sin ofrecer ninguna
+alternativa. Causa: `getDigitalGoodsService` existe como función en cualquier Chrome —no
+sólo en una TWA instalada—, así que chequear solo `typeof window.getDigitalGoodsService`
+no alcanza para saber si Play de verdad va a funcionar. Arreglado en `licPaywall()`
+(`index.html`): se extrajeron `mpAreaHTML()` / `wireMpArea()`, y ahora, si `playFetchPlans()`
+no encuentra ningún plan (falle por lo que falle), el cuadro cae solo a ofrecer el botón de
+Mercado Pago en vez de un cartel sin salida. Esto además resuelve un caso más amplio que
+sólo iPhone: **cualquiera en Android que abra la Agenda desde un navegador común (sin
+instalarla de Play) ahora también puede suscribirse**, cosa que antes quedaba sin ninguna
+vía de pago.
+
+**🚨 Ojo con esto para cualquier prueba futura, encontrado el 3/9/2026 pagando (casi) de
+verdad:** con las **credenciales de prueba** cargadas en el backend, el checkout de
+Mercado Pago que se abre **es la pantalla de producción real** — si te logueás ahí con tu
+cuenta normal, te muestra tus tarjetas reales y el pago se cobra en serio. El modo
+"prueba" no depende de qué credencial usa el backend para crear el `preapproval`, sino de
+con qué cuenta inicia sesión **quien paga** en esa pantalla: hace falta loguearse ahí con
+una **cuenta de prueba tipo comprador** (Mercado Pago → esta app → "Cuentas de prueba"),
+usando además un número de tarjeta de la lista de "Tarjetas de prueba" (se probó con la
+Visa `4509 9535 6623 3704`, venc. `11/30`, cód. `123`, nombre del titular **`APRO`** —esa
+palabra clave simula un pago aprobado). Reembolsar un pago real después **no** cancela la
+suscripción (son dos acciones separadas en Mercado Pago), así que si algún día hay que
+repetir una prueba con plata real por error, no alcanza con reembolsar: hay que cancelar
+el `preapproval` aparte.
+
+**No se pudo terminar la prueba de punta a punta en el celular (3/9/2026), y quedó
+así a propósito:** intentar loguearse con la cuenta de prueba desde una pestaña de
+incógnito en Chrome/Android fue un enredo (el campo de usuario no aceptaba el valor
+truncado, después no dejaba desloguear la cuenta real sin incógnito). Se creó igual una
+cuenta de prueba comprador (identificación "Comprador agenda docente", con $20.000 de
+saldo ficticio para que alcance para varias pruebas del plan de $9.000) — **queda
+disponible en el panel para la próxima vez que se quiera probar, mejor desde una
+computadora**, donde una ventana de incógnito se porta más prolija. Decisión de la
+dueña: en vez de seguir peleando con esto, **se pasó directo a producción** confiando en
+que el código es casi idéntico, línea por línea, al de Play (que ya funciona con
+suscriptoras reales) — la primera suscripción real de verdad será la prueba definitiva,
+revisando los registros de Cloud Functions en el momento.
+
+**Estado real al cierre del 3/9/2026 — YA EN PRODUCCIÓN:**
+1. ✅ Aplicación creada en el panel de Mercado Pago (`https://www.mercadopago.com.ar/developers/panel`
+   → "Agenda docente", integración con "Suscripciones").
+2. ✅ Ambos secretos cargados en Firebase: `MP_ACCESS_TOKEN` (con el **Access Token de
+   producción** — se completaron antes los datos del negocio que Mercado Pago pide para
+   habilitarlo: industria "Educación" y el sitio web de la Agenda) y `MP_WEBHOOK_SECRET`
+   (**la misma clave sirve para "Modo de prueba" y "Modo productivo"** — es una sola por
+   aplicación, no por modo, así que no hizo falta cargarla dos veces).
+3. ✅ `functions/` desplegado con `firebase deploy --only functions --project
+   agenda-docente-8c53d` desde Cloud Shell (mismo mecanismo de siempre) — `crearSuscripcionMP`
+   y `mpWebhook` quedaron activas.
+4. ✅ Webhook cargado en **las dos pestañas** del panel de Mercado Pago ("Modo de prueba" y
+   "Modo productivo"), apuntando a `https://us-central1-agenda-docente-8c53d.cloudfunctions.net/mpWebhook`,
+   suscripto al evento **"Planes y suscripciones"**.
+5. ⚠️ **No confirmado de punta a punta todavía** (ver arriba, quedó pendiente por la traba
+   de la cuenta de prueba en el celular) — falta ver una suscripción real completa
+   convertirse en `subscriptions/{uid}` con `status:"active"` en Firestore. Cuando llegue
+   la primera, revisar los logs de `crearSuscripcionMP` y `mpWebhook` en la consola de
+   Firebase para confirmar que no hay ningún error silencioso.
+6. ⚠️ No confirmado en pantalla: la URL `MP_MANAGE_URL` en `index.html`
    (`https://www.mercadopago.com.ar/subscriptions`) — a dónde manda el botón
    "Administrar" para cancelar o cambiar de plan. Revisarla cuando haya una suscripción de
    verdad para probar que lleve al lugar correcto.
 7. **A propósito no se tocó `landing.html` todavía.** Se decidió arrancar solo con el
-   botón adentro de la app, probarlo bien, y recién después sumarlo a la landing para que
-   lo vea gente desconocida — no tiene sentido exponerlo a cualquiera antes de haberlo
-   probado de punta a punta.
+   botón adentro de la app y recién después sumarlo a la landing para que lo vea gente
+   desconocida — no tiene sentido exponerlo ahí antes de confirmar el punto 5.
 
 ### Qué funciones van a ser premium (decidido, no implementado todavía)
 
