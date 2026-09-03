@@ -892,7 +892,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.01-9';
+const APP_VER='v2026.09.03-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3982,8 +3982,9 @@ function todayCtaHTML(g){
       <span class="tc-txt"><span class="tc-t">Te falta pasar lista</span><span class="tc-s">Última clase sin tomar: ${fmtItemDate(last)}</span></span>
       <span class="tc-go">Ir${I.chev}</span></button>`;
   }
+  const yaTomada=hasCompleteAttendance(g.terms[hit.k],hit.date,g);
   return `<button class="todaycta hoy" data-cta="${hit.k}"><span class="tc-ic">${I_check}</span>
-    <span class="tc-txt"><span class="tc-t">Hoy tenés clase</span><span class="tc-s">${fmtItemDate(iso)} · pasá lista acá</span></span>
+    <span class="tc-txt"><span class="tc-t">Hoy tenés clase</span><span class="tc-s">${fmtItemDate(iso)} · ${yaTomada?"asistencia tomada":"pasá lista acá"}</span></span>
     <span class="tc-go">Ir${I.chev}</span></button>`;
 }
 function renderGroup(g){
