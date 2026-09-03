@@ -892,7 +892,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.03-1';
+const APP_VER='v2026.09.03-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1332,12 +1332,12 @@ function updateSavedStamps(){
    cambio de teléfono ni a un cambio del cliente de Google. Esta baja un
    archivo común y corriente, que se puede guardar o mandar a donde sea. */
 function exportToFile(){
-  closeMenu();
   try{
     download("Agenda Docente - copia "+todayStampAD()+".json",JSON.stringify(state),"application/json");
     markStamp(LAST_FILE_EXPORT_KEY);
+    flashSuccess("#actExportFile","#FCEBDA"); updateSavedStamps();
     toastSuccess("\u2713 Copia descargada a este dispositivo","#A9500A");
-  }catch(e){ toastError("No se pudo descargar la copia"); }
+  }catch(e){ flashError("#actExportFile"); toastError("No se pudo descargar la copia"); }
 }
 function importFromFile(){
   closeMenu();
@@ -7694,13 +7694,13 @@ async function maybeAutoBackupToDrive(){
 }
 async function backup(){
   if(!gd.tok){ toastSuccess('Conectá Drive primero','#A9500A'); return; }
-  closeMenu();
   toastSuccess('Subiendo backup a Drive…','#A9500A');
   try{
     await backupSnapshotToDrive(state,'manual');
     saveLocalSnapshot(true); // de paso, una copia local también
+    flashSuccess("#actBackup","#FCEBDA"); updateSavedStamps();
     toastSuccess('✓ Backup guardado en Drive y en este dispositivo','#A9500A');
-  }catch(e){ toastError('No se pudo guardar el backup: '+(e&&e.message?e.message:'')); }
+  }catch(e){ flashError("#actBackup"); toastError('No se pudo guardar el backup: '+(e&&e.message?e.message:'')); }
 }
 async function restoreFromDrive(){
   if(!gd.tok){ toastSuccess('Conectá Drive primero','#A9500A'); return; }
