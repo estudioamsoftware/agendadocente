@@ -909,15 +909,30 @@ juntas en esta rama. Quedaron sumados:
 
 ### El candado de la versión gratis
 
-- `LIC_ENFORCE` en `index.html` está en **`false`**: mientras esté apagado, nadie ve el
-  candado (las profes que están probando la app no se topan con esto). Se enciende recién
-  cuando la app salga a la venta de verdad.
-- `LIC_FREE_GROUPS=1`: la versión gratis deja llevar un curso.
+🚨 **`LIC_ENFORCE` está en `true` desde el 3/9/2026 — la app ya cobra de verdad.** Cualquier
+mención más abajo en este archivo que diga "`LIC_ENFORCE` sigue apagado" o "mientras no se
+encienda el candado" es de **antes** de esa fecha y quedó desactualizada — no hace falta
+volver a tocar el interruptor, ya está prendido.
+
+- `LIC_FREE_GROUPS=1`: la versión gratis deja llevar un curso — **pero ojo, `licCanAddGroup()`
+  solo frena crear cursos NUEVOS más allá del primero.** A quien ya tenía varios cursos
+  cargados antes del 3/9 (verificadoras incluidas) no se le esconde ninguno — es una
+  decisión a propósito, para no romperle el trabajo a nadie de un día para el otro. Recién
+  se topan con el candado si intentan agregar un curso más.
 - `LIC_REGALADAS`: cuentas con la versión completa de regalo, como hash SHA-256 del mail
   (el repo es público). Hoy solo la cuenta de Estudio AM. Esta lista es un parche
   provisorio — la idea es que la responda Firebase, no el código público (ver abajo).
-- `licPaywall()`: hoy el botón "Quiero la completa" abre un mail a `estudioam.dev@gmail.com`.
-  Cuando esté Play Billing, tiene que disparar la compra en su lugar.
+- **Salvaguarda para las verificadoras de la prueba cerrada (3/9/2026):** como al momento
+  de encender el candado **ninguna tenía todavía su año regalado cargado en Firestore**
+  (ver "Acceso gratis por un año..." más abajo), el cuadro de "Versión completa" en
+  `index.html` (`licPaywall()`) agrega una línea antes de mostrar los botones de pago:
+  *"¿Participaste de la prueba cerrada? Escribinos a estudioam.dev@gmail.com antes de
+  pagar — te toca un año gratis."* Sin esto, alguna podría terminar pagando sin saber que
+  le correspondía gratis. **Pendiente real:** contactar a las ~12 verificadoras para que
+  abran "Mi suscripción" una vez y cargarles el regalo antes de que alguna se tope con el
+  candado por su cuenta.
+- `licPaywall()`: ofrece Google Play Billing (si la app corre como TWA de Android) o
+  Mercado Pago (si no) — ver la sección de venta más abajo para el detalle completo.
 
 ### Acceso gratis por un año a las verificadoras, con fecha visible (3/9/2026)
 
@@ -1116,9 +1131,15 @@ revisando los registros de Cloud Functions en el momento.
    (`https://www.mercadopago.com.ar/subscriptions`) — a dónde manda el botón
    "Administrar" para cancelar o cambiar de plan. Revisarla cuando haya una suscripción de
    verdad para probar que lleve al lugar correcto.
-7. **A propósito no se tocó `landing.html` todavía.** Se decidió arrancar solo con el
-   botón adentro de la app y recién después sumarlo a la landing para que lo vea gente
-   desconocida — no tiene sentido exponerlo ahí antes de confirmar el punto 5.
+7. ✅ **`landing.html` ya manda a comprar (3/9/2026)**, antes de terminar de confirmar el
+   punto 5 — decisión de la dueña, no esperar más. El botón de la tarjeta paga
+   ("Suscribirme") y el de la gratis ("Empezar gratis") llevan directo a
+   `https://estudioamsoftware.github.io/agendadocente/`, el de pago con `?comprar=1`
+   agregado. `index.html` lee ese parámetro al arrancar (buscar "comprar" cerca de
+   `licLoad(); render();`) y abre solo el cuadro de "Versión completa" — adentro,
+   `licPaywall()` ya decide sola Play Billing o Mercado Pago según desde dónde se abrió,
+   así que la landing no necesita adivinar el dispositivo. Se sacó el bloque `<div
+   class="soon">`/"Pronto en Google Play" y su CSS (`.soon`), que ya no se usan.
 
 ### Qué funciones van a ser premium (decidido, no implementado todavía)
 

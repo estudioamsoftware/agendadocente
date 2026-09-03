@@ -164,10 +164,6 @@
     border-left:2.5px solid var(--green);border-bottom:2.5px solid var(--green);
     transform:rotate(-45deg);border-radius:1px;}
   .plan .fine{font-size:13.5px;color:var(--faint);margin:18px 0 0;}
-  .soon{display:inline-flex;align-items:center;gap:8px;min-height:52px;padding:0 20px;border-radius:14px;
-    background:var(--line-soft);border:1px dashed var(--line);color:var(--muted);
-    font-weight:600;font-size:15.5px;margin-top:20px;}
-  .soon svg{width:19px;height:19px;}
 
   /* ---------- preguntas ---------- */
   .faq{margin-top:34px;}
@@ -411,7 +407,7 @@
             <li>Tu horario semanal</li>
             <li>Los documentos del curso</li>
           </ul>
-          <a class="btn btn-ghost" href="mailto:estudioam.dev@gmail.com?subject=Quiero%20probar%20Agenda%20Docente" style="margin-top:22px;width:100%">Escribinos para probarla</a>
+          <a class="btn btn-ghost" href="https://estudioamsoftware.github.io/agendadocente/" style="margin-top:22px;width:100%">Empezar gratis</a>
         </div>
 
         <div class="plan hi">
@@ -422,29 +418,29 @@
                Goods API solo se puede comprar el plan marcado "Compatible con versiones
                anteriores", que es el mensual (ver CLAUDE.md, issue de Bubblewrap #830).
                Anunciarlo acá sería prometer algo que la app no puede cobrar. -->
-          <p class="price-alt">Suscripción mensual</p>
+          <p class="price-alt">o $9.000 ARS por mes, por Mercado Pago</p>
           <ul>
             <li>Cursos ilimitados</li>
             <li>Licencias, paros y eventos administrativos</li>
             <li>Alertas automáticas de vencimientos</li>
             <li>Respaldo en tu Google Drive</li>
           </ul>
-          <!-- Cuando la app pase a prueba abierta o produccion en Play, reemplazar
-               el <div class="soon"> de abajo por este boton:
+          <!-- El botón manda a la app con ?comprar=1: index.html detecta ese parámetro al
+               arrancar y abre sola el cuadro de "Versión completa" (ver el boot, cerca de
+               `licLoad(); render();`, buscar "comprar"). Adentro, licPaywall() ya decide
+               sola el medio de pago: si la abrís desde la app instalada de Play, ofrece
+               Play Billing (en USD); si no (iPhone, o cualquier navegador), ofrece
+               Mercado Pago (en ARS). Por eso un solo link sirve para los dos casos, sin
+               tener que adivinar acá en la landing qué dispositivo está mirando esto. -->
           <a class="btn btn-primary" style="margin-top:22px;width:100%"
-             href="https://play.google.com/store/apps/details?id=com.estudioam.agendadocente">
-            Bajarla de Google Play
+             href="https://estudioamsoftware.github.io/agendadocente/?comprar=1">
+            Suscribirme
           </a>
-          -->
-          <div class="soon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            Pronto en Google Play
-          </div>
           <!-- A proposito NO se aclara aca que en Argentina Play cobra en dolares y que
                la conversion la hace el banco (decision de la duena, 31/8/2026: "que lo
                vean al pagar, como hace Netflix"). Play muestra el importe final antes de
                confirmar la compra, asi que nadie se entera despues de pagar. -->
-          <p class="fine">Se paga desde la app de Google Play, con los medios de pago que ya tenés cargados ahí. Se cancela cuando quieras, desde la misma Play Store.</p>
+          <p class="fine">Si abrís la app instalada de Google Play, se cobra ahí, en dólares, con los medios de pago que ya tenés cargados. Si no, se cobra por Mercado Pago, en pesos. Se cancela cuando quieras.</p>
         </div>
       </div>
     </div>
