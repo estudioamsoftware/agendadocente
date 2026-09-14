@@ -42,6 +42,63 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
 `service-worker.js`, `manifest.json`, `privacy-policy.html`, los íconos y
 `tools/make-icons.py`.
 
+## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
+
+Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
+legajo, nacionalidad, fecha y lugar de nacimiento, domicilio, localidad, teléfono y
+observaciones — y una lista de personas autorizadas a retirarlo (nombre, vínculo, DNI,
+teléfono). Aclaración explícita de la dueña, que cambió el diseño a mitad de camino:
+**"que quede en un cajón separado de lo que usa el docente. A mí no me sirve toda esa
+info."** Por eso NO se agregó nada de esto al diálogo "Editar alumno" de todos los días
+(`promptEditStudent` en `index.html`) — ese diálogo sigue exactamente igual (sólo
+apellido, nombre y fecha de alta).
+
+Se armó una sección **nueva**, "Preceptoría" (`GRP_SEC.preceptoria`, dentro de "La ficha
+del curso", junto a Alumnos/Contenidos/Documentos). Usa la misma lista de alumnos que ya
+arma Alumnos — no agrega ni borra alumnos, sólo les suma datos opcionales:
+
+- Campos nuevos en el alumno (`FICHA_FIELDS` en `index.html`): `fechaNac`, `lugarNac`,
+  `dni`, `legajo`, `nacionalidad`, `domicilio`, `localidad`, `telefono`,
+  `observaciones` — todos opcionales. Más `autorizados`: array de
+  `{nombre,vinculo,dni,telefono}`.
+- `preceptoriaSectionHTML()` / `wirePreceptoriaSection()`: la lista, con un resumen de lo
+  cargado por alumno (DNI, edad calculada, domicilio, cantidad de autorizados). Tocar una
+  fila abre `promptFichaPreceptoria()`, que carga/edita todo junto, incluida la lista de
+  autorizados (se puede agregar y sacar antes de guardar, sin dejar residuo).
+- `printFichaPreceptoria()`: imprime/exporta a PDF una planilla en hoja apaisada con las
+  columnas de la ficha (mismo patrón que `printGrilla()` de Resumen: ventana nueva,
+  `window.print()`).
+- En Alumnos se agregó, al lado de "Importar lista de Excel", un botón **"Compartir por
+  WhatsApp"** (`shareStudentsWhatsApp()`). A propósito comparte **sólo apellido y
+  nombre** — nada de Preceptoría — en el mismo formato "Apellido, Nombre" por línea que
+  ya entiende la pestaña "Texto" de Importar (`parseNameLines()`), para que un profe reciba
+  la lista, la pegue ahí y la cargue de una sin tipear cada nombre. Usa
+  `navigator.share()` si está disponible (celular) y cae a un link `wa.me` si no.
+
+🚨 **Bug real encontrado y corregido en el camino:** la constante `FICHA_FIELDS` había
+quedado declarada **después** de `let state=migrate(load())`, y `migrate()` ya llama a
+`normStudents()`, que la usa. Tiraba `Cannot access 'FICHA_FIELDS' before initialization`
+al recargar la página (no en la primera carga: ahí `state` corría con el bug pero el
+resto de la app seguía andando por hoisting de funciones; el problema aparecía siempre
+al hacer un `reload()`, o sea en cada visita después de la primera). Se movió la
+constante a **antes** de esa línea. Ojo si se agrega otra constante nueva usada dentro
+de `normStudents`/`migrate`: tiene que declararse antes de esa línea, no después (aunque
+esté "cerca" de la función, las `function` se hoistean pero las `const` no).
+
+También se actualizó `normStudents()` para no perder estos campos al recargar: antes
+reconstruía el objeto alumno a mano con una lista fija de propiedades conocidas, así que
+cualquier campo nuevo no contemplado ahí se borraba solo en el próximo `migrate()`.
+
+Probado con Playwright a 390px (igual que el repaso de diseño del 31/8): sin overflow
+horizontal en Alumnos, Preceptoría ni con el diálogo de ficha abierto; los datos
+persisten en `localStorage` y sobreviven a un reload real de la página; el botón de
+WhatsApp se esconde con 0 alumnos cargados.
+
+**No probado:** el flujo real de `navigator.share()` en un celular de verdad (en este
+entorno de prueba no está disponible y cae al link `wa.me`, que sí se probó). Tampoco se
+probó imprimir/exportar a PDF de verdad (se confirmó que la ventana abre con la tabla
+armada, no que el PDF sale prolijo en papel).
+
 ## El ausente en un examen cuenta como desaprobado, y se refleja en el recuperatorio (14/9/2026)
 
 Pedido de la dueña: si un alumno está ausente en un examen, es como si no lo hubiera
