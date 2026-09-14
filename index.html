@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.14-2';
+const APP_VER='v2026.09.14-3';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -7013,22 +7013,38 @@ function wireAlumnosSection(g,body){
    necesita para dar clase (DNI, nacimiento, domicilio, personas autorizadas a
    retirar). No agrega ni borra alumnos — usa la misma lista que ya arma Alumnos,
    sólo le suma datos opcionales a cada uno. */
+// Columnas de la grilla: la de Alumno queda fija (sticky) y estas corren al costado,
+// mismo patrón que la grilla de Resumen (.gridwrap/.grid — ver renderGrid()). Es de
+// sólo lectura: tocar una fila abre promptFichaPreceptoria() para cargar/editar.
+const PRECEPTORIA_COLS=[
+  {label:"Fecha nac.", get:s=>s.fechaNac?fmtShort(s.fechaNac):null},
+  {label:"Edad", get:s=>{ const e=edadEnAnios(s.fechaNac); return e!=null?e+" años":null; }},
+  {label:"Lugar nac.", get:s=>s.lugarNac||null, wide:true},
+  {label:"DNI", get:s=>s.dni||null},
+  {label:"Legajo N°", get:s=>s.legajo||null},
+  {label:"Nacionalidad", get:s=>s.nacionalidad||null},
+  {label:"Domicilio", get:s=>s.domicilio||null, wide:true},
+  {label:"Localidad", get:s=>s.localidad||null},
+  {label:"Teléfono", get:s=>s.telefono||null},
+  {label:"Autorizados a retirar", get:s=>(s.autorizados||[]).length?s.autorizados.map(a=>a.nombre).join(" · "):null, wide:true},
+  {label:"Observaciones", get:s=>s.observaciones||null, wide:true}
+];
 function preceptoriaSectionHTML(g){
   if(!g.students.length) return emptyInline(I.idcard,"Todavía no hay alumnos cargados — agregalos primero en Alumnos.");
-  const rows=g.students.map((s,i)=>{
-    const edad=edadEnAnios(s.fechaNac);
-    const resumen=[s.dni?"DNI "+s.dni:"", edad!=null?edad+" años":"", s.domicilio?s.domicilio+(s.localidad?", "+s.localidad:""):""].filter(Boolean).join(" · ");
-    const autN=(s.autorizados||[]).length;
-    return `<div class="srow" data-pr-row="${s.id}" style="cursor:pointer;">
-      <span class="nm" style="font-size:14px;">${i+1}. ${nameHTML(s,g)}<br><span style="font-size:11.5px;color:var(--faint);font-weight:500;">${resumen?esc(resumen):"Sin datos cargados"}${autN?` · 🔑 ${autN} autorizado${autN===1?"":"s"}`:""}</span></span>
-      <span class="xbtn" style="pointer-events:none;" aria-hidden="true">${I.pencil}</span>
-    </div>`;
-  }).join("");
+  const head=`<tr><th class="stick">Alumno</th>${PRECEPTORIA_COLS.map(c=>`<th>${esc(c.label)}</th>`).join("")}</tr>`;
+  const rows=insertRepeatHeaders(g.students.map((s,i)=>{
+    const cells=PRECEPTORIA_COLS.map(c=>{
+      const v=c.get(s);
+      const wideSt=c.wide?"max-width:170px;overflow:hidden;text-overflow:ellipsis;":"";
+      return v?`<td style="text-align:left;${wideSt}">${esc(v)}</td>`:`<td style="color:var(--faint);">–</td>`;
+    }).join("");
+    return `<tr data-pr-row="${s.id}" style="cursor:pointer;"><td class="stick">${i+1}. ${nameHTML(s,g)}</td>${cells}</tr>`;
+  }).join(""),head,15);
   return `<div style="font-size:13px;color:var(--muted);background:var(--line-soft);border-radius:13px;padding:12px 14px;margin-bottom:14px;line-height:1.5;">
-      Datos para preceptoría: DNI, domicilio, nacimiento y quién puede retirar a cada alumno. Es opcional y no afecta la asistencia, las notas ni los contenidos.
+      Datos para preceptoría: DNI, domicilio, nacimiento y quién puede retirar a cada alumno. Es opcional y no afecta la asistencia, las notas ni los contenidos. Tocá una fila para cargar o editar.
     </div>
-    <div class="slist">${rows}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+    <div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
       <button class="btn subtle sm" id="prPrint">🖨️ Imprimir ficha completa</button>
     </div>`;
 }
