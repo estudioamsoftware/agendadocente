@@ -42,6 +42,35 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
 `service-worker.js`, `manifest.json`, `privacy-policy.html`, los íconos y
 `tools/make-icons.py`.
 
+## El ausente en un examen cuenta como desaprobado, y se refleja en el recuperatorio (14/9/2026)
+
+Pedido de la dueña: si un alumno está ausente en un examen, es como si no lo hubiera
+aprobado — tiene que sumar a los "Desaprobados" de esa evaluación, no quedar afuera del
+conteo. Antes (`tally()` dentro de `renderExamEntry()` en `index.html`) el contador
+"Aprobados/Desaprobados" de la pantalla del examen sólo miraba `examEffective()`, que da
+`null` cuando el alumno está ausente y todavía no rindió el recuperatorio — esos alumnos
+no sumaban ni a Aprobados ni a Desaprobados, desaparecían del conteo. Ahora, si no hay
+nota efectiva, se chequea aparte con `gradeAusenteEffective(...,"nota",e.date)`: si está
+ausente, suma a Desaprobados. (`recuRoster()` ya incluía correctamente a los ausentes
+entre quienes recuperan — eso no tenía bug; lo que faltaba era reflejarlo en el contador.)
+
+**De paso, se corrigió la numeración de la lista de un recuperatorio.** Pedido explícito
+de la dueña: "no me pongas el número de alumno como si fuera su código […] necesito saber
+qué cantidad de alumnos recuperan y quiénes son." `rowInnerHTML()` numeraba con
+`g.students.indexOf(s)` — la posición del alumno en la lista completa del curso — así que
+en un recuperatorio (una lista filtrada, sólo quienes no aprobaron) los números salían
+salteados (ej.: 1, 12, 24…) en vez de 1 a N. Ahora `rowInnerHTML(s,idx)` recibe la
+posición dentro de la lista que se está mostrando en pantalla (la arma `renderRows()`,
+pasando el índice del `forEach` sobre las filas ya filtradas), así que en un recuperatorio
+con, por ejemplo, 14 alumnos que recuperan, se ven numerados 1 a 14 — de un vistazo se
+sabe cuántos son y, siguiendo la lista, quiénes. Afecta también a la lista de
+Intensificación (otra lista filtrada que usa la misma función). La grilla de Resumen no se
+tocó: ahí siempre se listan todos los alumnos del curso, así que ya numeraba bien.
+
+Probado con Playwright (15 alumnos, 13 marcados ausentes + 1 desaprobado + 1 aprobado):
+el contador del examen dio "Aprobados 1 / Desaprobados 14", y al crear el recuperatorio los
+14 alumnos que no aprobaron aparecieron numerados 1 a 14 en la lista.
+
 ## Pendiente de probar (29/8/2026) — NO se probó todavía en el celular
 
 **Importar contenidos desde un Word o PDF**, en Contenidos → "Importar contenidos desde
