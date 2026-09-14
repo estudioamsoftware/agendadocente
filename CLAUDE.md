@@ -42,6 +42,98 @@ todo el HTML/CSS/JS. No hay build step, ni npm, ni framework. Alrededor:
 `service-worker.js`, `manifest.json`, `privacy-policy.html`, los íconos y
 `tools/make-icons.py`.
 
+## Cómo un preceptor toma asistencia todos los días (usando la app tal cual está) (14/9/2026)
+
+Pedido de la dueña: un preceptor está en la escuela todos los días y tiene que tomar
+asistencia de las 2 o 3 divisiones que atiende, cada día — muy distinto de una docente de
+materia (ella, inglés), que va una vez por semana. Y puede ser **la misma persona**:
+preceptora de mañana en una escuela, docente de sus materias a la tarde en otra.
+
+🚨 **No hace falta ningún backend compartido ni una app aparte para esto — ya funciona
+hoy, es una cuestión de cómo se configura el curso, no de código.** Se evaluó y se
+descartó a propósito un "login como docente / como preceptor" y un registro
+compartido entre varias personas (ver el porqué en la sección de abajo): la preceptora
+nunca tiene que ver notas ni nada de otra persona, cada una con su propia cuenta —
+exactamente el modelo de hoy, "un dispositivo = una persona".
+
+**Por qué "antes no le salía":** en "Días de clase" de un curso normal, la docente tilda
+**el día que ella va** (uno, si da clase una vez por semana) — y "Generar clases" arma
+fechas sólo para esos días. Si el preceptor intenta usar ESE curso, hereda esa
+periodicidad semanal.
+
+**La solución, sin tocar código:** el preceptor crea **su propio curso** por cada
+división que atiende (no el de ninguna materia), carga la escuela, y en **Días de
+clase** tilda **todos los días que hay clase en esa escuela** (lunes a viernes, por
+ejemplo) en vez de un solo día. Con eso, "Generar clases" (Ciclo lectivo) le arma una
+fecha por cada día de la semana para todo el cuatrimestre, y desde ahí usa
+**Asistencia** todos los días, normal. La lista de alumnos se la puede pasar cualquier
+docente por WhatsApp (ver más abajo) para no tipearla, y **Preceptoría** (ver más abajo)
+le da la ficha completa + autorizados a retirar.
+
+- **Por ahora es un solo casillero de presente/ausente por día**, no uno por cada
+  materia que pasa ese día (inglés, después literatura, etc.) — el modelo de hoy permite
+  una sola "clase" por fecha por curso. Es a propósito: la dueña lo pidió así para
+  arrancar más simple, y ya cubre el caso real. Separar la asistencia por período dentro
+  del mismo día sería un cambio de fondo (permitir varias clases el mismo día en el mismo
+  curso) — no evaluar hasta que haga falta de verdad.
+- **Como el preceptor va a necesitar varios cursos** (2-3 divisiones + lo que dé como
+  docente si además da clases), la versión gratis (1 curso) no le alcanza — necesita la
+  versión completa, o dársela por `LIC_REGALADAS` si es una cuenta de prueba.
+
+### Por qué NO un "login como docente / como preceptor" ni un registro compartido
+
+Se pensó primero en un selector de rol o en que el registro de asistencia fuera **uno
+solo, compartido entre el preceptor y cada docente de materia** (para que lo que marca
+una se refleje en la otra). Se descartó:
+
+- Un botón de "entrar como preceptor" **no resuelve nada por sí solo**: el problema real
+  no es qué pantalla se ve, es que hoy cada persona tiene sus datos en **su propio
+  dispositivo**, sin servidor que los junte. El celular del preceptor no tiene forma de
+  ver los cursos de la profe de inglés aunque tuviera un botón de "modo preceptor".
+- Un registro compartido de verdad **sí se puede hacer**, pero es un desarrollo grande
+  (necesita un backend tipo Firestore, sincronización entre todos los celulares
+  involucrados) — la dueña lo descartó explícitamente por ahora: "no sé si voy a armar
+  dos productos para vender... es mucho laburo por cada una". Queda anotado como
+  posibilidad futura, no como plan.
+- Cuando la misma persona hace de preceptora y de docente (caso real de la dueña), **no
+  hace falta separar nada por rol**: es una sola cuenta con varios cursos, algunos de
+  preceptoría (asistencia diaria) y otros de materia (una vez por semana) — la app ya
+  junta todo eso solo en el panel "Hoy tenés N cursos" y en el horario semanal de Inicio,
+  ordenados por hora, sin importar si son de una escuela o de otra.
+
+### Probado de verdad armando el caso (14/9/2026, con datos inventados)
+
+Se armó un escenario con Playwright: una persona con 2 cursos de preceptoría (mismo
+horario, "Escuela Norte", asistencia diaria) + 2 cursos de materia (una vez por semana
+cada uno, "Escuela Sur"), todo en la misma cuenta. Confirmado con esto:
+
+- El mecanismo de asistencia diaria **funciona perfecto**, tal cual descripto arriba.
+- El índice de un curso de preceptoría muestra las mismas 6 secciones que cualquier
+  curso (incluidas Contenidos y Documentos, que un preceptor nunca usa) — es ruido visual
+  pero no bloquea nada. Si en algún momento molesta de verdad, se puede agregar un "tipo
+  de curso" (Materia / Preceptoría) que reordene el índice y ponga un ícono distinto en
+  la lista — evaluado, no implementado, porque no hizo falta para lo que se probó.
+
+🐛 **Bug real encontrado y arreglado en el camino (no es específico de preceptoría — le
+puede pasar a cualquier docente):** si dos cursos tienen **el mismo día y horario**
+(muy común para un preceptor: 2 o 3 divisiones en el mismo turno), el horario semanal de
+Inicio (`renderScheduleTable()` en `index.html`) usaba `coursesByDay[dow].find(...)`, que
+se quedaba con el **primero** de los que coinciden — el resto no aparecía en ningún lado.
+Y como Inicio no tiene ninguna otra lista de "todos mis cursos" (la única forma de entrar
+a un curso activo es tocando su bloque en ese horario, o el cartel de "todavía no está
+configurado" mientras le falten alumnos o clases generadas), un curso así **quedaba sin
+ninguna forma de abrirlo** — ni se veía el nombre, ni había ningún botón que llevara ahí.
+Confirmado en las dos puntas: con el bug, "1°B" no aparecía ni en el texto de la pantalla
+ni en ningún elemento clickeable; con el arreglo, aparece y se puede tocar.
+
+Arreglado cambiando el `.find()` por un `.filter()`: ahora, si dos o más cursos coinciden
+en el mismo día y horario, se reparten el ancho de esa celda de la grilla en vez de que
+uno tape al resto (la celda alta se calcula con el más largo de los que empiezan ahí; los
+más cortos ocupan sólo su parte de arriba). **El caso de siempre (un solo curso en ese
+horario) queda sin ningún cambio** — se verificó que el `style` del bloque sale
+byte-por-byte igual que antes cuando no hay colisión, así que no hay riesgo para nadie
+que ya usa la app hoy.
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,

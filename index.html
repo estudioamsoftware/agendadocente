@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.14-3';
+const APP_VER='v2026.09.14-4';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3352,60 +3352,81 @@ function renderScheduleTable(activeGroups){
         return;
       }
       
-      // Buscar curso que comienza en esta hora
-      const courseHere=coursesByDay[dow].find(c=>c.startHourC===h);
-      
-      if(courseHere){
-        const {g,hor,rowspan,startSnap,endSnap}=courseHere;
-        const col=colorOf(g);
-        const horarioStr=`${String(Math.floor(hor.startMin/60)).padStart(2,"0")}:${String(hor.startMin%60).padStart(2,"0")} - ${String(Math.floor(hor.endMin/60)).padStart(2,"0")}:${String(hor.endMin%60).padStart(2,"0")}`;
+      // Buscar TODOS los cursos que empiezan en esta hora — puede haber más de uno con
+      // el mismo día y horario (típico de una preceptora con 2 o 3 divisiones en el
+      // mismo turno). Antes acá había un .find() que se quedaba con el primero nomás:
+      // el resto quedaba sin ningún bloque en la grilla, y como Inicio no tiene ninguna
+      // otra lista de cursos activos, ese curso quedaba invisible — ni se veía, ni se
+      // podía tocar para entrar (encontrado el 14/9/2026 probando el caso de uso de
+      // preceptoría, pero le puede pasar a cualquiera con dos cursos a la misma hora).
+      const coursesHere=coursesByDay[dow].filter(c=>c.startHourC===h);
 
-        let statusHTML="";
-        if(dow===todayDow){
-          const todaySes=["1","2"].flatMap(k=>g.terms[k].sessions).find(s=>s.date===todayISO_);
-          const canc=todaySes&&todaySes.cancelled;
-          let label;
-          let icon;
-          if(canc){ icon="✕"; label="Anulada"; }
-          else if(nowMin>=hor.startMin&&nowMin<=hor.endMin){ icon="●"; label="En clase"; }
-          else if(nowMin>hor.endMin){ icon="✓"; label="Finalizada"; }
-          else{ icon="·"; label="Pendiente"; }
-          statusHTML=`<div class="status${label==="Pendiente"?" status-pend":""}"><span class="st-ic">${icon} </span>${label}</div>`;
-        }
+      if(coursesHere.length){
+        // La celda tiene que abarcar el más largo de los que empiezan acá — los más
+        // cortos ocupan sólo su parte de arriba dentro de esa misma celda alta.
+        const maxRowspan=Math.max(...coursesHere.map(c=>c.rowspan));
+        const celdaIniMin=h*60;
+        const celdaTotalMin=maxRowspan*60;
+        const n=coursesHere.length;
+        const GAP=4; // px entre bloques cuando hay más de uno
+        const blocksHTML=coursesHere.map((courseHere,idx)=>{
+          const {g,hor,rowspan,startSnap,endSnap}=courseHere;
+          const col=colorOf(g);
+          const horarioStr=`${String(Math.floor(hor.startMin/60)).padStart(2,"0")}:${String(hor.startMin%60).padStart(2,"0")} - ${String(Math.floor(hor.endMin/60)).padStart(2,"0")}:${String(hor.endMin%60).padStart(2,"0")}`;
 
-        // La celda abarca "rowspan" horas: ubicamos el bloque en % según los minutos reales
-        const celdaIniMin=courseHere.startHourC*60;
-        const celdaTotalMin=rowspan*60;
-        const topPct=(startSnap-celdaIniMin)/celdaTotalMin*100;
-        const altoPct=Math.min((endSnap-startSnap)/celdaTotalMin*100, 100-topPct);
-
-        // Tres líneas: escuela (si está vinculada), nombre del curso y horario.
-        // Si el nombre del curso empieza repitiendo el de la escuela, se lo quitamos.
-        const escG=g.escuelaId?state.escuelas.find(s=>s.id===g.escuelaId):null;
-        let dispName=g.name;
-        let schoolHTML="";
-        if(escG&&escG.nombre){
-          // Acortado por las dudas: si quedó una escuela vieja con nombre largo
-          // (de antes de limitar el campo), no tiene que desbordar este bloque.
-          schoolHTML=`<div class="school">${esc(escG.nombre.trim().substring(0,18))}</div>`;
-          const pref=escG.nombre.trim().toLowerCase();
-          if(dispName.trim().toLowerCase().startsWith(pref)){
-            const rest=dispName.trim().substring(escG.nombre.trim().length).trim();
-            if(rest) dispName=rest;
+          let statusHTML="";
+          if(dow===todayDow){
+            const todaySes=["1","2"].flatMap(k=>g.terms[k].sessions).find(s=>s.date===todayISO_);
+            const canc=todaySes&&todaySes.cancelled;
+            let label;
+            let icon;
+            if(canc){ icon="✕"; label="Anulada"; }
+            else if(nowMin>=hor.startMin&&nowMin<=hor.endMin){ icon="●"; label="En clase"; }
+            else if(nowMin>hor.endMin){ icon="✓"; label="Finalizada"; }
+            else{ icon="·"; label="Pendiente"; }
+            statusHTML=`<div class="status${label==="Pendiente"?" status-pend":""}"><span class="st-ic">${icon} </span>${label}</div>`;
           }
-        }
 
-        row+=`<td rowspan="${rowspan}"><div class="schedule-slot"><button class="schedule-course" data-go="${g.id}" style="background:${col.solid};top:${topPct.toFixed(2)}%;height:${altoPct.toFixed(2)}%;" title="${esc(g.name)}">
-          ${schoolHTML}
-          <div class="name">${esc(dispName.substring(0,16))}</div>
-          <div class="time">${horarioStr}</div>
-          ${statusHTML}
-        </button></div></td>`;
-        
-        // Marcar todas las horas que ocupa este curso
-        for(let i=0; i<rowspan; i++){
-          rendered[dow].push(courseHere.startHourC+i);
-        }
+          const topPct=(startSnap-celdaIniMin)/celdaTotalMin*100;
+          const altoPct=Math.min((endSnap-startSnap)/celdaTotalMin*100, 100-topPct);
+
+          // Tres líneas: escuela (si está vinculada), nombre del curso y horario.
+          // Si el nombre del curso empieza repitiendo el de la escuela, se lo quitamos.
+          const escG=g.escuelaId?state.escuelas.find(s=>s.id===g.escuelaId):null;
+          let dispName=g.name;
+          let schoolHTML="";
+          if(escG&&escG.nombre){
+            // Acortado por las dudas: si quedó una escuela vieja con nombre largo
+            // (de antes de limitar el campo), no tiene que desbordar este bloque.
+            schoolHTML=`<div class="school">${esc(escG.nombre.trim().substring(0,18))}</div>`;
+            const pref=escG.nombre.trim().toLowerCase();
+            if(dispName.trim().toLowerCase().startsWith(pref)){
+              const rest=dispName.trim().substring(escG.nombre.trim().length).trim();
+              if(rest) dispName=rest;
+            }
+          }
+
+          // Con un solo curso en el horario (el caso de siempre) no tocamos left/right:
+          // queda igual que antes. Con dos o más, se reparten el ancho de la celda.
+          let posStyle="";
+          if(n>1){
+            const anchoBloque=`calc((100% - 12px - ${(n-1)*GAP}px) / ${n})`;
+            const left=`calc(6px + ${idx} * (${anchoBloque} + ${GAP}px))`;
+            posStyle=`left:${left};width:${anchoBloque};right:auto;`;
+          }
+
+          return `<button class="schedule-course" data-go="${g.id}" style="background:${col.solid};top:${topPct.toFixed(2)}%;height:${altoPct.toFixed(2)}%;${posStyle}" title="${esc(g.name)}">
+            ${schoolHTML}
+            <div class="name">${esc(dispName.substring(0,16))}</div>
+            <div class="time">${horarioStr}</div>
+            ${statusHTML}
+          </button>`;
+        }).join("");
+
+        row+=`<td rowspan="${maxRowspan}"><div class="schedule-slot">${blocksHTML}</div></td>`;
+
+        // Marcar todas las horas que ocupa CADA curso de este horario
+        coursesHere.forEach(c=>{ for(let i=0;i<c.rowspan;i++) rendered[dow].push(c.startHourC+i); });
       } else {
         row+=`<td><div class="schedule-slot"></div></td>`;
       }
