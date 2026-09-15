@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.15-3';
+const APP_VER='v2026.09.15-4';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3247,6 +3247,7 @@ function render(){
   try{ localStorage.setItem(VIEW_KEY, JSON.stringify(view)); }catch(e){}
   const APP_DEFAULT_THEME={solid:"#A9500A",press:"#8C4108",tint:"#FCEBDA",bd:"#F0CDA6"};
   if(view.screen==="home"){ applyTheme(APP_DEFAULT_THEME); renderHome(); }
+  else if(view.screen==="preceptoria"){ applyTheme(APP_DEFAULT_THEME); renderPreceptoriaHome(); }
   else if(view.screen==="eventos"){ applyTheme(APP_DEFAULT_THEME); renderEventos(); }
   else if(view.screen==="papelera"){ applyTheme(APP_DEFAULT_THEME); renderPapelera(); }
   else if(view.screen==="config"){ applyTheme(APP_DEFAULT_THEME); renderConfig(); }
@@ -3588,13 +3589,17 @@ function renderHome(){
     </div>`;
   }
 
-  // Lista simple de Preceptoría: sin tabla de horarios, porque un preceptor sí atiende
-  // varias divisiones al mismo tiempo (la tabla de arriba asume una persona en un solo
-  // lugar por horario). "HOY" se calcula igual que en cualquier curso: si hoy es uno de
-  // sus días de clase.
+  // Botón de entrada a Preceptoría — pantalla propia (renderPreceptoriaHome), no una
+  // lista metida acá adentro. Pedido explícito de la dueña (15/9/2026): "un botón que
+  // diga Preceptoría y entro a ese lugar, que es igual a Inicio pero pensado para eso".
+  // Sólo aparece si ya tiene algún curso de Preceptoría — a quien es sólo docente nunca
+  // le sale nada nuevo acá (nunca creó un curso de ese tipo).
   const todayDow_=new Date().getDay();
-  const preceptoriaHTML=preceptoriaActive.length?`<div style="font-size:12.5px;font-weight:700;color:var(--muted);margin:0 2px 8px;text-transform:uppercase;letter-spacing:.03em;">🗓️ Preceptoría</div>
-    <div class="glist">${preceptoriaActive.map(g=>preceptoriaCardHTML(g,todayDow_)).join("")}</div>`:"";
+  const hoyPrecN=preceptoriaActive.filter(g=>(g.diasClase||[]).includes(todayDow_)).length;
+  const preceptoriaHTML=preceptoriaActive.length?`<button class="card gcard" id="goPreceptoria" style="border-left:5px solid var(--primary);margin-bottom:16px;">
+    <span class="gdot" style="background:var(--primary-tint);color:var(--primary);">🗓️</span>
+    <span class="ginfo"><span class="gname">Preceptoría</span><span class="gmeta">${preceptoriaActive.length} curso${preceptoriaActive.length===1?"":"s"}${hoyPrecN?` · ${hoyPrecN} hoy`:""}</span></span>
+    <span class="chev">${I.chev}</span></button>`:"";
 
   const viewToggle=""; // Sacamos el toggle
   const hintHTML=coursesWithSchedule.length>0?`<div style="font-size:14px;color:var(--muted);margin-bottom:16px;text-align:center;padding:12px;background:var(--line-soft);border-radius:10px;"><em>💡 Toca un bloque para entrar al curso</em></div>`:"";
@@ -3664,6 +3669,7 @@ function renderHome(){
   // Listeners para configuración rápida de horas (ver más abajo)
   // Listeners para archivados
   $("#newGroup").onclick=promptNewGroup;
+  const gp=$("#goPreceptoria"); if(gp) gp.onclick=()=>go({screen:"preceptoria"});
   app.querySelectorAll("[data-setup]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.setup,term:"1",tab:"alumnos"}));
   const sa=$("#showAyuda"); if(sa) sa.onclick=()=>promptAyuda();
   const ta=$("#toggleArch"); if(ta) ta.onclick=()=>{ view.showArchived=!view.showArchived; render(); };
@@ -3673,6 +3679,34 @@ function renderHome(){
   // 1° — si no, una docente que arranca en agosto/septiembre caía siempre en el 1°
   // cuatrimestre (vacío, sin nada suyo) cada vez que tocaba su curso.
   app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"indice"}));
+}
+
+/* ---- PRECEPTORÍA (pantalla propia, 15/9/2026) ----
+   Pedido explícito de la dueña: "un botón que diga Preceptoría y entro a ese lugar, que
+   es igual a Inicio pero pensado para eso". Se llega desde el botón de Inicio
+   (#goPreceptoria, sólo visible si ya hay algún curso de Preceptoría). Lista sólo los
+   cursos de ese tipo — nada de horario semanal, porque un preceptor atiende varias
+   divisiones al mismo tiempo (ver renderHome). No es un "modo" ni depende de ningún
+   perfil elegido al registrarse: se arma sola mirando g.tipo, así que conviven sin
+   pisarse con el Inicio de siempre (que sigue mostrando exactamente lo mismo que
+   mostró siempre para quien es sólo docente). */
+function renderPreceptoriaHome(){
+  app.classList.remove("app-home");
+  setTopBack(()=>go({screen:"home"}));
+  const active=state.groups.filter(g=>!g.archived&&g.tipo==="preceptoria");
+  const todayDow_=new Date().getDay();
+  const hoyN=active.filter(g=>(g.diasClase||[]).includes(todayDow_)).length;
+  const hoyHTML=`<div class="hoy-panel"><div style="font-size:14px;font-weight:600;color:var(--ink);">${hoyN>0?`Hoy tenés ${hoyN} curso${hoyN===1?"":"s"} de preceptoría.`:"Hoy no tenés cursos de preceptoría."}</div></div>`;
+  const bodyHTML=active.length?`<div class="glist">${active.map(g=>preceptoriaCardHTML(g,todayDow_)).join("")}</div>
+      <button class="btn" id="newPrecGroup" style="margin-top:4px;">${I.plus} Agregar otro curso</button>`
+    :emptyBox(I.idcard,"Todavía no armaste ningún curso de Preceptoría","Creá uno por cada división que atendés — cargás la lista de alumnos y tomás asistencia todos los días, sin nada de materias.","+ Agregar curso de Preceptoría","newPrecGroup");
+  app.innerHTML=`<div style="height:12px;"></div>
+    <h1 style="font-size:21px;margin:4px 2px 14px;">🗓️ Preceptoría</h1>
+    ${hoyHTML}
+    <div style="margin-top:16px;">${bodyHTML}</div>
+    <div class="pagefoot">Volvé a Inicio para tus cursos de materia — esto es aparte.</div>`;
+  app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"indice"}));
+  const npg=$("#newPrecGroup"); if(npg) npg.onclick=()=>promptNewGroup("preceptoria");
 }
 
 /* ---- EVENTOS GENERALES (pantalla propia) ---- */
@@ -4126,7 +4160,7 @@ const GRP_SEC={
   alumnos:   {fam:"ficha",label:"Alumnos",           ic:"users",  desc:"El listado del curso"},
   contenidos:{fam:"ficha",label:"Contenidos",        ic:"book",   desc:"Programa y temas de cada cuatrimestre"},
   documentos:{fam:"ficha",label:"Documentos",        ic:"clip",   desc:"Planificación, programa, evaluaciones…"},
-  preceptoria:{fam:"ficha",label:"Preceptoría",      ic:"idcard", desc:"DNI, domicilio y quién puede retirar a cada alumno"},
+  preceptoria:{fam:"ficha",label:"Ficha de alumnos", ic:"idcard", desc:"DNI, domicilio y quién puede retirar a cada alumno"},
   asist:     {fam:"dia",  label:"Asistencia",        ic:"check",  desc:"Presentes, ausentes y tardanzas, clase por clase"},
   clase:     {fam:"dia",  label:"Clases",            ic:"cal",    desc:"Los temas y las páginas que diste cada día"},
   exam:      {fam:"dia",  label:"Exámenes y notas",  ic:"star",   desc:"Evaluaciones, TP, carpetas y recuperatorios"},
@@ -7114,7 +7148,7 @@ function preceptoriaSectionHTML(g){
     return `<tr data-pr-row="${s.id}" style="cursor:pointer;"><td class="stick">${i+1}. ${nameHTML(s,g)}</td>${cells}</tr>`;
   }).join(""),head,15);
   return `<div style="font-size:13px;color:var(--muted);background:var(--line-soft);border-radius:13px;padding:12px 14px;margin-bottom:14px;line-height:1.5;">
-      Datos para preceptoría: DNI, domicilio, nacimiento y quién puede retirar a cada alumno. Es opcional y no afecta la asistencia, las notas ni los contenidos. Tocá una fila para cargar o editar.
+      Ficha de cada alumno: DNI, domicilio, nacimiento y quién puede retirar a cada alumno. Es opcional y no afecta la asistencia, las notas ni los contenidos. Tocá una fila para cargar o editar.
     </div>
     <div class="gridwrap"><table class="grid"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
@@ -7137,7 +7171,7 @@ function promptFichaPreceptoria(g,sid){
       </div>`).join(""):`<div style="font-size:12.5px;color:var(--faint);padding:4px 2px;">Nadie cargado todavía.</div>`;
     box.querySelectorAll("[data-aut-del]").forEach(b=>b.onclick=()=>{ curAutorizados=curAutorizados.filter(a=>a.id!==b.dataset.autDel); renderAutList(); });
   };
-  openDlg("Ficha de preceptoría",`
+  openDlg("Ficha de alumno",`
     <div style="font-size:14.5px;font-weight:700;margin-bottom:14px;">${esc(dispName(s))}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div class="dlg-field"><label>Fecha de nacimiento</label><input id="pf_fnac" type="date" value="${esc(s.fechaNac||"")}"></div>
@@ -7169,7 +7203,7 @@ function promptFichaPreceptoria(g,sid){
       <button type="button" class="link" id="pf_aut_new">+ Agregar persona autorizada</button>
     </div>
     <div class="dlg-actions"><button class="btn subtle" id="pf_cancel">Cancelar</button><button class="btn" id="pf_ok">Guardar</button></div>`,
-    "Ninguno de estos datos se usa en asistencia, notas ni contenidos — es solo para la ficha de preceptoría.");
+    "Ninguno de estos datos se usa en asistencia, notas ni contenidos — es solo la ficha de este alumno.");
   renderAutList();
   setTimeout(()=>$("#pf_fnac").focus(),60);
   const autForm=$("#pf_aut_form");
@@ -7200,7 +7234,7 @@ function printFichaPreceptoria(g){
       <td>${(s.autorizados||[]).map(a=>esc(a.nombre+(a.vinculo?" ("+a.vinculo+")":""))).join("<br>")}</td>
       <td>${esc(s.observaciones||"")}</td></tr>`;
   }).join("");
-  const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(g.name)} — Ficha de preceptoría</title>
+  const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(g.name)} — Ficha de alumnos</title>
 <style>@page{size:A4 landscape;margin:8mm;} *{box-sizing:border-box;} body{font-family:Arial,sans-serif;color:#111;margin:0;padding:14px;}
 h1{font-size:15px;margin:0 0 2px;} .sub{font-size:11px;color:#555;margin:0 0 10px;}
 table{border-collapse:collapse;width:100%;font-size:9px;}
@@ -7211,7 +7245,7 @@ td.n{text-align:center;width:22px;} td.al{font-weight:700;text-transform:upperca
 @media print{.pbtn{display:none;}} @media screen{.pw{background:#fff;max-width:1250px;margin:0 auto;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,.12);}}
 </style></head><body><div class="pw">
 <button class="pbtn" onclick="window.print()">Imprimir / Guardar PDF</button>
-<h1>${esc(g.name)} — Ficha de preceptoría</h1>
+<h1>${esc(g.name)} — Ficha de alumnos</h1>
 <div class="sub">${g.students.length} alumno${g.students.length===1?"":"s"}</div>
 <table><thead><tr><th>N°</th><th>Apellido y nombre</th><th>Fecha nac.</th><th>Edad</th><th>Lugar nac.</th><th>DNI</th><th>Legajo</th><th>Nacionalidad</th><th>Domicilio y localidad</th><th>Teléfono</th><th>Autorizados a retirar</th><th>Observaciones</th></tr></thead>
 <tbody>${rows}</tbody></table>
@@ -7264,10 +7298,11 @@ function promptVocabulario(g,k,id){
   $("#voc_ok").onclick=()=>{ setTopicNota(g,k,id,$("#voc_ta").value.trim()); closeDlg(); render(); };
   $("#voc_cancel").onclick=closeDlg;
 }
-function promptNewGroup(){
+function promptNewGroup(tipoInicial){
   if(!licCanAddGroup()){ licPaywall(); return; }
   let selColor=state.groups.length%PAL.length;
-  let selDias=[];
+  let selTipo=tipoInicial==="preceptoria"?"preceptoria":"materia";
+  let selDias=selTipo==="preceptoria"?[1,2,3,4,5]:[];
   const swatches=PAL.map((p,i)=>`<button class="swatch ${selColor===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
   // Escuelas ya cargadas: se eligen con chips (botones), igual que en Escuela y horarios.
   // Antes había un datalist nativo con una flechita que en Android no respondía bien al toque.
@@ -7275,12 +7310,13 @@ function promptNewGroup(){
   const escChips=escuelasUnicas.length?`<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">¿Ya la cargaste? Tocá para elegirla:</div>
       <div class="chiprow" id="f_escChips" style="margin-bottom:8px;">${escuelasUnicas.map(n=>`<button type="button" class="mchip sm" data-esc-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-bottom:6px;">O escribí una nueva ↓</div>`:"";
+  const tipoHintTxt={materia:"Das clase en un horario fijo, una o pocas veces por semana.",preceptoria:"Estás todos los días y llevás la asistencia de esta división — sin horario fijo de una sola materia."};
   openDlg("Agregar curso",`<div class="dlg-field"><label>Tipo de curso</label>
       <div class="chiprow" id="f_tipo_row">
-        <button type="button" class="mchip on" data-tipo="materia">📚 Materia</button>
-        <button type="button" class="mchip" data-tipo="preceptoria">🗓️ Preceptoría</button>
+        <button type="button" class="mchip ${selTipo==="materia"?"on":""}" data-tipo="materia">📚 Materia</button>
+        <button type="button" class="mchip ${selTipo==="preceptoria"?"on":""}" data-tipo="preceptoria">🗓️ Preceptoría</button>
       </div>
-      <div id="f_tipo_hint" style="font-size:11px;color:var(--faint);margin-top:6px;">Das clase en un horario fijo, una o pocas veces por semana.</div>
+      <div id="f_tipo_hint" style="font-size:11px;color:var(--faint);margin-top:6px;">${tipoHintTxt[selTipo]}</div>
     </div>
     <div class="dlg-field"><label>Escuela <span style="font-weight:500;color:var(--faint);">(opcional — la podés cargar después)</span></label>
       ${escChips}<input id="f_escuela" class="sched-inp" maxlength="18" placeholder="Ej.: EEST N°5" autocomplete="off">
@@ -7288,14 +7324,12 @@ function promptNewGroup(){
     <div class="dlg-field"><label>Año y curso</label><input id="f_name" maxlength="20" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="f_swatches">${swatches}</div></div>
     <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Escuela y horarios)</span></label>
-      <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
+      <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn ${selDias.includes(i)?"on":""}" data-dow="${i}">${l}</button>`).join("")}</div>
       <input id="f_horario" class="sched-inp" placeholder="Ej: 8:00 a 9:30" style="margin-top:8px;" autocomplete="off">
       <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div>
-      <div id="f_dias_hint_prec" style="display:none;font-size:11.5px;color:var(--muted);margin-top:6px;">💡 Como es de Preceptoría, ya tildamos lunes a viernes (siempre es todos los días) — ajustá si tu escuela tiene sábados o algún día distinto.</div></div>
+      <div id="f_dias_hint_prec" style="display:${selTipo==="preceptoria"?"":"none"};font-size:11.5px;color:var(--muted);margin-top:6px;">💡 Como es de Preceptoría, ya tildamos lunes a viernes (siempre es todos los días) — ajustá si tu escuela tiene sábados o algún día distinto.</div></div>
     <div class="dlg-actions"><button class="btn subtle" id="f_cancel">Cancelar</button><button class="btn" id="f_ok">Crear curso</button></div>`);
   const escInp=$("#f_escuela"); const inp=$("#f_name");
-  let selTipo="materia";
-  const tipoHintTxt={materia:"Das clase en un horario fijo, una o pocas veces por semana.",preceptoria:"Estás todos los días y llevás la asistencia de esta división — sin horario fijo de una sola materia."};
   $("#f_tipo_row").querySelectorAll("[data-tipo]").forEach(b=>b.onclick=()=>{
     selTipo=b.dataset.tipo;
     $("#f_tipo_row").querySelectorAll(".mchip").forEach(x=>x.classList.remove("on"));
