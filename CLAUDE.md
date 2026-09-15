@@ -324,6 +324,37 @@ Materia) siguen funcionando igual que antes; sin overflow horizontal.
 
 APP_VER → v2026.09.15-5
 
+### El botón de entrada a Preceptoría quedaba escondido para quien es sólo docente (15/9/2026)
+
+Corrección de la dueña sobre lo de arriba, la misma noche: "Ok, yo eso no lo veo desde
+ahora que soy docente solamente. Imagínate que mañana tomo una preceptoría. ¿Cómo la
+agrego?" Tenía razón, y era un agujero real: el botón "🗓️ Preceptoría" en Inicio (el
+único camino hacia `renderPreceptoriaHome()`, que es a su vez el único lugar donde nace
+`promptNewEscuelaPreceptoria()`) sólo se dibujaba **si ya existía** algún curso de tipo
+Preceptoría (`preceptoriaActive.length?...:""`). Para cualquiera que hoy es sólo
+docente —la propia dueña incluida— eso era un candado sin llave: no había ninguna otra
+puerta para empezar a usar la función el día que le toque una preceptoría.
+
+Arreglado en `renderHome()` (`index.html`): el botón **ahora aparece siempre**, tenga o
+no algún curso de Preceptoría cargado. Cuando todavía no hay ninguno, en vez de un
+conteo en cero muestra una invitación ("Agregá tu escuela y tus cursos"); apenas hay al
+menos uno, vuelve a mostrar "N curso(s) · M hoy" exactamente como antes. Tocándolo
+siempre entra a `renderPreceptoriaHome()`, que ya sabía mostrar su propio estado vacío
+con el botón real "+ Agregar escuela" (no hizo falta tocar esa pantalla).
+
+Probado con Playwright, con el diálogo real de principio a fin: una cuenta con un solo
+curso de Materia (cero de Preceptoría) ve el botón con el texto invitando a agregar;
+tocarlo entra a la pantalla de Preceptoría con su cartel de "Hoy no tenés cursos de
+preceptoría" y el botón "+ Agregar escuela"; desde ahí, crear "Escuela Norte" encadena
+directo al diálogo de agregar curso ("Agregar curso · En Escuela Norte", con lunes a
+viernes ya tildados); al guardar "1°B", vuelve a la pantalla de Preceptoría mostrando la
+escuela con su división adentro y el botón de Inicio ya actualizado a "1 curso · 1 hoy";
+el índice del curso nuevo muestra sólo las 5 secciones de Preceptoría (sin Contenidos,
+Documentos, Clases, Exámenes ni Resumen). Sin errores de consola ni overflow horizontal
+en ningún paso.
+
+APP_VER → v2026.09.15-6
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,

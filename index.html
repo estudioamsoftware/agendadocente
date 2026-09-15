@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.15-5';
+const APP_VER='v2026.09.15-6';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3594,14 +3594,21 @@ function renderHome(){
   // Botón de entrada a Preceptoría — pantalla propia (renderPreceptoriaHome), no una
   // lista metida acá adentro. Pedido explícito de la dueña (15/9/2026): "un botón que
   // diga Preceptoría y entro a ese lugar, que es igual a Inicio pero pensado para eso".
-  // Sólo aparece si ya tiene algún curso de Preceptoría — a quien es sólo docente nunca
-  // le sale nada nuevo acá (nunca creó un curso de ese tipo).
+  // 🚨 Va SIEMPRE, aunque todavía no tenga ningún curso de ese tipo (corregido el
+  // 15/9/2026: quien es sólo docente hoy no tiene ninguna otra puerta para empezar a usar
+  // Preceptoría — el único lugar donde nace la primera escuela es adentro de
+  // renderPreceptoriaHome, así que escondiendo el botón hasta tener un curso quedaba un
+  // agujero sin salida). Sin cursos todavía, el texto invita a agregar la primera escuela
+  // en vez de mostrar un conteo en cero.
   const todayDow_=new Date().getDay();
   const hoyPrecN=preceptoriaActive.filter(g=>(g.diasClase||[]).includes(todayDow_)).length;
-  const preceptoriaHTML=preceptoriaActive.length?`<button class="card gcard" id="goPreceptoria" style="border-left:5px solid var(--primary);margin-bottom:16px;">
+  const precMeta=preceptoriaActive.length
+    ?`${preceptoriaActive.length} curso${preceptoriaActive.length===1?"":"s"}${hoyPrecN?` · ${hoyPrecN} hoy`:""}`
+    :"Agregá tu escuela y tus cursos";
+  const preceptoriaHTML=`<button class="card gcard" id="goPreceptoria" style="border-left:5px solid var(--primary);margin-bottom:16px;">
     <span class="gdot" style="background:var(--primary-tint);color:var(--primary);">🗓️</span>
-    <span class="ginfo"><span class="gname">Preceptoría</span><span class="gmeta">${preceptoriaActive.length} curso${preceptoriaActive.length===1?"":"s"}${hoyPrecN?` · ${hoyPrecN} hoy`:""}</span></span>
-    <span class="chev">${I.chev}</span></button>`:"";
+    <span class="ginfo"><span class="gname">Preceptoría</span><span class="gmeta">${precMeta}</span></span>
+    <span class="chev">${I.chev}</span></button>`;
 
   const viewToggle=""; // Sacamos el toggle
   const hintHTML=coursesWithSchedule.length>0?`<div style="font-size:14px;color:var(--muted);margin-bottom:16px;text-align:center;padding:12px;background:var(--line-soft);border-radius:10px;"><em>💡 Toca un bloque para entrar al curso</em></div>`:"";
@@ -3686,7 +3693,7 @@ function renderHome(){
 /* ---- PRECEPTORÍA (pantalla propia, 15/9/2026) ----
    Pedido explícito de la dueña: "un botón que diga Preceptoría y entro a ese lugar, que
    es igual a Inicio pero pensado para eso". Se llega desde el botón de Inicio
-   (#goPreceptoria, sólo visible si ya hay algún curso de Preceptoría). Lista sólo los
+   (#goPreceptoria, siempre visible — ver renderHome). Lista sólo los
    cursos de ese tipo — nada de horario semanal, porque un preceptor atiende varias
    divisiones al mismo tiempo (ver renderHome). No es un "modo" ni depende de ningún
    perfil elegido al registrarse: se arma sola mirando g.tipo, así que conviven sin
