@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.15-1';
+const APP_VER='v2026.09.15-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -7273,7 +7273,7 @@ function promptNewGroup(){
       <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
       <input id="f_horario" class="sched-inp" placeholder="Ej: 8:00 a 9:30" style="margin-top:8px;" autocomplete="off">
       <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div>
-      <div id="f_dias_hint_prec" style="display:none;font-size:11.5px;color:var(--muted);margin-top:6px;">💡 Como es de Preceptoría, tildá todos los días que hay clase en la escuela (no un solo día) — así "Generar clases" te arma asistencia diaria.</div></div>
+      <div id="f_dias_hint_prec" style="display:none;font-size:11.5px;color:var(--muted);margin-top:6px;">💡 Como es de Preceptoría, ya tildamos lunes a viernes (siempre es todos los días) — ajustá si tu escuela tiene sábados o algún día distinto.</div></div>
     <div class="dlg-actions"><button class="btn subtle" id="f_cancel">Cancelar</button><button class="btn" id="f_ok">Crear curso</button></div>`);
   const escInp=$("#f_escuela"); const inp=$("#f_name");
   let selTipo="materia";
@@ -7284,6 +7284,13 @@ function promptNewGroup(){
     b.classList.add("on");
     $("#f_tipo_hint").textContent=tipoHintTxt[selTipo];
     $("#f_dias_hint_prec").style.display=(selTipo==="preceptoria")?"":"none";
+    // Preceptoría siempre es todos los días — se lo ahorramos de tildar uno por uno.
+    // Sólo lo hacemos si todavía no tocó nada del selector, para no pisarle una
+    // elección propia (ej.: si ya había tildado sábados a mano).
+    if(selTipo==="preceptoria"&&!selDias.length){
+      selDias=[1,2,3,4,5];
+      $("#f_dayPicker").querySelectorAll("[data-dow]").forEach(db=>{ db.classList.toggle("on",selDias.includes(parseInt(db.dataset.dow,10))); });
+    }
   });
   // Si hay chips de escuelas, no abrimos el teclado de entrada (taparía los chips en el celular).
   if(!escuelasUnicas.length) setTimeout(()=>escInp.focus(),60);

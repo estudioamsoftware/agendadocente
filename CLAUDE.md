@@ -162,17 +162,32 @@ Efecto, todo en `renderHome()`:
 - El aviso "⏰ Para ver el horario semanal, configurá el horario en tus cursos" ya sólo
   sale si hay algún curso de Materia sin horario — a quien sólo tiene cursos de
   Preceptoría no le aparece (no le pinta nada esa tabla).
-- Al crear un curso de Preceptoría, el campo "Días y horario" muestra un aviso aparte
-  recordando tildar **todos** los días de clase de la escuela (no un solo día), que es
-  lo que hace que "Generar clases" le arme asistencia diaria — ver la sección de arriba.
+- Al crear un curso de Preceptoría, el campo "Días y horario" **tilda solo lunes a
+  viernes** (15/9/2026, pedido de la dueña: "siempre va a ser así, es ridículo tener que
+  tildar los cinco días cada vez"). Se dispara al tocar el chip "🗓️ Preceptoría" en
+  `promptNewGroup()`, y **sólo si todavía no se tocó ningún día** — si ya había tildado
+  algo a mano (ej.: una escuela con sábados) antes de elegir el tipo, no se lo pisa. Sigue
+  siendo editable después como cualquier otro selector de días (por si la escuela tiene
+  sábados, o un día menos).
 
 Probado con Playwright: un curso de Materia sigue siendo el único que aparece en la
 tabla; los de Preceptoría (mismo horario entre sí, cosa que a una Materia no le pasaría)
 salen en su lista propia, con el pill HOY correcto, sin overflow horizontal y navegando
 bien al tocarlos; el diálogo de crear y el de editar guardan/leen `g.tipo` correctamente
-en los dos sentidos (Materia↔Preceptoría).
+en los dos sentidos (Materia↔Preceptoría); elegir "Preceptoría" tilda los 5 días solo
+cuando no había ninguno tildado antes, y respeta una elección manual previa.
 
-APP_VER → v2026.09.15-1
+🚨 **Probado también de punta a punta con los diálogos reales de la app (no atajos por
+código), a pedido explícito de la dueña ("probalo vos antes de que la preceptora lo
+use"), el 15/9/2026:** onboarding, crear curso de Preceptoría, cargar 3 alumnos
+tipeando, Ciclo lectivo → Generar clases, marcar presente/ausente tocando los botones
+reales de Asistencia, cargar y guardar una ficha de Preceptoría completa (DNI, domicilio,
+un autorizado) desde su diálogo real, imprimir esa ficha (el PDF trae los datos
+cargados y pide hoja horizontal), y armar 2 divisiones de Preceptoría + 1 curso de
+Materia mezclados en Inicio. Todo salió bien, cero errores de consola, cero overflow a
+390px.
+
+APP_VER → v2026.09.15-2
 
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
