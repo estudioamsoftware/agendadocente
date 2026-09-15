@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.14-4';
+const APP_VER='v2026.09.15-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3452,6 +3452,21 @@ function gcardHTML(g,arch){ const ini=(g.name.trim()[0]||"·").toUpperCase();
       <span class="ginfo">${esc_?`<span class="gschool">${esc(esc_.nombre||"")}</span>`:""}<span class="gname">${esc(g.name)}${arch?` <span class="archbadge">archivado</span>`:""}</span><span class="gmeta">${meta.join(" · ")}</span></span>
       <span class="chev">${I.chev}</span></button>`;
 }
+// Tarjeta de un curso de Preceptoría en Inicio — mismo look que gcardHTML (reusa sus
+// mismas clases, así el handler de clic genérico ".gcard[data-go]" ya la agarra sola,
+// sin cablear nada nuevo), sumando un pill "HOY" cuando corresponde asistencia hoy.
+function preceptoriaCardHTML(g,todayDow){
+  const meta=[g.students.length+(g.students.length===1?" alumno":" alumnos")];
+  const dias=(g.diasClase||[]).map(d=>["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d]).join(" · ");
+  if(dias) meta.push(dias);
+  if(g.horario) meta.push(g.horario);
+  const esc_=g.escuelaId?state.escuelas.find(x=>x.id===g.escuelaId):null;
+  const hoy=(g.diasClase||[]).includes(todayDow);
+  const hoyBadge=hoy?` <span style="font-size:10px;font-weight:800;color:var(--primary);background:var(--primary-tint);border-radius:99px;padding:1px 8px;vertical-align:middle;letter-spacing:.02em;">HOY</span>`:"";
+  return `<button class="card gcard" data-go="${g.id}" style="border-left:5px solid ${colorOf(g).solid};"><span class="gdot" style="background:${colorOf(g).tint};color:${colorOf(g).solid};">${esc((g.name.trim()[0]||"·").toUpperCase())}</span>
+      <span class="ginfo">${esc_?`<span class="gschool">${esc(esc_.nombre||"")}</span>`:""}<span class="gname">${esc(g.name)}${hoyBadge}</span><span class="gmeta">${meta.join(" · ")}</span></span>
+      <span class="chev">${I.chev}</span></button>`;
+}
 function renderHome(){
   setTopBack(null);
   if(state.groups.length===0){
@@ -3516,7 +3531,15 @@ function renderHome(){
   const archHTML=archived.length?`<button class="link" id="toggleArch" style="display:block;margin:4px auto 10px;">${view.showArchived?"Ocultar archivados":"Ver archivados ("+archived.length+")"}</button>${view.showArchived?`<div class="glist">${archived.map(g=>gcardHTML(g,true)).join("")}</div>`:""}`:"";
 
   // ---- Vista horario semanal (ahora siempre)
-  const coursesWithSchedule=active.filter(g=>g.horario&&parseHorario(g.horario));
+  // Los cursos de Preceptoría (asistencia diaria de una división, no de una materia)
+  // no van en la tabla de horarios: una docente no puede estar en dos lugares a la vez,
+  // así que sus cursos nunca chocan de horario entre sí — pero un preceptor sí atiende
+  // 2 o 3 divisiones al mismo tiempo, y esa tabla está pensada para un horario por
+  // persona, no para eso. Por eso quedan en su propia lista simple más abajo
+  // (preceptoriaActive/preceptoriaHTML), sin geometría de horario de por medio.
+  const materiaActive=active.filter(g=>g.tipo!=="preceptoria");
+  const preceptoriaActive=active.filter(g=>g.tipo==="preceptoria");
+  const coursesWithSchedule=materiaActive.filter(g=>g.horario&&parseHorario(g.horario));
   let horarioHTML="", cfgPanelHTML="";
   if(coursesWithSchedule.length>0){
     horarioHTML=renderScheduleTable(coursesWithSchedule);
@@ -3557,17 +3580,28 @@ function renderHome(){
         </div>
       </div>
     `;
-  } else {
+  } else if(materiaActive.length>0){
+    // Este aviso es sólo para cursos de materia sin horario cargado — a quien sólo
+    // tiene cursos de Preceptoría no le pinta nada, esa tabla no es para ella.
     horarioHTML=`<div style="text-align:center;padding:24px 16px;color:var(--muted);font-size:14px;margin-bottom:16px;">
       <p>⏰ Para ver el horario semanal, configurá el horario en tus cursos.</p>
     </div>`;
   }
+
+  // Lista simple de Preceptoría: sin tabla de horarios, porque un preceptor sí atiende
+  // varias divisiones al mismo tiempo (la tabla de arriba asume una persona en un solo
+  // lugar por horario). "HOY" se calcula igual que en cualquier curso: si hoy es uno de
+  // sus días de clase.
+  const todayDow_=new Date().getDay();
+  const preceptoriaHTML=preceptoriaActive.length?`<div style="font-size:12.5px;font-weight:700;color:var(--muted);margin:0 2px 8px;text-transform:uppercase;letter-spacing:.03em;">🗓️ Preceptoría</div>
+    <div class="glist">${preceptoriaActive.map(g=>preceptoriaCardHTML(g,todayDow_)).join("")}</div>`:"";
 
   const viewToggle=""; // Sacamos el toggle
   const hintHTML=coursesWithSchedule.length>0?`<div style="font-size:14px;color:var(--muted);margin-bottom:16px;text-align:center;padding:12px;background:var(--line-soft);border-radius:10px;"><em>💡 Toca un bloque para entrar al curso</em></div>`:"";
   app.innerHTML=`<div style="height:12px;"></div>
     ${listadosAlertHTML}
     ${hoyHTML}
+    ${preceptoriaHTML}
     ${hintHTML}
     ${onboardHTML}
     ${horarioHTML}
@@ -7185,13 +7219,22 @@ function confirmDlg(title,message,confirmLabel,onConfirm){
 function promptRenameGroup(g){
   const cur=((g.color||0)%PAL.length+PAL.length)%PAL.length;
   const swatches=PAL.map((p,i)=>`<button class="swatch ${cur===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
+  const curTipo=g.tipo==="preceptoria"?"preceptoria":"materia";
   openDlg("Editar nombre del curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" maxlength="20" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="rg_swatches">${swatches}</div></div>
+    <div class="dlg-field"><label>Tipo de curso</label>
+      <div class="chiprow" id="rg_tipo_row">
+        <button type="button" class="mchip ${curTipo==="materia"?"on":""}" data-tipo="materia">📚 Materia</button>
+        <button type="button" class="mchip ${curTipo==="preceptoria"?"on":""}" data-tipo="preceptoria">🗓️ Preceptoría</button>
+      </div>
+      <div style="font-size:11px;color:var(--faint);margin-top:6px;">Preceptoría: asistencia diaria de una división, sin la tabla de horarios de Inicio (pensada para un solo horario por persona).</div>
+    </div>
     <div class="dlg-actions"><button class="btn subtle" id="rg_cancel">Cancelar</button><button class="btn" id="rg_ok">Guardar</button></div>`);
   const inp=$("#rg_name"); setTimeout(()=>{inp.focus();inp.select();},60);
-  let selColor=cur;
+  let selColor=cur; let selTipo=curTipo;
   $("#rg_swatches").querySelectorAll("[data-color]").forEach(b=>b.onclick=()=>{ selColor=parseInt(b.dataset.color,10); $("#rg_swatches").querySelectorAll(".swatch").forEach(x=>x.classList.remove("on")); b.classList.add("on"); });
-  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} renameGroup(g,v); g.color=selColor; save(); closeDlg(); render(); };
+  $("#rg_tipo_row").querySelectorAll("[data-tipo]").forEach(b=>b.onclick=()=>{ selTipo=b.dataset.tipo; $("#rg_tipo_row").querySelectorAll(".mchip").forEach(x=>x.classList.remove("on")); b.classList.add("on"); });
+  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} renameGroup(g,v); g.color=selColor; if(selTipo==="preceptoria") g.tipo="preceptoria"; else delete g.tipo; save(); closeDlg(); render(); };
   $("#rg_ok").onclick=ok; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); }); $("#rg_cancel").onclick=closeDlg;
 }
 function promptVocabulario(g,k,id){
@@ -7214,7 +7257,14 @@ function promptNewGroup(){
   const escChips=escuelasUnicas.length?`<div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">¿Ya la cargaste? Tocá para elegirla:</div>
       <div class="chiprow" id="f_escChips" style="margin-bottom:8px;">${escuelasUnicas.map(n=>`<button type="button" class="mchip sm" data-esc-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
       <div style="font-size:11px;color:var(--faint);margin-bottom:6px;">O escribí una nueva ↓</div>`:"";
-  openDlg("Agregar curso",`<div class="dlg-field"><label>Escuela <span style="font-weight:500;color:var(--faint);">(opcional — la podés cargar después)</span></label>
+  openDlg("Agregar curso",`<div class="dlg-field"><label>Tipo de curso</label>
+      <div class="chiprow" id="f_tipo_row">
+        <button type="button" class="mchip on" data-tipo="materia">📚 Materia</button>
+        <button type="button" class="mchip" data-tipo="preceptoria">🗓️ Preceptoría</button>
+      </div>
+      <div id="f_tipo_hint" style="font-size:11px;color:var(--faint);margin-top:6px;">Das clase en un horario fijo, una o pocas veces por semana.</div>
+    </div>
+    <div class="dlg-field"><label>Escuela <span style="font-weight:500;color:var(--faint);">(opcional — la podés cargar después)</span></label>
       ${escChips}<input id="f_escuela" class="sched-inp" maxlength="18" placeholder="Ej.: EEST N°5" autocomplete="off">
     </div>
     <div class="dlg-field"><label>Año y curso</label><input id="f_name" maxlength="20" placeholder="Ej.: 3ro 2da, 1R NIVEL, AFTE" autocomplete="off" enterkeyhint="done"></div>
@@ -7222,9 +7272,19 @@ function promptNewGroup(){
     <div class="dlg-field"><label>Días y horario <span style="font-weight:500;color:var(--faint);">(opcional — lo podés poner después en Escuela y horarios)</span></label>
       <div class="daypicker" id="f_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn" data-dow="${i}">${l}</button>`).join("")}</div>
       <input id="f_horario" class="sched-inp" placeholder="Ej: 8:00 a 9:30" style="margin-top:8px;" autocomplete="off">
-      <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div></div>
+      <div id="f_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div>
+      <div id="f_dias_hint_prec" style="display:none;font-size:11.5px;color:var(--muted);margin-top:6px;">💡 Como es de Preceptoría, tildá todos los días que hay clase en la escuela (no un solo día) — así "Generar clases" te arma asistencia diaria.</div></div>
     <div class="dlg-actions"><button class="btn subtle" id="f_cancel">Cancelar</button><button class="btn" id="f_ok">Crear curso</button></div>`);
   const escInp=$("#f_escuela"); const inp=$("#f_name");
+  let selTipo="materia";
+  const tipoHintTxt={materia:"Das clase en un horario fijo, una o pocas veces por semana.",preceptoria:"Estás todos los días y llevás la asistencia de esta división — sin horario fijo de una sola materia."};
+  $("#f_tipo_row").querySelectorAll("[data-tipo]").forEach(b=>b.onclick=()=>{
+    selTipo=b.dataset.tipo;
+    $("#f_tipo_row").querySelectorAll(".mchip").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    $("#f_tipo_hint").textContent=tipoHintTxt[selTipo];
+    $("#f_dias_hint_prec").style.display=(selTipo==="preceptoria")?"":"none";
+  });
   // Si hay chips de escuelas, no abrimos el teclado de entrada (taparía los chips en el celular).
   if(!escuelasUnicas.length) setTimeout(()=>escInp.focus(),60);
   const escChipBtns=[...document.querySelectorAll("#f_escChips [data-esc-name]")];
@@ -7238,7 +7298,7 @@ function promptNewGroup(){
   $("#f_dayPicker").querySelectorAll("[data-dow]").forEach(b=>b.onclick=()=>{ const d=parseInt(b.dataset.dow,10); if(selDias.includes(d)) selDias=selDias.filter(x=>x!==d); else selDias.push(d); b.classList.toggle("on"); });
   const horInp=$("#f_horario"); const horWarn=$("#f_horario_warn");
   horInp.addEventListener("input",()=>{ const v=horInp.value.trim(); horWarn.style.display=(v&&!parseHorario(v))?"block":"none"; });
-  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} const g=addGroup(v); g.color=selColor; if(selDias.length) g.diasClase=selDias; const hv=$("#f_horario").value.trim(); if(hv) g.horario=hv;
+  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} const g=addGroup(v); g.color=selColor; if(selTipo==="preceptoria") g.tipo="preceptoria"; if(selDias.length) g.diasClase=selDias; const hv=$("#f_horario").value.trim(); if(hv) g.horario=hv;
     const escVal=escInp.value.trim();
     if(escVal){
       const match=state.escuelas.find(s=>s.nombre&&s.nombre.trim().toLowerCase()===escVal.toLowerCase());
@@ -7246,7 +7306,10 @@ function promptNewGroup(){
       else{ const nueva={id:uid(),nombre:escVal,direccion:"",tel:"",director:"",vice:"",secretario:""}; state.escuelas.push(nueva); g.escuelaId=nueva.id; }
     }
     save(); closeDlg();
-    if(selDias.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
+    // Un curso de Preceptoría nunca va a la tabla de horarios (ver renderHome), así
+    // que el toast de "ya aparece en tu horario de hoy" no le pinta — para ella siempre
+    // vamos directo al curso, igual que cuando falta días/horario en Materia.
+    if(selTipo!=="preceptoria"&&selDias.length&&hv){ toastSuccess("✓ Curso creado — ya aparece en tu horario de hoy","#A9500A"); render(); }
     else { go({screen:"group",groupId:g.id,term:activeTermToday(),tab:"indice"}); }
   };
   $("#f_ok").onclick=ok;
