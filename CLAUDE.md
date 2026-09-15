@@ -110,9 +110,9 @@ cada uno, "Escuela Sur"), todo en la misma cuenta. Confirmado con esto:
 - El mecanismo de asistencia diaria **funciona perfecto**, tal cual descripto arriba.
 - El índice de un curso de preceptoría muestra las mismas 6 secciones que cualquier
   curso (incluidas Contenidos y Documentos, que un preceptor nunca usa) — es ruido visual
-  pero no bloquea nada. Si en algún momento molesta de verdad, se puede agregar un "tipo
-  de curso" (Materia / Preceptoría) que reordene el índice y ponga un ícono distinto en
-  la lista — evaluado, no implementado, porque no hizo falta para lo que se probó.
+  pero no bloquea nada. Queda igual por ahora (no se tocó): lo que sí se separó fue el
+  horario semanal de Inicio, ver "Tipo de curso" más abajo — eso era lo que de verdad
+  hacía falta.
 
 🐛 **Bug real encontrado y arreglado en el camino (no es específico de preceptoría — le
 puede pasar a cualquier docente):** si dos cursos tienen **el mismo día y horario**
@@ -133,6 +133,46 @@ más cortos ocupan sólo su parte de arriba). **El caso de siempre (un solo curs
 horario) queda sin ningún cambio** — se verificó que el `style` del bloque sale
 byte-por-byte igual que antes cuando no hay colisión, así que no hay riesgo para nadie
 que ya usa la app hoy.
+
+### Tipo de curso: Materia / Preceptoría — el preceptor no usa la tabla de horarios (15/9/2026)
+
+Corrección de la dueña sobre el arreglo de arriba: **la colisión de horarios sólo le
+puede pasar a un preceptor, nunca a una docente de materia.** Textual: "yo no puedo
+estar en dos lugares al mismo tiempo… entre curso y curso tengo mínimo 20 minutos para
+llegar de una escuela a otra, o 10 si es el mismo colegio (el recreo)". O sea que repartir
+el ancho de la celda (lo que se hizo arriba) era resolver el síntoma correcto para el caso
+equivocado: **la tabla de horarios en sí no está pensada para un preceptor**, que sí
+atiende varias divisiones al mismo tiempo — hay que sacarlo de ahí directamente, no
+acomodarlo adentro.
+
+Se agregó `g.tipo` (`"materia"` — el default, cursos viejos sin este campo se tratan
+igual — o `"preceptoria"`), elegible con dos chips al crear el curso (`promptNewGroup()`)
+y editable después desde el lápiz de "Editar nombre del curso" (`promptRenameGroup()`).
+Efecto, todo en `renderHome()`:
+
+- **Un curso de Preceptoría nunca entra a `coursesWithSchedule`**, así que jamás aparece
+  en la tabla de horarios semanal — esa tabla queda 100% como estaba, exclusiva para
+  Materia (ahí sí, el arreglo `.find()`→`.filter()` del bug de arriba sigue como red de
+  seguridad por las dudas, pero en la práctica nunca debería disparar).
+- En cambio, los cursos de Preceptoría salen en **una lista simple aparte** arriba de la
+  tabla (`preceptoriaHTML`, tarjetas con `preceptoriaCardHTML()` — mismo look que
+  `gcardHTML()`, con un pill **"HOY"** cuando hoy es uno de sus días de clase). Sin
+  geometría de horario de por medio, así que atender 2 o 3 divisiones al mismo tiempo no
+  es ningún problema — es sólo una lista, una tarjeta por división.
+- El aviso "⏰ Para ver el horario semanal, configurá el horario en tus cursos" ya sólo
+  sale si hay algún curso de Materia sin horario — a quien sólo tiene cursos de
+  Preceptoría no le aparece (no le pinta nada esa tabla).
+- Al crear un curso de Preceptoría, el campo "Días y horario" muestra un aviso aparte
+  recordando tildar **todos** los días de clase de la escuela (no un solo día), que es
+  lo que hace que "Generar clases" le arme asistencia diaria — ver la sección de arriba.
+
+Probado con Playwright: un curso de Materia sigue siendo el único que aparece en la
+tabla; los de Preceptoría (mismo horario entre sí, cosa que a una Materia no le pasaría)
+salen en su lista propia, con el pill HOY correcto, sin overflow horizontal y navegando
+bien al tocarlos; el diálogo de crear y el de editar guardan/leen `g.tipo` correctamente
+en los dos sentidos (Materia↔Preceptoría).
+
+APP_VER → v2026.09.15-1
 
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
