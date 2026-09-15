@@ -355,6 +355,66 @@ en ningún paso.
 
 APP_VER → v2026.09.15-6
 
+### Sin Valoraciones, y sin el listado de alumnos repetido (15/9/2026)
+
+Corrección de la dueña sobre todo lo de arriba, por audio: "la preceptora no hace ningún
+tipo de valoración como hacen los profes" — sacarlas. Y además notó que el índice de un
+curso de Preceptoría mostraba **dos veces el mismo listado de alumnos**: una vez en
+"Alumnos" (sin datos, sólo para agregar) y otra en "Ficha de alumnos" (con todos los
+datos — DNI, domicilio, etc.). Su corrección: "si ya lo carga con todos los datos, desde
+ahí ya tiene el listado" — la otra pantalla "es al pedo". Lo único que dijo que sigue
+haciendo falta aparte es tomar asistencia, que es una pantalla distinta (`asist`) y no se
+tocó.
+
+**Valoraciones, afuera de Preceptoría del todo:** `cicloSectionHTML()` en `index.html` ya
+no arma la tarjeta "Valoraciones" (ni siquiera calcula la escala) cuando `g.tipo==="
+preceptoria"` — antes se mostraba en Ciclo lectivo de cualquier curso. Y `wireCicloSection()`
+tampoco dispara el cuadro que salta solo la primera vez que se generan las clases
+(`promptFirstValScheme`) para un curso de Preceptoría — no tiene sentido preguntarle una
+escala a quien nunca va a calificar. Sin cambios para Materia.
+
+**"Alumnos" se fusiona adentro de "Ficha de alumnos", sólo para Preceptoría:**
+`seccionesVisibles(g)` ya no incluye `alumnos` cuando el curso es de Preceptoría — ese
+curso pasa a tener sólo 4 secciones (Escuela y horarios, Ciclo lectivo, Ficha de alumnos,
+Asistencia), una menos que antes. Un curso de Materia sigue viendo "Alumnos" y "Ficha de
+alumnos" como dos pantallas separadas, sin ningún cambio — la docente de materia no
+necesita ver DNI y domicilio mezclados con la lista del día a día.
+
+Para que un curso de Preceptoría no pierda nada al sacarle la pestaña "Alumnos", el
+"toolbar" de agregar uno por uno / importar de Excel / compartir por WhatsApp / bloquear
+la lista, y la papelera, se sacaron a funciones compartidas (`alumnosToolbarHTML()` +
+`wireAlumnosToolbar()`, `studentTrashHTML()` + `wireStudentTrash()` en `index.html`) y se
+usan desde los dos lados:
+- `alumnosSectionHTML()` (Materia) los sigue usando exactamente igual que antes.
+- `preceptoriaSectionHTML()` (Ficha de alumnos) ahora también los pone arriba de la
+  grilla — agregar, importar y compartir quedan ahí mismo. La grilla ganó una columna de
+  borrar (🗑) por fila, atrás del mismo candado de "Alumnos" (`view.alumnosUnlocked`):
+  bloqueada por default, hay que destrabarla para poder borrar — mismo comportamiento
+  que en Materia, para no volver más fácil borrar sin querer.
+  Tocar el resto de la fila (fuera del botón de borrar) sigue abriendo
+  `promptFichaPreceptoria()` como siempre — el botón de borrar frena la propagación del
+  click (`stopPropagation`) para no disparar los dos a la vez.
+- Con 0 alumnos, "Ficha de alumnos" ya no dice "agregalos primero en Alumnos" (esa
+  pantalla ya no existe para Preceptoría): muestra el mismo toolbar de agregar arriba de
+  un cartel vacío, para poder cargar el primero ahí mismo.
+- El cartel "Sin alumnos" de Asistencia (si se generaron clases pero no hay alumnos
+  todavía) mandaba siempre a la pestaña "Alumnos" — ahora, si el curso es de
+  Preceptoría, el botón dice "Ir a Ficha de alumnos" y manda a esa pestaña en su lugar
+  (`renderAsist()` en `index.html`).
+
+Probado con Playwright (curso de Preceptoría con 2 alumnos + curso de Materia con 1,
+mismo perfil): el índice de Preceptoría muestra sólo 4 secciones y ninguna vuelve a decir
+"Alumnos" suelto; Ciclo lectivo no tiene la tarjeta Valoraciones; Ficha de alumnos tiene
+el campo para agregar, "Importar lista de Excel" y "Compartir por WhatsApp"; agregar un
+alumno ahí funciona y aparece en la grilla; con la lista bloqueada el botón de borrar no
+hace nada, desbloqueándola sí (mueve a la papelera, que aparece debajo); tocar una fila
+abre la ficha del alumno y "Cancelar" la cierra bien; sin overflow horizontal a 390px.
+Todo lo de Materia (Alumnos separado con su lista, Ciclo lectivo con Valoraciones) siguió
+exactamente igual. También probado el cartel de "Sin alumnos" en Asistencia para un curso
+de Preceptoría sin alumnos: dice "Ir a Ficha de alumnos" y toca ahí lleva a esa pantalla.
+
+APP_VER → v2026.09.15-7
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
