@@ -355,6 +355,71 @@ en ningún paso.
 
 APP_VER → v2026.09.15-6
 
+### Bug real encontrado por una preceptora: "toco Ahora no y se cierra la app" (15/9/2026)
+
+Una verificadora real (`sahidmarcela@gmail.com`, ya estaba en `LIC_REGALADAS` desde el
+3/9 — sólo le faltaba conectar Google Drive con ese mismo mail para que se le activara
+sola la versión completa, ver más abajo) reportó que al tocar "Ahora no" en el candado de
+la versión gratis, **la app se le cerraba entera**, no sólo el diálogo.
+
+Causa real, y no es específica de este diálogo — **le puede pasar en cualquier pantalla
+de la app**: `index.html` nunca usaba `history.pushState()` en ningún lado, así que el
+WebView (tanto la PWA instalada como la TWA de Play) tenía **una sola entrada de
+historial en total**, la de la carga inicial. Con gesture navigation (el modo por default
+desde Android 10, la mayoría de los celulares hoy) el gesto de "volver" cerca del borde
+inferior de la pantalla —muy fácil de disparar sin querer si se toca cerca de los botones
+de un cuadro, como pasa con "Ahora no"— no tiene ninguna entrada que consumir DENTRO de
+la app, así que el sistema operativo cierra la app entera en vez de cerrar el diálogo.
+
+**Arreglado** (`openDlg()`/`closeDlg()` y `openMenu()`/`closeMenu()` en `index.html`):
+cada vez que se abre un diálogo o el menú ⋯, se empuja una entrada de historial "vacía"
+(`__modalHistPush()`); el gesto de volver (o el botón físico) ahora la consume primero —
+dispara un `popstate` que cierra lo que esté abierto— en vez de salir de la app. Al cerrar
+un diálogo con sus propios botones (Cancelar/Guardar) o tocando afuera, se "devuelve" esa
+entrada con `history.back()` (`__modalHistPop()`), para no dejar el historial creciendo
+sin límite.
+
+Un detalle importante para no romperlo si se toca: **el "pop" se demora un instante
+(`setTimeout(...,0)`) en vez de llamar a `history.back()` en el momento.** Varios flujos
+cierran un diálogo y encadenan directo a abrir el siguiente en la misma función (ej.:
+`promptNewEscuelaPreceptoria()` guarda la escuela, cierra su diálogo y abre de una el de
+"Agregar curso"). Si el `back()` se disparara ahí mismo, se cruzaría con el `pushState()`
+del diálogo nuevo que se abre en el mismo instante — la demora chequea, recién al
+ejecutarse, si ya hay otro diálogo o el menú abiertos: si es así, no toca el historial
+(la misma entrada le sigue sirviendo al que quedó abierto).
+
+**Ojo, esto no evita que "volver" salga de la app cuando de verdad no hay nada abierto**
+— y está bien que así sea: es el comportamiento normal de cualquier app Android (volver
+en la pantalla de base cierra la app). Sólo evita que se dispare *mientras* hay un
+diálogo o el menú abiertos, que es el caso real que rompía.
+
+**Ojo con diálogos anidados** (uno que abre otro arriba, ej. un cuadro de ayuda abierto
+desde adentro del menú ⋯): como el guard de historial es uno solo (no una pila por nivel),
+un único "volver" cierra los dos de un saque en vez de cerrar sólo el de arriba primero.
+No es el bug que se estaba arreglando (no cierra la app) y es un caso poco común en esta
+app — se dejó así por ahora, no vale la pena la complejidad de una pila de verdad salvo
+que alguna vez moleste de verdad.
+
+Probado con Playwright simulando el botón "volver" del navegador (equivalente al gesto de
+Android): con un diálogo simple abierto, "volver" lo cierra sin salir de `index.html`; con
+el menú ⋯ abierto, igual; con el flujo real que disparó el reporte (agregar una 2ª escuela/
+curso de Preceptoría estando en la versión gratis → sale el candado → "volver" en vez de
+tocar "Ahora no") el diálogo se cierra y la app sigue andando; el flujo encadenado
+escuela→curso sigue abriendo el segundo diálogo sin pisarse con el historial
+(`history.length` no cambia entre el cierre del primero y la apertura del segundo); crear
+un curso de punta a punta, abrir/cerrar el menú con sus botones normales, y abrir y cerrar
+un diálogo 3 veces seguidas rápido siguen funcionando exactamente igual que antes.
+
+**De paso, sobre el reporte puntual de esta verificadora:** su mail ya estaba en
+`LIC_REGALADAS` desde el 3/9 (no hizo falta agregarlo de nuevo), pero `licRefresh()` —la
+función que chequea esa lista y prende la versión completa— **sólo se dispara al conectar
+Google Drive**, no antes. Si nunca conectó Drive con ese mail, la app nunca llegó a
+chequear la lista y por eso seguía viendo el candado del curso gratis pese a estar en la
+lista. Se le indicó conectar Drive con `sahidmarcela@gmail.com` desde el menú ⋯ →
+Respaldo para que se le active sola.
+
+APP_VER → v2026.09.15-7
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
