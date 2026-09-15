@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.15-7';
+const APP_VER='v2026.09.15-8';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -7416,8 +7416,50 @@ function emptyBox(icon,title,text,btn,id){ return `<div class="empty"><div class
 function emptyInline(icon,text){ return `<div class="card pad" style="display:flex;gap:12px;align-items:center;color:var(--muted);margin-bottom:14px;"><span style="color:var(--faint);flex:none;">${icon}</span><span style="font-size:14.5px;">${text}</span></div>`; }
 
 /* ============ Dialogs ============ */
-function openDlg(title,bodyHtml,desc){ $("#dlgTitle").textContent=title; const dd=$("#dlgDesc"); if(desc){ dd.textContent=desc; dd.hidden=false; } else dd.hidden=true; $("#dlgBody").innerHTML=bodyHtml; $("#dlgScrim").classList.add("open"); }
-function closeDlg(){ $("#dlgScrim").classList.remove("open"); }
+// La app nunca usaba history.pushState, así que el WebView (sea PWA instalada
+// o TWA de Play) tenía UNA sola entrada de historial en total. Con gesture
+// navigation (default desde Android 10) eso significa que el gesto de
+// "volver" cerca del borde inferior de la pantalla —muy fácil de disparar sin
+// querer si se toca cerca de los botones de un diálogo, como pasó con "Ahora
+// no" del candado de la versión gratis— no tiene nada que consumir DENTRO de
+// la app, así que el sistema cierra la app entera en vez de cerrar el
+// diálogo. Arreglado empujando una entrada de historial "vacía" al abrir
+// cualquier diálogo o el menú ⋯: ese gesto (o el botón físico de volver)
+// ahora consume esa entrada y sólo cierra lo que esté abierto.
+let __modalHistPushed=false;
+let __modalHistPopTimer=null;
+function __modalHistPush(){
+  if(__modalHistPopTimer){ clearTimeout(__modalHistPopTimer); __modalHistPopTimer=null; }
+  if(__modalHistPushed) return;
+  try{ history.pushState({adModal:true},"",location.href); __modalHistPushed=true; }catch(e){}
+}
+// El "pop" se demora un instante en vez de llamar a history.back() ya mismo:
+// algunos diálogos cierran uno y encadenan directo a abrir el siguiente (ej.:
+// agregar una escuela de Preceptoría abre de una el diálogo de agregar el
+// primer curso). Si hiciéramos back() ahí mismo, se cruzaría con el
+// pushState() del diálogo nuevo que se abre en el mismo instante. Con la
+// demora, si al momento de ejecutarse ya hay otro diálogo/menú abierto, no se
+// toca el historial — la misma entrada sigue sirviendo para el que quedó
+// abierto.
+function __modalHistPop(){
+  if(!__modalHistPushed) return;
+  if(__modalHistPopTimer) clearTimeout(__modalHistPopTimer);
+  __modalHistPopTimer=setTimeout(()=>{
+    __modalHistPopTimer=null;
+    const algoAbierto=$("#dlgScrim").classList.contains("open")||$("#menuScrim").classList.contains("open");
+    if(algoAbierto) return;
+    __modalHistPushed=false;
+    try{ if(history.state&&history.state.adModal) history.back(); }catch(e){}
+  },0);
+}
+window.addEventListener("popstate",()=>{
+  __modalHistPushed=false;
+  if(__modalHistPopTimer){ clearTimeout(__modalHistPopTimer); __modalHistPopTimer=null; }
+  if($("#dlgScrim").classList.contains("open")) closeDlg();
+  if($("#menuScrim").classList.contains("open")) closeMenu();
+});
+function openDlg(title,bodyHtml,desc){ $("#dlgTitle").textContent=title; const dd=$("#dlgDesc"); if(desc){ dd.textContent=desc; dd.hidden=false; } else dd.hidden=true; $("#dlgBody").innerHTML=bodyHtml; $("#dlgScrim").classList.add("open"); __modalHistPush(); }
+function closeDlg(){ $("#dlgScrim").classList.remove("open"); __modalHistPop(); }
 function confirmDlg(title,message,confirmLabel,onConfirm){
   openDlg(title,`
     <p style="font-size:13.5px;color:var(--muted);margin:0 0 18px;line-height:1.5;">${esc(message)}</p>
@@ -8509,6 +8551,7 @@ function promptAyuda(startTab){
 
 function openMenu(){
   $("#menuScrim").classList.add("open");
+  __modalHistPush();
   ["bnInicio","bnEventos","bnPapelera"].forEach(id=>$("#"+id).classList.remove("on"));
   const subTxt=$("#subEstadoTxt");
   if(subTxt){
@@ -8518,7 +8561,7 @@ function openMenu(){
   const verTxt=$("#appVersionTxt"); if(verTxt) verTxt.textContent="Versión: "+APP_BUILD;
   updateSavedStamps();
 }
-function closeMenu(){ $("#menuScrim").classList.remove("open"); wireBottomNav(); }
+function closeMenu(){ $("#menuScrim").classList.remove("open"); wireBottomNav(); __modalHistPop(); }
 $("#menuBackBtn").onclick=closeMenu;
 $("#menuBtn").onclick=openMenu;
 const actAyudaBtn=$("#actAyuda"); if(actAyudaBtn) actAyudaBtn.onclick=promptAyuda;
@@ -8543,7 +8586,7 @@ $("#actBackup").onclick=backup;
 $("#actRestore").onclick=restoreFromDrive;
 $("#actExportFile").onclick=exportToFile;
 $("#actImportFile").onclick=importFromFile;
-["menuScrim","dlgScrim"].forEach(id=>{ const el=$("#"+id); el.addEventListener("click",e=>{ if(e.target===el) el.classList.remove("open"); }); });
+["menuScrim","dlgScrim"].forEach(id=>{ const el=$("#"+id); el.addEventListener("click",e=>{ if(e.target===el){ if(id==="dlgScrim") closeDlg(); else closeMenu(); } }); });
 // Cuando se abre el teclado en el celular/tablet, el visor real (visualViewport) se achica
 // aunque el layout no siempre lo note. Guardamos ese alto real en --vvh para que los cuadros
 // (Agregar curso, etc.) no queden más grandes que el espacio libre arriba del teclado —
