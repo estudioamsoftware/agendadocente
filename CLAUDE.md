@@ -189,6 +189,37 @@ Materia mezclados en Inicio. Todo salió bien, cero errores de consola, cero ove
 
 APP_VER → v2026.09.15-2
 
+### El índice del curso también se separa por tipo (15/9/2026)
+
+Corrección de la dueña sobre lo de arriba: no alcanzaba con separar Inicio (la lista vs.
+la tabla de horarios) — **adentro de cada curso** también hay que esconder lo que no es
+del tipo que corresponde. Textual: "cuando yo entro como docente no tengo por qué ver
+Preceptoría entre mis opciones, y la preceptora no tiene por qué ver Documentos, porque
+es exclusivo de una materia (planificación, programa, módulo)".
+
+Ella lo planteó como "dos entradas de inicio distintas" (un modo docente y un modo
+preceptor, elegido al registrarse). **Se armó distinto, a propósito, y funciona mejor
+para su propio caso real** (ser las dos cosas a la vez, en la misma cuenta): en vez de un
+interruptor global de "modo", cada curso ya sabe su propio tipo (`g.tipo`, ver arriba) —
+así que la separación es automática según qué curso abrís, sin tener que cambiar de modo
+nunca. Un interruptor único no le serviría ni a ella misma, que es docente Y preceptora
+en la misma cuenta.
+
+`seccionesVisibles(g)` en `index.html` (usada por `famBlockHTML()` y por el guard de
+`renderGroup()` que evita caer en una pestaña escondida): para un curso de Preceptoría
+esconde `contenidos`, `documentos`, `clase`, `exam`, `grilla` e `intens` — todo lo que es
+de materia. Un curso de Preceptoría queda con sólo: Escuela y horarios, Ciclo lectivo,
+Alumnos, Preceptoría (ficha del curso) + Asistencia (día a día). Un curso de Materia
+sigue viendo exactamente lo mismo que vio siempre, **salvo que ahora no ve "Preceptoría"
+entre sus opciones** — antes se mostraba en cualquier curso.
+
+Probado con Playwright: el índice de un curso de Preceptoría muestra sólo esas 5
+secciones; el de un curso de Materia sigue mostrando las 10 de siempre, sin Preceptoría;
+y forzar a mano (`view.tab`) una sección escondida hace caer al índice en vez de mostrar
+algo a medias o roto.
+
+APP_VER → v2026.09.15-3
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
