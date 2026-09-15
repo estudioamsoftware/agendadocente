@@ -220,6 +220,59 @@ algo a medias o roto.
 
 APP_VER → v2026.09.15-3
 
+### Pantalla propia de Preceptoría + se renombra el cajón de la ficha (15/9/2026)
+
+La dueña volvió sobre esto porque lo de arriba no le alcanzaba, y señaló dos cosas
+puntuales:
+
+1. **Confusión de nombres.** Adentro de un curso, el cajón "Preceptoría" (`GRP_SEC.
+   preceptoria`) en realidad es la ficha del alumno (DNI, domicilio, autorizados) — nada
+   que ver con el TIPO de curso "Preceptoría". Tener las dos cosas con el mismo nombre
+   confundía. Se renombró el **label** de ese cajón a **"Ficha de alumnos"** (la `key`
+   interna sigue siendo `preceptoria`, es sólo código, no se ve). De paso se renombraron
+   todos los textos visibles de esa función (`promptFichaPreceptoria()`,
+   `printFichaPreceptoria()`): el diálogo dice "Ficha de alumno", el PDF dice "Ficha de
+   alumnos" — la palabra "Preceptoría" queda reservada para el tipo de curso y esta
+   pantalla nueva, no para la ficha.
+
+2. **Quería un botón de entrada de verdad**, no una lista metida dentro de Inicio.
+   Textual: "un botón que diga Preceptoría y entro a ese lugar, que es igual a este pero
+   pensado para preceptoría". Se armó tal cual lo pidió:
+   - **`renderPreceptoriaHome()`**: pantalla propia (`view.screen="preceptoria"`), con su
+     "Hoy tenés N cursos de preceptoría", la lista de esos cursos
+     (`preceptoriaCardHTML()`, mismo componente que antes) y su propio "+ Agregar otro
+     curso" (que llama a `promptNewGroup("preceptoria")` — ver abajo). Botón "Atrás"
+     vuelve a Inicio.
+   - En `renderHome()`, la lista que antes iba metida ahí se reemplazó por **un solo
+     botón** ("🗓️ Preceptoría · N cursos · M hoy") que navega a esa pantalla nueva —
+     `#goPreceptoria`. Sigue apareciendo **sólo si ya hay algún curso de Preceptoría**:
+     quien es sólo docente jamás lo ve, porque nunca creó un curso de ese tipo. Sin esto,
+     Inicio queda idéntico a como estuvo siempre.
+   - **`promptNewGroup(tipoInicial)`** ahora acepta un tipo inicial opcional: llamado
+     desde el botón de la pantalla de Preceptoría, el diálogo abre con el chip
+     "Preceptoría" ya marcado y los 5 días ya tildados (reusa la lógica de auto-tildado
+     de la sesión anterior). Llamado como siempre (sin argumento, desde el botón genérico
+     "+ Agregar curso" de Inicio), arranca en "Materia" como toda la vida — nada cambia
+     para quien nunca toca la pantalla nueva.
+
+**Por qué NO es un "modo" ni un perfil elegido al registrarse (sigue esta decisión de la
+sesión anterior, reforzada acá):** esta pantalla nueva es sólo una VISTA que filtra por
+`g.tipo`, no un interruptor de cuenta. Conviven las dos: Inicio (todos los cursos de
+Materia + el botón de entrada si corresponde) y esta pantalla (sólo los de Preceptoría).
+Nadie tiene que "elegir con qué entra" — entra a Inicio siempre, y desde ahí, si
+corresponde, va a Preceptoría con un toque. Para alguien que es las dos cosas (el caso
+real de la dueña), no hay ningún cambio de modo: abre el curso que le toque, sea cual sea
+su tipo, sin fricción.
+
+Probado con Playwright: sin ningún curso de Preceptoría, el botón no aparece (Inicio
+igual a como estuvo siempre); con uno, aparece con el conteo correcto; tocarlo entra a la
+pantalla nueva mostrando sólo esos cursos (el de Materia no aparece ahí); "Agregar otro
+curso" desde esa pantalla abre el diálogo con Preceptoría y los 5 días ya elegidos; el
+cajón interno de la ficha ya dice "Ficha de alumnos", no "Preceptoría"; sin overflow
+horizontal en ninguna pantalla nueva.
+
+APP_VER → v2026.09.15-4
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
