@@ -273,6 +273,57 @@ horizontal en ninguna pantalla nueva.
 
 APP_VER → v2026.09.15-4
 
+### No se agrega "una preceptoría a un curso" — se agrega una escuela, y adentro los cursos (15/9/2026)
+
+La dueña volvió una vez más, y esta era la corrección de fondo: "no podés agregar una
+preceptoría a un curso, entendés? La idea es que si es preceptor/a lo que tiene que
+agregar es una escuela, y dentro de la escuela los cursos que tenga." Tenía razón: el
+diseño de la sesión anterior (elegir "tipo de curso: Materia/Preceptoría" al crear cada
+curso suelto) no reflejaba cómo es de verdad — un preceptor está asignado a **una
+escuela**, y ahí adentro atiende varias divisiones. No se decide "tipo" curso por curso;
+se decide una vez, a nivel de la escuela.
+
+**Se sacó el chip de "Tipo de curso" de `promptNewGroup()`** (el "Agregar curso" genérico
+de Inicio) — volvió a ser exactamente como era antes de la sesión anterior, sin ningún
+campo de tipo. Ese diálogo **sólo crea cursos de Materia**, siempre.
+
+**El único lugar donde nace un curso de Preceptoría es adentro de una escuela, en la
+pantalla propia:**
+- `promptNewEscuelaPreceptoria()`: pide el nombre de la escuela (con chips de las que ya
+  existen, igual que en cualquier otro lado de la app — si el nombre coincide con una
+  escuela que ya usa un curso de Materia, se reusa la misma, no duplica). La marca con
+  `esc.precept=true`. Apenas se guarda, **encadena directo** a agregar el primer curso —
+  una escuela sola, sin ninguna división, no sirve para nada.
+- `promptNewCursoPreceptoria(escuelaId)`: el diálogo para agregar una división **dentro**
+  de esa escuela — nombre, color, días de clase (ya vienen tildados lunes a viernes) y
+  horario opcional. **No tiene campo de escuela ni de tipo**: los dos ya están dados por
+  el contexto (`g.escuelaId` y `g.tipo="preceptoria"` se completan solos). Al guardar
+  vuelve a la pantalla de Preceptoría, no al curso — para poder seguir cargando
+  divisiones de un tirón.
+- `renderPreceptoriaHome()` ahora agrupa por escuela, no por curso suelto: un bloque por
+  escuela (las marcadas `precept=true`, más cualquiera que ya tenga un curso de
+  Preceptoría apuntándole, por compatibilidad con lo cargado en la sesión anterior) con
+  sus divisiones adentro y un "+ Agregar curso acá" al pie de cada una, y "+ Agregar otra
+  escuela" al final. Los cursos sin escuela asignada (si quedó alguno de antes) se
+  agrupan aparte, bajo "Sin escuela asignada".
+- `preceptoriaCardHTML(g,todayDow,dentroDeEscuela)` ganó un tercer parámetro: dentro de
+  un bloque de escuela no repite el nombre de la escuela en cada tarjeta (ya es el título
+  de la sección).
+
+Nada de esto cambia el índice del curso (`seccionesVisibles()`, la sección de arriba) ni
+la exclusión de la tabla de horarios de Inicio: siguen mirando `g.tipo`, que se sigue
+completando solo, ahora desde este flujo en vez del chip viejo.
+
+Probado con Playwright: el diálogo genérico "Agregar curso" ya no tiene el chip de tipo y
+crea siempre Materia; crear una escuela desde Preceptoría encadena directo a agregar su
+primer curso, con los 5 días ya tildados; un segundo curso agregado con "Agregar curso
+acá" cae en la MISMA escuela; una segunda escuela con su propio curso arma un segundo
+bloque; Inicio muestra las dos escuelas agrupadas correctamente, con "Agregar otra
+escuela" al pie; el botón de Preceptoría en Inicio y la tabla de horarios (exclusiva de
+Materia) siguen funcionando igual que antes; sin overflow horizontal.
+
+APP_VER → v2026.09.15-5
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
