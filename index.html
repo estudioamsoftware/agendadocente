@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.16-1';
+const APP_VER='v2026.09.16-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1904,6 +1904,28 @@ async function playShowPurchaseError(e, itemId){
   const b=$("#perr_close"); if(b) b.onclick=closeDlg;
 }
 
+// Cartel de seguridad antes de cobrar: aunque fbSignIn() ya fuerza el
+// selector de cuentas de Google, si la docente ya tenía una sesión abierta
+// de antes (window.fbUser ya estaba puesto) nunca se le preguntó nada. Este
+// cuadro confirma con qué mail se va a suscribir antes de mandarla a pagar,
+// y deja cambiar de cuenta ahí mismo si no es la que esperaba.
+function confirmCuentaSuscripcion(onConfirm){
+  const pintar=()=>{
+    const mail=(window.fbUser&&window.fbUser.email)||"(sin mail)";
+    openDlg("Confirmá tu cuenta",
+      `<p style="font-size:13.5px;color:var(--muted);margin:0 0 18px;line-height:1.5;">
+         Vas a suscribirte con <strong style="color:var(--ink);">${esc(mail)}</strong>.<br>¿Es la cuenta que usás en la app?
+       </p>
+       <div class="dlg-actions"><button class="btn subtle" id="cc_switch">Cambiar de cuenta</button><button class="btn" id="cc_ok">Sí, continuar</button></div>`);
+    $("#cc_switch").onclick=async()=>{
+      try{ await window.fbSignIn(); }catch(e){ /* canceló el selector: sigue con la cuenta que ya tenía */ }
+      pintar();
+    };
+    $("#cc_ok").onclick=()=>{ closeDlg(); onConfirm(); };
+  };
+  pintar();
+}
+
 async function playComprar(itemId){
   const {service}=await playGetService();
   if(!service){ toast("No se pudo conectar con Google Play"); return; }
@@ -1911,6 +1933,9 @@ async function playComprar(itemId){
     try{ await window.fbSignIn(); }
     catch(e){ toast("Hace falta iniciar sesión con Google para suscribirte"); return; }
   }
+  confirmCuentaSuscripcion(()=>playComprarPagar(itemId));
+}
+async function playComprarPagar(itemId){
   let response;
   try{
     const request=new PaymentRequest(
@@ -1978,13 +2003,21 @@ async function mpIniciarSuscripcion(btn){
   btn.disabled=true; btn.querySelector(".typecard-lbl").innerHTML="Conectando…";
   try{
     if(!window.fbUser) await window.fbSignIn();
-    const {initPoint}=await window.fbCrearSuscripcionMP(location.href.split("#")[0]);
-    if(!initPoint) throw new Error("Mercado Pago no devolvió el link de pago");
-    location.href=initPoint;
   }catch(e){
-    toastError("No se pudo iniciar la suscripción: "+(e&&e.message?e.message:"desconocido"));
+    toastError("Hace falta iniciar sesión con Google para suscribirte");
     btn.disabled=false; btn.innerHTML=textoOriginal;
+    return;
   }
+  confirmCuentaSuscripcion(async()=>{
+    try{
+      const {initPoint}=await window.fbCrearSuscripcionMP(location.href.split("#")[0]);
+      if(!initPoint) throw new Error("Mercado Pago no devolvió el link de pago");
+      location.href=initPoint;
+    }catch(e){
+      toastError("No se pudo iniciar la suscripción: "+(e&&e.message?e.message:"desconocido"));
+      btn.disabled=false; btn.innerHTML=textoOriginal;
+    }
+  });
 }
 
 async function licPaywall(){
@@ -9216,7 +9249,14 @@ if("serviceWorker" in navigator){
   });
 
   window.fbSignIn = async function fbSignIn(){
-    const result = await signInWithPopup(fbAuth, new GoogleAuthProvider());
+    // prompt:"select_account" fuerza el selector de cuentas de Google
+    // SIEMPRE, en vez de tomar en silencio la que esté puesta en el
+    // navegador del celular — sin esto, si la docente compra pero el
+    // Chrome del celu tiene puesta otra cuenta, no había forma de elegir
+    // la correcta (bug real reportado el 16/9/2026).
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const result = await signInWithPopup(fbAuth, provider);
     return result.user;
   };
   window.fbSignOut = () => signOut(fbAuth);
