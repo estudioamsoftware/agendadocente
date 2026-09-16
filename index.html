@@ -895,7 +895,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.15-8';
+const APP_VER='v2026.09.16-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -8755,6 +8755,14 @@ async function gdFetchJSON(url,opts){
 function gdSaveToken(tok,expiresIn){ try{ sessionStorage.setItem('gd_tok',JSON.stringify({tok,exp:Date.now()+((expiresIn||3500)*1000)})); }catch(e){} }
 function gdLoadToken(){ try{ const raw=sessionStorage.getItem('gd_tok'); if(!raw) return null; const d=JSON.parse(raw); if(d.exp>Date.now()) return d; }catch(e){} return null; }
 function gdClearToken(){ try{ sessionStorage.removeItem('gd_tok'); }catch(e){} }
+// A alguna docente le puede quedar un token válido pero sin el permiso de Drive
+// (lo destildó sin querer en la pantalla de Google, o quedó de antes de declarar
+// bien los scopes). Reintentar en silencio (gdReconnect) nunca lo arregla: Google
+// sólo agrega un scope nuevo si se lo pide con pantalla de permisos de verdad. Por
+// eso, si Drive contesta este error puntual, se tira el token y se guarda la marca
+// para que la próxima reconexión sea completa (gdConnect) en vez de silenciosa.
+function gdEsErrorDeScopes(e){ return /insufficient authentication scopes/i.test((e&&e.message)||''); }
+function gdForzarConsentimiento(){ gdClearToken(); gd.tok=null; try{ localStorage.setItem('gd_scope_err','1'); }catch(e){} }
 // Pide un token nuevo en silencio (sin popup de consentimiento) y resuelve true/false,
 // sin disparar gdAfterAuth() — así quien la llama decide qué hacer después.
 function gdSilentRefresh(){
@@ -8791,6 +8799,7 @@ function gdInit(){
       gd.exp=Date.now()+((resp.expires_in||3500)*1000);
       gdSaveToken(gd.tok,resp.expires_in);
       localStorage.setItem('gd_was_connected','1');
+      localStorage.removeItem('gd_scope_err');
       if(gd._pendingResolve){ const r=gd._pendingResolve; gd._pendingResolve=null; r(true); return; }
       gdAfterAuth();
     }
@@ -8816,6 +8825,7 @@ function gdDisconnect(){
   if(gd.tok){ try{ google.accounts.oauth2.revoke(gd.tok,()=>{}); }catch(e){} }
   gd={tok:null,exp:0,fid:null,st:'idle',tc:gd.tc,email:null,_pendingResolve:null};
   localStorage.removeItem('gd_was_connected');
+  localStorage.removeItem('gd_scope_err');
   localStorage.removeItem('gd_email');
   gdClearToken();
   gdUI(); closeMenu(); toastSuccess('Drive desconectado','#8C4108');
@@ -8884,7 +8894,7 @@ async function gdPull(){
       }
     } else { toastSuccess('✓ Drive conectado','#8C4108'); }
     gd.st='ok';
-  }catch(e){ gd.st='error'; console.error('gdPull',e); toastError('Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
+  }catch(e){ gd.st='error'; console.error('gdPull',e); if(gdEsErrorDeScopes(e)) gdForzarConsentimiento(); toastError('Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
 }
 
@@ -8958,6 +8968,7 @@ async function gdVaciarCola(){
     gdPushFallos++;
     console.error('gdPush bg',e);
     gd.st=estamosSinConexion()?'ok':'error';
+    if(gdEsErrorDeScopes(e)) gdForzarConsentimiento();
     // El cartel de error se muestra sólo la primera vez de una racha: repetirlo
     // en cada reintento tapa la pantalla y no agrega información.
     if(gdPushFallos===1&&!estamosSinConexion()) toastError('No se guardó en Drive: '+(e&&e.message?e.message:'')+' — tus datos sí quedaron en este dispositivo.');
@@ -9068,6 +9079,7 @@ function emptyDocTrash(g,fid){ if(!g.docsTrash) return; g.docsTrash=g.docsTrash.
 function gdUI(){
   const el=$("#gdBtn"); if(!el) return;
   const wasConnected=localStorage.getItem('gd_was_connected')==='1';
+  const needsFullConsent=localStorage.getItem('gd_scope_err')==='1';
   const on=!!(gd.tok); const err=gd.st==='error'; const syncing=gd.st==='syncing';
   const needsReconnect=wasConnected&&!on&&!syncing&&!err;
   // Sin señal no es un error: los datos están guardados en el dispositivo y suben
@@ -9088,6 +9100,10 @@ function gdUI(){
     bg=err?'var(--absent-tint)':'#A9500A'; ink=err?'var(--absent-ink)':'#fff';
     rowBg=err?'var(--absent-tint)':'#FCEBDA';
     action=err?()=>{gd.st='idle';gdAfterAuth();}:gdDisconnect;
+  } else if(needsReconnect&&needsFullConsent){
+    label='Falta un permiso de Drive'; sub='Tocá y aceptá todos los permisos que pide Google';
+    bg='var(--absent-tint)'; ink='var(--absent-ink)'; rowBg=undefined;
+    action=()=>{ gd.st='syncing'; gdUI(); gdConnect(); };
   } else if(needsReconnect){
     label='Reconectar con Drive'; sub='El permiso venció · un toque para volver a sincronizar';
     bg='var(--canc-bg)'; ink='var(--canc-ink)'; rowBg=undefined;
@@ -9104,12 +9120,18 @@ function gdUI(){
   el.onclick=action;
   const syncBtn=$("#actSyncNow"); if(syncBtn) syncBtn.style.display=(on&&!err)?'flex':'none';
   updateSavedStamps();
-  updateGdBanner(needsReconnect,on&&err&&!sinConexion);
+  updateGdBanner(needsReconnect,on&&err&&!sinConexion,needsFullConsent);
 }
 
-function updateGdBanner(needsReconnect,hasError){
+function updateGdBanner(needsReconnect,hasError,needsFullConsent){
   const b=$("#gdBanner"); if(!b) return;
-  if(needsReconnect){
+  if(needsReconnect&&needsFullConsent){
+    b.style.display='flex'; b.className='gd-banner warn';
+    b.innerHTML=`<svg class="gdb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      <span class="gdb-txt">Falta un permiso de Drive<small>Tocá y aceptá todos los permisos que pide Google</small></span>
+      <svg class="gdb-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    b.onclick=()=>{ gd.st='syncing'; gdUI(); gdConnect(); };
+  } else if(needsReconnect){
     b.style.display='flex'; b.className='gd-banner warn';
     b.innerHTML=`<svg class="gdb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
       <span class="gdb-txt">Reconectar con Drive<small>Tocá acá para sincronizar tus datos</small></span>
@@ -9140,7 +9162,7 @@ async function gdSyncNow(){
   if(!gd.tok){ toastSuccess('Conectá Drive primero','#8C4108'); return; }
   toastSuccess('Actualizando Drive…','#8C4108');
   try{ await gdPushNow(); gd.st='ok'; flashSuccess("#actSyncNow","#FCEBDA"); toastSuccess('✓ Drive actualizado','#8C4108'); }
-  catch(e){ gd.st='error'; console.error('gdSyncNow',e); flashError("#actSyncNow"); toastError('❌ Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
+  catch(e){ gd.st='error'; console.error('gdSyncNow',e); if(gdEsErrorDeScopes(e)) gdForzarConsentimiento(); flashError("#actSyncNow"); toastError('❌ Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
 }
 $("#actSyncNow").onclick=gdSyncNow;
