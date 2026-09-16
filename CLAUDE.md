@@ -1754,10 +1754,13 @@ unificar los dos enfoques:
     `.aab` nuevo).
   - Enviada a revisión junto con la ficha de Play Store (ver arriba).
   **Lo único que falta es humano, no técnico: llegar a 12 verificadores que acepten.**
-  Hoy hay 4. Faltan **8 más**. Quedó pendiente para que la dueña piense a quién sumar
-  (otras docentes, familia, conocidos con Android) — no bloquea nada del trabajo técnico
-  mientras tanto. El reloj de los 14 días arranca recién cuando los 12 ya hayan aceptado
-  la invitación, así que conviene sumar gente cuanto antes.
+  Actualizado 16/9/2026: la dueña ya sumó gente — según ella misma, **sólo le faltan 3
+  más** para llegar a los 12 (o sea, 9 ya aceptaron). No se pidió lista nueva de nombres
+  acá (siguen siendo datos de terceros, este repo es público) — si hace falta el número
+  exacto de quiénes son, consultar directo en Play Console → Configuración → Prueba de
+  licencia / la lista "Verificadores Agenda Docente". No bloquea nada del trabajo
+  técnico mientras tanto. El reloj de los 14 días arranca recién cuando los 12 ya hayan
+  aceptado la invitación, así que conviene sumar a los últimos 3 cuanto antes.
   **Ojo, esto NO es un trámite de una sola vez para toda la cuenta de desarrollador — se
   repite con CADA app nueva** que se quiera sacar de prueba a producción (confirmado
   investigando, 29/8/2026: aplica a toda cuenta personal creada después del 13/11/2023, que
