@@ -900,7 +900,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.16-3';
+const APP_VER='v2026.09.16-4';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3233,15 +3233,31 @@ function estado(g,t,sid){
 
 /* ============ Router ============ */
 const VIEW_KEY="agendaDocente.view.v1";
-function loadView(){
-  // Vuelve a la pantalla donde se había quedado al recargar (se guarda en
-  // localStorage en cada render, ver más abajo). Si el curso de esa pantalla
-  // ya no existe (se borró, por ejemplo), render() cae solo de vuelta a
-  // Inicio — no hace falta validarlo acá.
+function esRecargaDePagina(){
+  // Distingue "recargar la página actual" (F5, pull-to-refresh, el botón
+  // ⟳ del topbar) de "abrir la app de cero" (tocar el ícono, una pestaña
+  // nueva, o el sistema operativo relanzando el WebView). Sólo en el primer
+  // caso tiene sentido volver a donde se había quedado — abrir de cero
+  // siempre tiene que arrancar en Inicio.
   try{
-    const raw=localStorage.getItem(VIEW_KEY);
-    if(raw){ const v=JSON.parse(raw); if(v&&typeof v==="object"&&typeof v.screen==="string") return v; }
+    const nav=performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+    if(nav) return nav.type==="reload";
+    if(performance.navigation) return performance.navigation.type===1; // API vieja, TYPE_RELOAD
   }catch(e){}
+  return false;
+}
+function loadView(){
+  // Si es una recarga, vuelve a la pantalla donde se había quedado (se
+  // guarda en localStorage en cada render, ver más abajo). Si el curso de
+  // esa pantalla ya no existe (se borró, por ejemplo), render() cae solo de
+  // vuelta a Inicio — no hace falta validarlo acá. Si es una apertura de
+  // cero, arranca siempre en Inicio, sin mirar lo que había guardado.
+  if(esRecargaDePagina()){
+    try{
+      const raw=localStorage.getItem(VIEW_KEY);
+      if(raw){ const v=JSON.parse(raw); if(v&&typeof v==="object"&&typeof v.screen==="string") return v; }
+    }catch(e){}
+  }
   return {screen:"home"};
 }
 let view=loadView();
