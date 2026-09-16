@@ -515,6 +515,38 @@ antes del cambio. **Confirmado por la dueña que a la profe ya le funcionó** (1
 
 APP_VER → v2026.09.16-1
 
+### "¿Te gusta la Agenda? Compartila con otro/a docente" (16/9/2026)
+
+Pedido de la dueña, para que la app se recomiende sola de docente a docente. Se agregó
+`shareApp()` en `index.html` (al lado de `shareStudentsWhatsApp()`, misma mecánica), con
+**dos puntos de entrada**:
+
+- **Inicio**, abajo de "Agregar curso" y arriba del pie: una tarjeta chica
+  ("¿Te gusta la Agenda? 💜 · Compartila con otro/a docente que le pueda servir") con el
+  botón "Compartir la app" (`#shareAppHome`, cableado en `renderHome()`).
+- **Menú ⋯**, debajo de "Ayuda e instrucciones": el ítem "¿Te gusta la Agenda? ·
+  Compartila con otro/a docente" (`#actCompartirApp`). Cierra el menú y abre el panel de
+  compartir.
+
+🚨 **Comparte el link de `landing.html`, NO el de Play Store — a propósito.** Mientras la
+app siga en prueba (interna/cerrada), el link público de Play da "No se encontró el
+elemento" a quien no sea verificadora: mandarlo sería quemar la recomendación. La landing,
+en cambio, explica qué hace la app y desde ahí se entra a usarla en el navegador. El día
+que la app llegue a producción en Play, se puede sumar ese link al mensaje (está en
+`APP_SHARE_URL`, una sola constante).
+
+Usa `navigator.share()` si el celular lo tiene (así la docente elige WhatsApp, mail, lo que
+sea) y cae a `https://wa.me/?text=...` si no. El link va **dentro del texto**, no en el
+campo `url` de `navigator.share`: varias apps de destino se quedan con uno solo de los dos
+campos, y así el link viaja siempre.
+
+Probado con Playwright a 390px: el botón de Inicio y el ítem del menú disparan
+`navigator.share` con el mensaje y el link correctos; el menú se cierra al tocarlo; sin
+`navigator.share` cae al link de `wa.me` bien armado; sin overflow horizontal ni en Inicio
+ni con el menú abierto; cero errores de consola propios de la app.
+
+APP_VER → v2026.09.16-3
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,

@@ -870,6 +870,11 @@
         <span>Ayuda e instrucciones<small>Cómo usar la Agenda Docente</small></span>
       </button>
       <hr>
+      <button class="sheet-item" id="actCompartirApp">
+        <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
+        <span>¿Te gusta la Agenda?<small>Compartila con otro/a docente</small></span>
+      </button>
+      <hr>
       <div style="padding:4px 12px 2px;font-size:12.5px;color:var(--faint);line-height:1.5;">
         Para usarla como app: abrila en el navegador de la tablet y elegí <b>Agregar a pantalla de inicio</b>.
       </div>
@@ -895,7 +900,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.16-2';
+const APP_VER='v2026.09.16-3';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3655,6 +3660,11 @@ function renderHome(){
     <button class="btn" id="newGroup">${I.plus} Agregar curso</button>
     ${cfgPanelHTML}
     <div style="margin-top:18px;">${archHTML}</div>
+    <div style="margin-top:22px;background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:12px;padding:13px 14px;">
+      <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:3px;">¿Te gusta la Agenda? 💜</div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:10px;">Compartila con otro/a docente que le pueda servir.</div>
+      <button class="btn ghost" id="shareAppHome" style="width:100%;">Compartir la app</button>
+    </div>
     <div class="pagefoot">Tus datos se sincronizan con Google Drive · Podés hacer un backup extra desde el menú ⋯</div>`;
 
   app.querySelectorAll(".schedule-course").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"indice"}));
@@ -3712,6 +3722,7 @@ function renderHome(){
   // Listeners para archivados
   $("#newGroup").onclick=promptNewGroup;
   const gp=$("#goPreceptoria"); if(gp) gp.onclick=()=>go({screen:"preceptoria"});
+  const shareHome=$("#shareAppHome"); if(shareHome) shareHome.onclick=shareApp;
   app.querySelectorAll("[data-setup]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.setup,term:"1",tab:"alumnos"}));
   const sa=$("#showAyuda"); if(sa) sa.onclick=()=>promptAyuda();
   const ta=$("#toggleArch"); if(ta) ta.onclick=()=>{ view.showArchived=!view.showArchived; render(); };
@@ -7945,6 +7956,25 @@ function shareStudentsWhatsApp(g){
   }
 }
 
+/* Recomendar la app a otra docente. Comparte el link de la landing (landing.html),
+   que es la página hecha para eso: explica qué hace la app y desde ahí se entra a
+   usarla. A propósito NO comparte el link de Play Store: mientras la app esté en
+   prueba, ese link da error a quien no sea verificadora. Si el celular tiene panel
+   de compartir nativo lo usa (así elige WhatsApp, mail, lo que sea); si no, cae a
+   un link de WhatsApp como el de compartir la lista de alumnos. */
+const APP_SHARE_URL="https://estudioamsoftware.github.io/agendadocente/landing.html";
+function shareApp(){
+  const msg=`Te recomiendo Agenda Docente 📚\nPara llevar asistencia, notas y la cursada desde el celular, sin papeles.\n\n${APP_SHARE_URL}`;
+  try{
+    if(navigator.share){
+      // Si la persona cierra el panel de compartir no es un error: no mostramos nada.
+      navigator.share({title:"Agenda Docente",text:msg}).catch(()=>{});
+      return;
+    }
+  }catch(e){}
+  window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank");
+}
+
 /* ---- Confirm screen inside dialog ---- */
 function showBulkConfirm(g,names){
   if(!names.length){ toast("No se encontraron nombres"); return; }
@@ -8599,6 +8629,7 @@ $("#menuBackBtn").onclick=closeMenu;
 $("#menuBtn").onclick=openMenu;
 const actAyudaBtn=$("#actAyuda"); if(actAyudaBtn) actAyudaBtn.onclick=promptAyuda;
 const actSuscripcionBtn=$("#actSuscripcion"); if(actSuscripcionBtn) actSuscripcionBtn.onclick=()=>{ closeMenu(); licPaywall(); };
+const actCompartirAppBtn=$("#actCompartirApp"); if(actCompartirAppBtn) actCompartirAppBtn.onclick=()=>{ closeMenu(); shareApp(); };
 $("#reloadBtn").onclick=async()=>{
   // No alcanza con recargar la página: si quedó una versión vieja del
   // service worker sirviendo todo desde su caché, un reload común la
