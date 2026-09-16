@@ -480,6 +480,41 @@ Respaldo para que se le active sola.
 
 APP_VER → v2026.09.15-8
 
+### Otro bug real, reportado por una profe: quedaba trabada en "Error en Drive: insufficient authentication scopes" (16/9/2026)
+
+Una profe (curso "EEST N5 · 1°") le mandó a la dueña una captura: cartel rojo persistente
+"Hubo un error con Drive · Tocá para reintentar", y al tocarlo un toast con
+`Error en Drive: Request had insufficient authentication scopes.` Tocar "Ahora no"/volver
+a intentar no arreglaba nada — quedaba en el mismo error siempre.
+
+**Causa real:** ese mensaje significa que el token de acceso que tenía guardado no incluía
+el permiso de Drive (`drive.file`) — puede pasar si en la pantalla de permisos de Google
+destildó ese permiso puntual sin querer, o si el token es de antes de que quedaran bien
+declarados los scopes (ver "Mudado a proyecto propio", 27/8/2026). El bug de fondo: el
+cartel de error y el botón "Reconectar con Drive" **siempre reintentaban en silencio**
+(`gdReconnect()`, `prompt:''`) — y un pedido silencioso a Google nunca agrega un permiso
+que no estaba ya concedido, sólo lo hace una pantalla de consentimiento completa. Por eso
+quedaba en un bucle sin salida: no había forma de que la app volviera a pedir el permiso
+de verdad.
+
+**Arreglado en `index.html`:** `gdEsErrorDeScopes(e)` detecta ese mensaje puntual de Drive.
+Cuando aparece (en `gdPull`, `gdVaciarCola` y `gdSyncNow`, los tres lugares donde se puede
+disparar), `gdForzarConsentimiento()` tira el token guardado y deja la marca
+`localStorage.gd_scope_err`. Mientras esa marca esté puesta, el botón de Drive y el cartel
+ya no dicen "Reconectar con Drive" (silencioso) sino **"Falta un permiso de Drive · Tocá y
+aceptá todos los permisos que pide Google"**, y al tocarlo llaman a `gdConnect()` (pantalla
+de permisos completa), no a `gdReconnect()`. La marca se borra sola apenas una reconexión
+consigue un token nuevo (`gdInit`), y también al desconectar Drive a mano (`gdDisconnect`).
+El caso de siempre (un permiso vencido común, sin este error puntual) sigue mostrando
+"Reconectar con Drive" y reintentando en silencio, sin ningún cambio.
+
+Probado con Playwright forzando el estado (`gd_scope_err='1'`, `gd.tok=null`): con la marca
+puesta, el botón y el cartel muestran el mensaje nuevo y tocarlos llama a `gdConnect`; sin
+la marca, siguen mostrando "Reconectar con Drive" y llamando a `gdReconnect`, igual que
+antes del cambio. **Confirmado por la dueña que a la profe ya le funcionó** (16/9/2026).
+
+APP_VER → v2026.09.16-1
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
