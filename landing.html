@@ -204,7 +204,7 @@
         <small>By EstudioAM</small>
       </span>
     </a>
-    <a class="btn btn-primary btn-sm" href="mailto:estudioam.dev@gmail.com?subject=Quiero%20probar%20Agenda%20Docente">Escribinos</a>
+    <a class="btn btn-primary btn-sm" href="https://estudioamsoftware.github.io/agendadocente/">Probar gratis</a>
   </div>
 </header>
 
@@ -221,18 +221,17 @@
           En el celular, adentro del aula, con o sin señal.
         </p>
         <div class="cta-row">
-          <!-- OJO: a propósito NO enlaza a index.html todavía. La versión gratis
-               (LIC_FREE_GROUPS=1 en index.html) hoy no está restringida
-               (LIC_ENFORCE=false), así que cualquiera que entrara desde acá tendría
-               la app completa sin límite y sin pagar — y la app tampoco está
-               publicada para el público general en Play (sigue en prueba cerrada).
-               Por eso el CTA es "escribinos" y no "abrí la app": mientras esto siga
-               así, coordinar por mail en vez de dar un link de entrada libre. Cuando
-               se prenda LIC_ENFORCE y la app esté en Play para cualquiera, este botón
-               vuelve a apuntar a index.html (o al link de Play). -->
-          <a class="btn btn-primary" href="mailto:estudioam.dev@gmail.com?subject=Quiero%20probar%20Agenda%20Docente">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>
-            Escribinos para probarla
+          <!-- Manda directo a index.html (la PWA), no a Play Store, a propósito:
+               así se instala desde el navegador ("Agregar a la pantalla de
+               inicio"), sin pasar por Play. LIC_ENFORCE ya está prendido, así
+               que la versión gratis que se lleva quien entra por acá es la
+               real (1 curso) — no hay riesgo de dar la completa gratis. Y como
+               esta instalación no vino de Play, si más adelante se suscribe,
+               licPaywall() le ofrece Mercado Pago en vez de Play Billing: a esa
+               venta no le come nada el 15% de Google. -->
+          <a class="btn btn-primary" href="https://estudioamsoftware.github.io/agendadocente/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            Probala gratis
           </a>
           <a class="btn btn-ghost" href="#funciones">Ver qué hace</a>
         </div>
@@ -461,7 +460,7 @@
       <div class="faq">
         <details open>
           <summary>¿Cómo la instalo en el celular?</summary>
-          <p>Escribinos y te pasamos el link. Se instala en dos toques, sin pasar por ninguna tienda. <b>En Android:</b> abrís el link en Chrome, tocás los tres puntitos de arriba a la derecha y elegís «Instalar app» (o «Agregar a la pantalla de inicio»). <b>En iPhone:</b> abrís el link en Safari, tocás el botón de Compartir y elegís «Agregar a inicio». Queda con su ícono en la pantalla, como cualquier otra app, y abre a pantalla completa.</p>
+          <p>Tocá «Probala gratis» acá arriba. Se instala en dos toques, sin pasar por ninguna tienda. <b>En Android:</b> abrís el link en Chrome, tocás los tres puntitos de arriba a la derecha y elegís «Instalar app» (o «Agregar a la pantalla de inicio»). <b>En iPhone:</b> abrís el link en Safari, tocás el botón de Compartir y elegís «Agregar a inicio». Queda con su ícono en la pantalla, como cualquier otra app, y abre a pantalla completa.</p>
         </details>
 
         <details>
@@ -501,9 +500,9 @@
   <section>
     <div class="wrap narrow center share">
       <h2>Probala con el curso de mañana</h2>
-      <p class="lead">Escribinos y te ayudamos a arrancar: cargás un curso, ponés los alumnos y en la próxima clase ya estás tomando asistencia desde el celular.</p>
+      <p class="lead">Cargás un curso, ponés los alumnos y en la próxima clase ya estás tomando asistencia desde el celular.</p>
       <div class="cta-row" style="justify-content:center">
-        <a class="btn btn-primary" href="mailto:estudioam.dev@gmail.com?subject=Quiero%20probar%20Agenda%20Docente">Escribinos para probarla</a>
+        <a class="btn btn-primary" href="https://estudioamsoftware.github.io/agendadocente/">Probala gratis</a>
         <a class="btn btn-ghost wa" target="_blank" rel="noopener"
            href="https://wa.me/?text=Mir%C3%A1%20esta%20app%20para%20organizar%20los%20cursos%3A%20Agenda%20Docente%20%E2%80%94%20asistencia%2C%20notas%20y%20horarios%20en%20el%20celular.%20https%3A%2F%2Festudioamsoftware.github.io%2Fagendadocente%2Flanding.html">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2m0 1.8a8.2 8.2 0 1 1-4.2 15.2l-.3-.2-3 .8.8-3-.2-.3A8.2 8.2 0 0 1 12 3.8m-3.7 4c-.2 0-.5.1-.7.4s-.9.9-.9 2.1.9 2.5 1 2.6c.2.2 1.8 2.8 4.4 3.8 2.2.9 2.6.7 3.1.6.5 0 1.5-.6 1.7-1.2s.2-1.1.2-1.2l-.5-.3-1.7-.8c-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1s-1.1-.4-2-1.3c-.7-.6-1.2-1.4-1.4-1.7s0-.4.1-.5l.4-.5.3-.5v-.4l-.7-1.8c-.2-.4-.4-.4-.5-.4z"/></svg>
@@ -522,7 +521,7 @@
       <a href="mailto:estudioam.dev@gmail.com">estudioam.dev@gmail.com</a>
     </div>
     <div class="foot-links">
-      <a href="mailto:estudioam.dev@gmail.com?subject=Quiero%20probar%20Agenda%20Docente">Escribinos</a>
+      <a href="mailto:estudioam.dev@gmail.com?subject=Consulta%20sobre%20Agenda%20Docente">Escribinos</a>
       <a href="#funciones">Funciones</a>
       <a href="#precio">Precio</a>
       <a href="privacy-policy.html">Privacidad</a>
