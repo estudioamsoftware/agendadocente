@@ -1185,6 +1185,40 @@ con Chromium/Playwright a 390 px (33 comprobaciones, todas en verde).
 recorrido de diseño del 31/8. Conviene mirar `parseNumInfo`, `aplicarSnapshot`,
 `moveToTrash`/`restoreFromTrash` y la cola de `gdVaciarCola`.
 
+## 🚨 Antes de decir "esto no está subido": hacer `git fetch origin main` (16/9/2026)
+
+Una sesión le dijo a la dueña, muy convencida, que **la última subida a `main` había sido
+el 3/9 (15 días atrás)** y que había "un montón de commits sin publicar". **Era falso:**
+todo estaba en `main` desde hacía horas — ella misma lo estaba usando en la app esa
+tarde, con los cambios nuevos funcionando.
+
+**Causa real, verificada:** cuando arranca una sesión de Claude Code en la web, el
+contenedor clona el repo, y **ese clon puede traer una foto vieja de `main`** (acá vino
+congelada en `49a620e`, del 3/9) mientras la rama de trabajo sí llega al día. Se confirmó
+mirando el reflog del clon recién creado:
+
+    49a620e refs/remotes/origin/main@{1}: fetch --no-progress --depth 50 origin main: storing head
+
+Con `origin/main` viejo, comparar la rama contra él da un número enorme de "commits sin
+subir" que **ya estaban en `main`**. Todo cierra desde adentro del contenedor, y por eso
+el diagnóstico sale con tanta seguridad: los números son correctos, la referencia no.
+
+**Regla para toda sesión futura, sin excepción:** antes de afirmar nada sobre qué está o
+no publicado —y antes de "arreglar" un supuesto atraso—, correr `git fetch origin main` y
+recién ahí comparar. Un `git log origin/main` sin fetch previo **no es evidencia de nada**.
+Para confirmar de verdad, además: `git rev-list --left-right --count origin/main...HEAD`
+(si da `0 0`, no falta subir nada) y `git show origin/main:index.html | grep APP_VER=`.
+
+**Y la prueba que no depende de ninguna sesión:** GitHub Pages publica desde `main`, así
+que **si la dueña abre la app y ve el `APP_VER` nuevo con los cambios andando, entonces
+`main` tiene esa versión**. Eso gana contra cualquier diagnóstico de una sesión. Si una
+sesión dice lo contrario, la equivocada es la sesión.
+
+**Peligro concreto de no chequear:** creer que falta subir trabajo que ya está subido
+lleva a reaplicar cambios, duplicar commits o pisar `main` con un force — o sea, romper de
+verdad algo que estaba bien. (Esta vez no pasó: se revisó el historial y está limpio, sin
+duplicados.)
+
 ## Datos confirmados (verificados en producción, no suponer otra cosa)
 
 - **Hosting:** GitHub Pages, rama `main`, carpeta raíz.
