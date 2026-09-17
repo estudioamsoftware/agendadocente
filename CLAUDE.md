@@ -600,6 +600,47 @@ app.
 
 APP_VER → v2026.09.17-1
 
+### El botón "🗓️ Preceptoría" de Inicio se esconde solo cuando no tenés ningún curso activo (17/9/2026)
+
+La dueña volvió sobre el cambio de arriba, la misma noche, con más precisión: "las
+escuelas puedo eliminarlas, lo que quiero eliminar es PRECEPTORÍA" — no se refería a una
+escuela puntual (eso ya andaba), sino al **botón "🗓️ Preceptoría" de Inicio en sí**.
+Textual: "si mañana dejo de ser preceptora y solo me dedico a dar clases no necesito ese
+apartado. Tengo que poder agregarlo o no de acuerdo a lo que me surja tomar en el
+consejo."
+
+Iba justo en contra del cambio del 15/9 a la noche ("El botón de entrada a Preceptoría
+quedaba escondido para quien es sólo docente"), que a propósito lo dejó **siempre
+visible** para que nadie quedara sin puerta de entrada el día que le toque una
+preceptoría. Los dos pedidos son legítimos y no se contradicen si se separan en dos
+lugares distintos — que es como quedó, todo en `renderHome()`/el menú ⋯ de `index.html`:
+
+- **El botón de Inicio (`#goPreceptoria`) ahora sólo aparece si hay algún curso de
+  Preceptoría activo** (`preceptoriaActive.length>0`). Se prende y se apaga solo, sin que
+  la docente tenga que tocar nada: apenas elimina su última escuela (con
+  `promptDeleteEscuelaPreceptoria`, ver arriba), el botón desaparece de Inicio en la
+  próxima vez que se dibuja la pantalla — exactamente lo que pidió ("de acuerdo a lo que
+  me surja").
+- **La puerta para EMPEZAR (o retomar) Preceptoría vive ahora en el menú ⋯**, como un
+  ítem fijo nuevo ("🗓️ Preceptoría · Agregar o ver tus escuelas y cursos",
+  `#actIrPreceptoria`), que **siempre está**, tenga o no algún curso cargado — cubre el
+  caso que motivó el arreglo del 15/9 ("imaginate que mañana tomo una preceptoría, ¿cómo
+  la agrego?") sin ensuciar Inicio mientras no se esté usando.
+- La pantalla de "Tu primer curso" (cuenta 100% nueva, agregada esta misma sesión más
+  arriba) sigue con su propio link también, por las dudas — no hacía falta tocarla.
+
+`renderPreceptoriaHome()` no cambió: sigue siendo la misma pantalla, sólo cambian los
+caminos para llegar a ella.
+
+Probado con Playwright: una cuenta con un curso de Materia y ninguno de Preceptoría no
+muestra `#goPreceptoria` en Inicio; el ítem del menú existe y navega bien, cerrando el
+menú al tocarlo; crear una escuela + curso desde ahí hace aparecer el botón de Inicio con
+el conteo correcto; eliminar esa escuela (con el 🗑 agregado antes) hace desaparecer el
+botón de Inicio solo, sin recargar nada a mano; el ítem del menú sigue estando después,
+para volver a agregar una escuela cuando haga falta. Cero errores de consola.
+
+APP_VER → v2026.09.17-2
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
