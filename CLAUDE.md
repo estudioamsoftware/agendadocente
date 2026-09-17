@@ -547,6 +547,59 @@ ni con el menú abierto; cero errores de consola propios de la app.
 
 APP_VER → v2026.09.16-3
 
+### Eliminar una escuela de Preceptoría, y arrancar como preceptora desde una cuenta 100% nueva (17/9/2026)
+
+La dueña preguntó tres cosas sueltas sobre el flujo de Preceptoría armado el 15/9: (1) si
+crear una escuela de Preceptoría apenas se registra la deja después agregar cursos ahí
+mismo, (2) que se pueda eliminar una escuela dentro de Preceptoría, y (3) poder sacar una
+escuela/curso de Preceptoría el día que deje de serlo. Se probó todo con Playwright a
+390px antes de contestar, y salieron dos cosas reales:
+
+🐛 **Bug encontrado con (1): una cuenta 100% nueva (cero cursos de cualquier tipo) no
+tenía ningún camino hacia Preceptoría.** `renderHome()` en `index.html` muestra, mientras
+`state.groups.length===0`, una pantalla especial ("Tu primer curso") que es **distinta**
+del Inicio de siempre — y el botón "🗓️ Preceptoría" (el que se agregó el 15/9 para que
+"aparezca siempre") vive en el Inicio de siempre, más abajo en la misma función, así que
+nunca llegaba a dibujarse en esa pantalla especial. Alguien que abre la app por primera
+vez y es preceptora (nunca dio clases de materia) no tenía forma de crear su primer curso
+como Preceptoría — sólo "Agregar curso" (crea Materia) o "Crear mis cursos sugeridos"
+(también Materia). Arreglado agregando un link chico debajo de esos dos botones,
+"🗓️ ¿Sos preceptor/a? Agregá tu escuela y tus cursos", que manda directo a
+`renderPreceptoriaHome()` — desde ahí ya funciona todo el flujo del 15/9 (crear escuela →
+encadena a crear el primer curso). Probado con Playwright: cuenta recién `localStorage.
+clear()`ada, el link aparece, lleva a Preceptoría, se crea la escuela y el primer curso, y
+al volver a Inicio ya se ve el botón normal "🗓️ Preceptoría · 1 curso · N hoy" — el mismo
+camino que tenía cualquier cuenta con al menos un curso de Materia ya cargado.
+
+**(2) y (3) no existían — se agregó `promptDeleteEscuelaPreceptoria()` en `index.html`.**
+Antes, una vez agregada una escuela a Preceptoría (`esc.precept=true`), no había forma de
+sacarla: aunque se borraran a mano todos sus cursos (uno por uno, desde "Escuela y
+horarios → Eliminar curso" de cada curso — eso sí ya existía, ver más abajo), el bloque de
+la escuela seguía apareciendo en `renderPreceptoriaHome()` para siempre, vacío. Ahora cada
+bloque de escuela tiene un botón 🗑 al lado del nombre:
+- Si la escuela tiene cursos de Preceptoría activos, el cuadro de confirmación los nombra
+  y avisa que **se van a la Papelera junto con todos sus datos** (alumnos, notas,
+  asistencia) — mismo mecanismo y mismo texto que "Eliminar curso" de cada ficha, para no
+  inventar un comportamiento nuevo.
+- La escuela en sí **no se borra de `state.escuelas`** — sólo se le saca `esc.precept`
+  (`delete esc_.precept`). A propósito: la misma escuela puede estar en uso por un curso
+  de Materia (o por un curso de Preceptoría archivado, que no se toca), y borrar el
+  registro entero rompería esas referencias. Sacando sólo la marca, la escuela
+  simplemente deja de listarse en Preceptoría pero sigue sirviendo donde haga falta.
+- Cubre el pedido (3) de "sacar la Preceptoría si deja de serlo": eliminar la escuela saca
+  de un tirón todos sus cursos de Preceptoría activos. Para sacar un curso suelto sin
+  tocar el resto de la escuela, sigue estando "Escuela y horarios → Eliminar curso" en la
+  ficha de ese curso puntual (sin cambios, ya cubría ese caso).
+
+Probado con Playwright: el botón de eliminar aparece en cada bloque de escuela; el cuadro
+de confirmación nombra el curso cargado; al confirmar, el curso queda en `state.
+groupTrash` (recuperable) y la escuela sale de la pantalla de Preceptoría con
+`esc.precept=false`; sin overflow horizontal a 390px en ninguna pantalla nueva ni en el
+flujo encadenado escuela→curso con nombres largos; cero errores de consola propios de la
+app.
+
+APP_VER → v2026.09.17-1
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,

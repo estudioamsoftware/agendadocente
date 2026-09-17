@@ -900,7 +900,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.16-4';
+const APP_VER='v2026.09.17-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3527,12 +3527,21 @@ function preceptoriaCardHTML(g,todayDow,dentroDeEscuela){
 function renderHome(){
   setTopBack(null);
   if(state.groups.length===0){
+    // Antes, con la cuenta recién arrancada (0 cursos de cualquier tipo), esta era la
+    // ÚNICA pantalla de Inicio: no pasaba por el renderHome de siempre (más abajo), así
+    // que el botón "🗓️ Preceptoría" de ahí no llegaba a existir todavía — alguien que
+    // empieza siendo preceptora no tenía ninguna forma de llegar a
+    // renderPreceptoriaHome() (17/9/2026, encontrado probando el alta desde cero).
+    // Se suma acá un link aparte, sin tocar los dos botones de siempre.
     app.innerHTML=`<div class="empty" style="padding-top:54px;"><div class="em-ic">${I.users}</div><h2>Tu primer curso</h2>
       <p>Creá un curso para empezar a pasar lista y cargar notas.</p>
       <div class="stack" style="max-width:320px;margin:0 auto;">
         <button class="btn" id="newGroup">${I.plus} Agregar curso</button>
-        <button class="btn ghost" id="seedGroups">Crear mis cursos sugeridos</button></div></div>`;
-    $("#newGroup").onclick=promptNewGroup; $("#seedGroups").onclick=seedGroups; return;
+        <button class="btn ghost" id="seedGroups">Crear mis cursos sugeridos</button></div>
+      <p style="margin-top:18px;"><button type="button" class="link" id="goPreceptoriaEmpty" style="font-size:13px;">🗓️ ¿Sos preceptor/a? Agregá tu escuela y tus cursos</button></p></div>`;
+    $("#newGroup").onclick=promptNewGroup; $("#seedGroups").onclick=seedGroups;
+    $("#goPreceptoriaEmpty").onclick=()=>go({screen:"preceptoria"});
+    return;
   }
   const active=state.groups.filter(g=>!g.archived); const archived=state.groups.filter(g=>g.archived);
   const todayISO_=todayISO();
@@ -3781,7 +3790,10 @@ function renderPreceptoriaHome(){
     const rows=suyos.length?`<div class="glist">${suyos.map(g=>preceptoriaCardHTML(g,todayDow_,true)).join("")}</div>`
       :`<div style="font-size:12.5px;color:var(--faint);padding:2px 2px 10px;">Todavía no le agregaste ningún curso.</div>`;
     return `<div style="margin-bottom:22px;">
-      <div style="font-size:12.5px;font-weight:700;color:var(--muted);margin:0 2px 8px;text-transform:uppercase;letter-spacing:.03em;">${esc(esc_.nombre)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px;">
+        <div style="font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;">${esc(esc_.nombre)}</div>
+        <button type="button" class="xbtn" data-del-esc="${esc_.id}" aria-label="Eliminar escuela">${I.trash}</button>
+      </div>
       ${rows}
       <button type="button" class="btn subtle sm" data-add-curso="${esc_.id}" style="margin-top:6px;">${I.plus} Agregar curso acá</button>
     </div>`;
@@ -3804,6 +3816,27 @@ function renderPreceptoriaHome(){
   app.querySelectorAll(".gcard[data-go]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.go,term:activeTermToday(),tab:"indice"}));
   const npe=$("#newPrecEscuela"); if(npe) npe.onclick=()=>promptNewEscuelaPreceptoria();
   app.querySelectorAll("[data-add-curso]").forEach(b=>b.onclick=()=>promptNewCursoPreceptoria(b.dataset.addCurso));
+  app.querySelectorAll("[data-del-esc]").forEach(b=>b.onclick=(ev)=>{ ev.stopPropagation(); promptDeleteEscuelaPreceptoria(b.dataset.delEsc); });
+}
+// Sacar una escuela de Preceptoría (pedido de la dueña, 17/9/2026: podía agregarlas pero
+// no había forma de sacarlas — por ejemplo si dejó de ser preceptora en esa escuela).
+// Sus cursos de Preceptoría (si tiene) van a la Papelera, igual que "Eliminar curso" en
+// la ficha de cada uno. La escuela en sí NO se borra de state.escuelas: puede estar
+// compartida con un curso de Materia (misma escuela, otra docente/materia) — sólo se le
+// saca la marca esc.precept, así deja de listarse acá pero sigue sirviendo para Materia.
+function promptDeleteEscuelaPreceptoria(escuelaId){
+  const esc_=state.escuelas.find(s=>s.id===escuelaId); if(!esc_) return;
+  const cursosDeEsc=state.groups.filter(g=>!g.archived&&g.tipo==="preceptoria"&&g.escuelaId===escuelaId);
+  const msg=cursosDeEsc.length
+    ? `"${esc_.nombre}" tiene ${cursosDeEsc.length} curso${cursosDeEsc.length===1?"":"s"} de Preceptoría (${cursosDeEsc.map(g=>g.name).join(", ")}). Al eliminar la escuela, esos cursos se mueven a la Papelera con todos sus datos (alumnos, notas, asistencia) — desde ahí los podés restaurar.`
+    : `Se elimina "${esc_.nombre}" de Preceptoría. Si esta escuela también la usás en un curso de Materia, ese curso no se toca.`;
+  confirmDlg("¿Eliminar esta escuela de Preceptoría?",msg,"Eliminar",()=>{
+    cursosDeEsc.forEach(g=>deleteGroup(g.id));
+    delete esc_.precept;
+    save();
+    renderPreceptoriaHome();
+    toastSuccess("✓ Escuela eliminada de Preceptoría","#A9500A");
+  });
 }
 function promptNewEscuelaPreceptoria(){
   // Agregar una escuela a Preceptoría: si el nombre ya existe (la usa algún curso de
