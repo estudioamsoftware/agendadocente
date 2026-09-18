@@ -641,6 +641,41 @@ para volver a agregar una escuela cuando haga falta. Cero errores de consola.
 
 APP_VER → v2026.09.17-2
 
+### "Agregar curso" ahora pregunta: ¿un curso o una escuela de Preceptoría? (18/9/2026)
+
+La dueña reportó que Preceptoría "desapareció completamente" y volvió a explicar la idea
+de fondo: **"cuando vos agregás algo, podés agregar o un curso o una preceptoría. Cuando
+agregás preceptoría, adentro de ella te agregás más cursos."**
+
+No era un bug de datos ni nada roto — el flujo de escuela→cursos del 15-17/9 seguía
+andando igual. Lo que pasó es que, después de sacar el chip de tipo de
+`promptNewGroup()` (ver "No se agrega una preceptoría a un curso" más arriba), la
+**única** puerta hacia Preceptoría para alguien que ya tiene cursos cargados quedó en el
+menú ⋯ (`#actIrPreceptoria`) — el botón grande de Inicio, **"+ Agregar curso"**, iba
+derecho a crear una Materia sin preguntar nada. Desde el punto de vista de la dueña, que
+buscaba la opción justo ahí (donde siempre se agregan cosas), Preceptoría "no estaba".
+
+**Arreglado agregando un paso intermedio, sin tocar ninguno de los flujos que ya
+funcionaban:** `promptAddCursoOEscuela()` (nueva función en `index.html`) es un cuadro
+chico con dos opciones — "📚 Un curso" (Materia) y "🗓️ Preceptoría" (escuela) — que
+**no crea nada por sí mismo**, sólo manda a uno de los dos caminos que ya existían:
+tocar "Un curso" abre `promptNewGroup()` tal cual estaba; tocar "Preceptoría" navega a
+`renderPreceptoriaHome()` (la pantalla que ya sabe crear la escuela y, adentro,
+encadenar el alta del primer curso). El botón **"+ Agregar curso"** de Inicio (tanto en
+la vista de siempre como en la pantalla "Tu primer curso" de una cuenta 100% nueva)
+ahora abre este selector en vez de ir directo a Materia. El ítem del menú ⋯ y el botón
+"🗓️ Preceptoría" de Inicio (cuando ya hay cursos activos) siguen intactos, como caminos
+adicionales para quien ya sabe a dónde va.
+
+Probado con Playwright a 390px: desde una cuenta recién creada, "+ Agregar curso" abre
+el selector, "Preceptoría" lleva a esa pantalla y de ahí se puede crear la escuela y su
+primer curso de punta a punta; "Un curso" desde el mismo selector crea una Materia igual
+que siempre; en Inicio con cursos ya cargados el botón también abre el selector; el
+ítem del menú ⋯ sigue funcionando. Sin overflow horizontal, sin errores de consola
+propios de la app.
+
+APP_VER → v2026.09.18-1
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,

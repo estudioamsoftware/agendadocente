@@ -905,7 +905,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.17-2';
+const APP_VER='v2026.09.18-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3544,7 +3544,7 @@ function renderHome(){
         <button class="btn" id="newGroup">${I.plus} Agregar curso</button>
         <button class="btn ghost" id="seedGroups">Crear mis cursos sugeridos</button></div>
       <p style="margin-top:18px;"><button type="button" class="link" id="goPreceptoriaEmpty" style="font-size:13px;">🗓️ ¿Sos preceptor/a? Agregá tu escuela y tus cursos</button></p></div>`;
-    $("#newGroup").onclick=promptNewGroup; $("#seedGroups").onclick=seedGroups;
+    $("#newGroup").onclick=promptAddCursoOEscuela; $("#seedGroups").onclick=seedGroups;
     $("#goPreceptoriaEmpty").onclick=()=>go({screen:"preceptoria"});
     return;
   }
@@ -3750,7 +3750,7 @@ function renderHome(){
   app.querySelectorAll("[data-hoy]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.hoy,term:b.dataset.hoyTerm||"1",tab:"asist"}));
   // Listeners para configuración rápida de horas (ver más abajo)
   // Listeners para archivados
-  $("#newGroup").onclick=promptNewGroup;
+  $("#newGroup").onclick=promptAddCursoOEscuela;
   const gp=$("#goPreceptoria"); if(gp) gp.onclick=()=>go({screen:"preceptoria"});
   const shareHome=$("#shareAppHome"); if(shareHome) shareHome.onclick=shareApp;
   app.querySelectorAll("[data-setup]").forEach(b=>b.onclick=()=>go({screen:"group",groupId:b.dataset.setup,term:"1",tab:"alumnos"}));
@@ -7597,11 +7597,38 @@ function promptVocabulario(g,k,id){
   $("#voc_ok").onclick=()=>{ setTopicNota(g,k,id,$("#voc_ta").value.trim()); closeDlg(); render(); };
   $("#voc_cancel").onclick=closeDlg;
 }
+// Elegir qué agregar: un curso de Materia o una escuela de Preceptoría (18/9/2026).
+// Antes, el botón "+ Agregar curso" de Inicio iba derecho a promptNewGroup() (que sólo
+// crea Materia) y la única puerta hacia Preceptoría vivía escondida en el menú ⋯ — a la
+// dueña le pareció que Preceptoría "había desaparecido por completo". Pedido explícito:
+// "cuando vos agregás algo, podés agregar o un curso o una preceptoría". Este cuadro es
+// sólo un selector, no crea nada por sí mismo: manda a uno de los dos flujos que ya
+// existían (promptNewGroup para un curso suelto de Materia, o la pantalla propia de
+// Preceptoría — que ya encadena sola crear la escuela y, adentro, sus cursos).
+function promptAddCursoOEscuela(){
+  openDlg("¿Qué querés agregar?",`
+    <div class="stack">
+      <button type="button" class="btn ghost" id="addc_materia" style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;height:auto;padding:14px 16px;">
+        <div style="font-weight:700;font-size:14.5px;">📚 Un curso</div>
+        <div style="font-weight:400;font-size:12.5px;color:var(--muted);margin-top:2px;">Materia — das clase una o pocas veces por semana, con su horario y sus notas.</div>
+      </button>
+      <button type="button" class="btn ghost" id="addc_preceptoria" style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;height:auto;padding:14px 16px;margin-top:10px;">
+        <div style="font-weight:700;font-size:14.5px;">🗓️ Preceptoría</div>
+        <div style="font-weight:400;font-size:12.5px;color:var(--muted);margin-top:2px;">Una escuela, y adentro las divisiones a las que les tomás asistencia todos los días.</div>
+      </button>
+    </div>
+    <div class="dlg-actions"><button class="btn subtle" id="addc_cancel">Cancelar</button></div>`);
+  $("#addc_materia").onclick=()=>{ closeDlg(); promptNewGroup(); };
+  $("#addc_preceptoria").onclick=()=>{ closeDlg(); go({screen:"preceptoria"}); };
+  $("#addc_cancel").onclick=closeDlg;
+}
 function promptNewGroup(){
   // Sólo crea cursos de Materia. Un curso de Preceptoría se agrega desde la pantalla
   // aparte "Preceptoría" (promptNewCursoPreceptoria), siempre adentro de una escuela —
   // no hay chip de "tipo" acá, a propósito (pedido de la dueña, 15/9/2026): no se agrega
   // una preceptoría a un curso suelto, se agrega una escuela y adentro los cursos.
+  // Se llega acá desde promptAddCursoOEscuela() (el selector de arriba) cuando eligen
+  // "Un curso", o directo cuando algo más específico ya sabe que quiere Materia.
   if(!licCanAddGroup()){ licPaywall(); return; }
   let selColor=state.groups.length%PAL.length;
   let selDias=[];
