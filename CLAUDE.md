@@ -784,6 +784,58 @@ consola propios de la app.
 
 APP_VER → v2026.09.22-2
 
+### Y la evaluación ya no muestra la columna RECUP. (22/9/2026, misma sesión)
+
+Corrección de la dueña apenas vio lo de arriba funcionando: **"en evaluación común,
+escrita u oral, lo que fuera, sacale ya esa columna que tiene al lado porque total ya lo
+tengo en recuperatorio."** Con las dos notas juntas en la pantalla del recu, la columna
+RECUP. de la evaluación pasó a ser lo mismo repetido.
+
+Cambio en `renderExamEntry` (`index.html`), todo en la bandera `noRecu`:
+
+    const noRecu=isCarpeta||(!isTP&&(!e.recuDate||!!myRecu));
+
+🚨 **Ojo, la columna NO se sacó del todo — sólo cuando el recu es un examen aparte
+(`myRecu`).** Sigue saliendo en los dos casos donde hace falta de verdad:
+- **La recu del modo viejo** (`e.recuDate` cargada adentro del mismo examen, sin examen
+  aparte): ahí esa columna es el **único** lugar donde se escribe esa nota — sacarla
+  dejaría datos sin poder cargarse.
+- **La columna ENTREGA de un TP** (`isTP`), que no tiene nada que ver con recuperatorios.
+
+Como la columna era de sólo lectura en el caso `myRecu`, se borró el código que la
+armaba: `recuParts`, `linkedRecuCell()` y `recuPartCell()` dentro de `renderExamEntry`
+(ojo: `renderClaseExam` tiene funciones con los mismos nombres, **esas no se tocaron**),
+y `recuCol` quedó en las dos ramas que sobreviven.
+
+**En su lugar, un cartel clickeable arriba de la grilla** (`#goRecu`): *"🔁 Recuperatorio
+del 22/09 · Las notas se cargan ahí, al lado de la de esta evaluación"*, que entra directo
+a esa pantalla. No era estrictamente necesario (el recuperatorio siempre apareció como su
+propia fila en el listado de "Exámenes y recup" — `renderExam` no filtra los `recuOf`),
+pero deja el camino a la vista justo donde antes estaba la columna. El pie de página se
+reescribió acorde.
+
+**Lo que se pierde, y quedó así a propósito:** desde la evaluación ya no se ve quién
+recuperó. El contador "Aprobados/Desaprobados" de esa pantalla sigue usando
+`examEffective()`, o sea **ya tiene el recuperatorio aplicado** — puede decir "aprobado"
+alguien cuya columna NOTA muestra un 4. Es esperable, no un bug.
+
+**Clases (`renderClaseExam`) no se tocó:** ahí la columna RECUP. sigue saliendo. Es otra
+pantalla (el registro de lo que pasó ese día, de sólo lectura) y la dueña habló de la
+pantalla de la evaluación. Si algún día molesta, el cambio es el mismo patrón.
+
+Probado con Playwright a 390px, los seis casos en el mismo curso:
+- evaluación **con recu aparte** → sólo `NOTA`, con el cartel del recuperatorio;
+- **el recuperatorio** → `EVALUACIÓN 08/09` + `NOTA` (lo de la sección de arriba);
+- evaluación con **recu vieja** (`recuDate`) → `NOTA` + `RECUP.` **editable**, como siempre;
+- **TP** → `NOTA` + `ENTREGA` con su botón "Marcar S/E", sin cambios;
+- evaluación **partida en dos notas** con recu aparte → `VOCABULARY` + `GRAMMAR` y nada más;
+- **recu partida** → las dos `EVAL.` + las dos de carga.
+Tocar el cartel entra al recuperatorio correcto; el listado sigue mostrando la evaluación
+y el recuperatorio como dos filas. Sin overflow horizontal en ninguno, cero errores de
+consola propios de la app.
+
+APP_VER → v2026.09.22-3
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
