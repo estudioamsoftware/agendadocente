@@ -836,6 +836,79 @@ consola propios de la app.
 
 APP_VER → v2026.09.22-3
 
+### Columna CUADERNO: el aviso a los padres, y el contador explicado (22/9/2026)
+
+Dos pedidos de la dueña en el mismo audio, los dos derivados de lo de arriba:
+
+**1. El contador ahora se explica solo.** Al sacar la columna RECUP. quedó que
+"Aprobados/Desaprobados" puede decir aprobado alguien cuya columna NOTA muestra un 4
+(porque `examEffective()` ya aplica el recuperatorio). Ella lo sabe, pero: *"más que nada
+para otros profes, capaz que nos olvidamos o no nos damos cuenta"*. Se agregó un renglón
+chico debajo de los dos pills, **sólo cuando la evaluación tiene un recuperatorio aparte**
+(`myRecu`): *"Este conteo ya tiene aplicado el recuperatorio del 22/09: alguien puede
+figurar como aprobado aunque en NOTA se vea su nota original."*
+
+**2. Columna nueva "CUADERNO", a la derecha de todo.** Textual: *"si en el recuperatorio o
+en la evaluación no quieren rendirla, se niegan, yo les pongo una nota en el cuaderno de
+comunicaciones […] necesito una columna más a la derecha, un tilde para poner que le pasé
+la nota al cuaderno."* No sabía cómo implementarlo, así que se resolvió así:
+
+🚨 **Corrección de la dueña apenas vio la primera versión, y es la clave para no volver a
+equivocar el encuadre:** *"se niega a hacerla ya estaba contemplado, ojo. Cuando pongo un 1
+puede ser porque no supo hacer nada, o porque no quiso, o usó IA. Ya está eso para poner."*
+O sea: **el POR QUÉ de la nota ya lo cubre el motivo** (`motivoNota`, etiqueta "No quiso" /
+"Usó IA" que sale sola debajo del casillero cuando la nota es 1 — ver `MOTIVO_LABEL` y
+`motivoTagHTML`). Esta columna **no es eso**: es la constancia de **haber avisado a la
+familia**, que es otra cosa y pasa después. Los textos de la app se corrigieron para que no
+mencionen "se negó a rendir" en ningún lado (ni el pie de página, ni el ejemplo del
+diálogo) — si alguna sesión futura los vuelve a redactar, que no mezcle las dos cosas.
+
+- **Un botón por alumno** (`.cuadbtn`): sin marcar muestra 📓, marcado muestra ✓ en verde.
+  Un toque marca, otro toque desmarca.
+- **Al marcar se guarda la fecha sola** (`todayISO()`), que queda debajo del tilde como una
+  etiqueta chiquita — sirve de constancia de cuándo se avisó.
+- **Tocando esa etiqueta** se abre `promptObsCuaderno()`: un texto libre opcional con lo que
+  se le escribió a la familia ("Se negó a rendir. Aviso para que firmen."). Cargado, la
+  etiqueta muestra ese texto recortado en vez de la fecha. El tilde solo ya alcanza — la
+  observación es opcional.
+- **La columna sale en TODOS los tipos** (evaluación, recu, TP, carpeta): cualquiera puede
+  necesitar un aviso a la familia, y no depende de qué nota ni de qué motivo tenga cargado.
+- 🚨 **Se puede tocar aunque las notas estén bloqueadas, a propósito.** `wireRow()` sólo se
+  cablea con `!locked`, así que el cuaderno se sacó a su propia función `wireCuaderno()`,
+  que se cablea siempre. Motivo: el aviso a los padres suele venir después de cerrar las
+  notas, y obligar a desbloquear para tildarlo sería absurdo. No es una nota.
+
+**Datos nuevos, en el mismo objeto de notas** (`t.grades[sid][eid]`): `cuaderno` (la fecha
+ISO en que se marcó) y `obs` (el texto). Helpers `getCuaderno()` / `setCuaderno()` /
+`setObsCuaderno()`, al lado de los de motivo. **No entran en ningún promedio ni cálculo.**
+
+🚨 **Trampa real evitada (mirarlo si se agrega otro campo así):** `setGradeField()` borra el
+objeto entero cuando queda "vacío", y esa comprobación enumera los campos conocidos a mano.
+Sin tocarla, borrar la nota de un alumno se habría llevado puesto el tilde del cuaderno. Se
+le sumaron `&&!c.cuaderno&&!c.obs`. **Cualquier campo nuevo que se guarde ahí adentro tiene
+que sumarse a esa lista.**
+
+Anchos (el detalle que decide si scrollea en el celular): `.eg-col-cuad` va de **76 px**
+(no 104) porque sólo lleva el botón y la etiqueta. Con eso, una **evaluación común queda en
+356/356 — entra justo, sin scroll horizontal**; el recuperatorio (nombre + EVALUACIÓN +
+NOTA + CUADERNO) da 400/356, o sea un poco de scroll al costado con la columna de nombres
+fija, como ya pasa en Resumen y en los exámenes partidos.
+
+Probado con Playwright a 390px, con los diálogos reales: tildar guarda
+`{"cuaderno":"2026-09-22"}` y muestra ✓ + la fecha; el diálogo de observación abre con el
+nombre del alumno arriba, guarda el texto y la etiqueta pasa a mostrarlo; **borrar la nota
+del alumno NO se lleva el tilde ni la observación**; sobreviven a un `reload()` real (o sea
+a `migrate()`); con el examen bloqueado el casillero de nota queda `disabled` pero el tilde
+sigue funcionando; la columna aparece igual en la evaluación y en el recuperatorio; el
+aviso del contador sale sólo cuando hay recu aparte. Cero errores de consola propios de la
+app, sin overflow horizontal de página en ninguna pantalla.
+
+**Ojo con `openDlg(title, html, desc)`:** el tercer parámetro (el subtítulo) se pinta con
+`textContent`, no con HTML — mandarle `<b>...</b>` lo muestra como texto literal. Se
+encontró probando esto; va el nombre pelado.
+
+APP_VER → v2026.09.22-4
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
