@@ -1937,6 +1937,31 @@ volver a tocar el interruptor, ya está prendido.
 - `licPaywall()`: ofrece Google Play Billing (si la app corre como TWA de Android) o
   Mercado Pago (si no) — ver la sección de venta más abajo para el detalle completo.
 
+### `LIC_REGALADAS` tiene que tener a TODAS las de la lista de Play Console, no solo a las 10 originales (22/9/2026)
+
+Confirmado por la dueña: a **todas** las personas de la lista "Verificadores Agenda
+Docente" de Play Console (Configuración → Prueba de licencia, o Prueba y lanza → Prueba
+interna/cerrada → pestaña Verificadores) les prometió la versión completa gratis — no
+es que unas la tengan y otras no. Las dos listas (la de Play Console y `LIC_REGALADAS`
+en `index.html`) **no se sincronizan solas**: cada vez que se suma un mail nuevo a la de
+Play Console (para que esa persona pueda instalar la app), hay que sumar también su hash
+en `LIC_REGALADAS` (para que la app no le pida pagar) — son dos pasos manuales
+separados, ver "Para sumar a la profe con OTRO mail" más arriba. Si se olvida el segundo
+paso, la persona instala la app bien pero se choca con el candado de pago igual — eso
+fue lo que le pasó a `jofrenahir27@gmail.com` el 22/9, y al revisar aparecieron otras 2
+más en el mismo caso (`gonzalo.barrosoruiz@gmail.com`, `lilin.7397@gmail.com`) más una
+que había en Play Console pero no en `LIC_REGALADAS` (`yuyitosyalgomas@gmail.com`) — las
+4 se agregaron en esta sesión.
+
+🚨 **Ojo para la próxima vez que se sume gente:** la comparación se hizo contra una
+captura de pantalla de la lista de Play Console que la dueña mandó, y esa lista puede
+estar scrolleada (es alfabética, y en la captura no se veía el arranque — mails que
+empiezan con letras anteriores a "estudioam", como `englishbeats...`, tienen que seguir
+estando aunque no se vieran en esa foto puntual). No asumir que una captura parcial es
+la lista completa: si hace falta resincronizar todo de nuevo, pedirle a la dueña la
+lista completa (Play Console → Configuración → Prueba de licencia → "Editar lista",
+scrolleada hasta arriba del todo) en vez de fiarse de una captura que puede estar cortada.
+
 ### Acceso gratis por un año a las verificadoras, con fecha visible (3/9/2026)
 
 Pedido de la dueña: a las ~12+ verificadoras de la prueba cerrada se les prometió la

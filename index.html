@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.22-5';
+const APP_VER='v2026.09.22-6';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1701,6 +1701,9 @@ const LIC_REGALADAS=[
   "b99da600c43d52f2eca0b96e3baaf51ac8d7693290b9ccf9066fbde1de1850f4",
   "23fd89c887f802f3e5650b735546669a37dd25857acc0d89f1cc7d72be463db3",
   "1f2dd959dabf1894a0d752853d936abeae06d2559dd23adb0f03eda5fc3496aa",
+  "819e1043a9c2eeb67cacab40acda585430bea5d3fd572183d7844fad3c966447",
+  "0b16a6444e5ead6eea7b3cddbc28791a4ad57e535cd13b80cf980c3c9c733c46",
+  "b658543f5ff98f8a1c3a7d57d66f1d311d53508f46ccb15fbdaf690564431622",
 ];
 let lic={plan:"gratis",email:null};
 // Si Firebase confirma una suscripción activa (subscriptions/{uid}.status==="active"
