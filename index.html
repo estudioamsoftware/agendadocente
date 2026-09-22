@@ -466,6 +466,11 @@
   .eg-col{width:104px;flex:1 0 auto;display:flex;align-items:flex-start;justify-content:center;padding:6px 4px;border-left:1px solid var(--line-soft);min-height:44px;}
   .eg-head .eg-col{min-height:32px;text-align:center;justify-content:center;line-height:1.25;align-items:center;}
   .eg-col-recu{background:#FBFAFE;}
+  /* En un recuperatorio, la columna de sólo lectura con lo que sacó en la evaluación
+     original: más angosta (no tiene input ni botón "A") y en un tono apagado, para que
+     se lea como referencia y no se confunda con el casillero que sí se carga. */
+  .eg-col-orig{width:80px;background:#FAF5EF;}
+  .eg-head .eg-col-orig{background:var(--line);color:var(--muted);}
   /* La grilla de Clases es de sólo lectura (no tiene el input ni el botón "A"), así que
      sus columnas van más angostas: con dos partes + recu entran mejor en el celular. */
   .examgrid.eg-ro .eg-col{width:80px;}
@@ -906,7 +911,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.22-1';
+const APP_VER='v2026.09.22-2';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -6400,6 +6405,15 @@ function renderExamEntry(g,t,e,body){
   // Y al revés: esta pantalla ES el recuperatorio de una evaluación partida en notas.
   const soyRecuPorPartes=hasParts&&parentEx&&Array.isArray(parentEx.parts)&&parentEx.parts.length===e.parts.length;
   const noRecu=isCarpeta||(!isTP&&!e.recuDate&&!myRecu);
+  // En la pantalla de un recuperatorio, al lado del casillero donde se carga la nota va
+  // una columna de sólo lectura con lo que ese alumno sacó en la evaluación original
+  // ("A" si faltó). Sin eso había que cargar a ciegas: la pantalla del recu no mostraba
+  // por ningún lado de dónde venía cada alumno (pedido de la dueña, 22/9/2026).
+  const origParts=(parentEx&&soyRecuPorPartes)?parentEx.parts:null;
+  const origHead=parentEx
+    ?(origParts?origParts.map(l=>`<span class="eg-col eg-col-orig">EVAL.<br>${esc(l.toUpperCase())}</span>`).join("")
+      :`<span class="eg-col eg-col-orig">EVALUACIÓN<br>${esc(fmtShort(parentEx.date))}</span>`)
+    :"";
   const typeMetaHere=examTypeMeta(e.type);
   const typeLabel=`${typeMetaHere.icon} ${typeMetaHere.label}`;
   const periodLabel=e.type==="intens_eval"?(e.period==="otro"?(e.periodOtro||"Otro mes"):(e.period?(INTENS_PERIOD_OPTIONS.find(p=>p.id===e.period)||{}).label:null)):null;
@@ -6418,14 +6432,14 @@ function renderExamEntry(g,t,e,body){
       <span>🔁</span><span style="flex:1;min-width:0;">Recupera <b>${esc(parentEx.name)}</b> (${fmtShort(parentEx.date)}) · sólo los que no aprobaron</span></div>`:""}
     ${contPanel}
     <div class="examgrid-wrap"><div class="examgrid">
-      <div class="eg-row eg-head"><span class="eg-nm">Alumno</span>${hasParts?e.parts.map(label=>`<span class="eg-col eg-col-nota">${esc(label.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-nota">NOTA</span>`}${!noRecu?(recuParts?recuParts.map(l=>`<span class="eg-col eg-col-recu">RECUP.<br>${esc(l.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`):""}</div>
+      <div class="eg-row eg-head"><span class="eg-nm">Alumno</span>${origHead}${hasParts?e.parts.map(label=>`<span class="eg-col eg-col-nota">${esc(label.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-nota">NOTA</span>`}${!noRecu?(recuParts?recuParts.map(l=>`<span class="eg-col eg-col-recu">RECUP.<br>${esc(l.toUpperCase())}</span>`).join(""):`<span class="eg-col eg-col-recu">${isTP?"ENTREGA":"RECUP."}</span>`):""}</div>
       <div id="rows"></div></div></div>
     <div class="tally" style="margin-top:10px;"><div class="pill" style="background:var(--present-tint);color:var(--present-ink);">Aprobados <span id="cOk">0</span></div><div class="pill" style="background:var(--absent-tint);color:var(--absent-ink);">Desaprobados <span id="cBad">0</span></div></div>
     ${locked?`<div class="savedbar" style="margin-top:14px;"><span class="savedtag">🔒 Notas bloqueadas</span><button class="btn subtle sm" id="editExGrades">Editar</button></div>`
             :`<button class="btn" id="saveExGrades" style="margin-top:14px;">Bloquear notas</button>`}
     <div class="pagefoot">${hasParts?`La nota final es el promedio de las partes, y se completa sola apenas están todas cargadas. `:""}Si faltó ese día según Asistencia, la nota se marca "A" sola (no cuenta como un 1 en el promedio) — tocá el botón "A" si necesitás cambiarlo a mano. ${isTP?`La columna "Entrega" es para marcar a quien todavía no entregó (S/E = Sin Entregar). Tocá el botón blanco para marcarlo; si ya tiene nota, el botón queda apagado pero lo podés tocar igual para corregir un error.`
       :(myRecu?`La columna RECUP. refleja el recuperatorio del ${fmtShort(myRecu.date)} y se carga desde ahí; "–" = no lo rindió. La recu reemplaza a la nota sólo si la mejora: nunca se la baja.`
-      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos. Acá el que faltó no recuperó, así que esa parte cuenta 1 en el promedio — igual, si le fue peor que en la evaluación, le queda la nota original.`:""}`
+      :(parentEx?`Sólo aparecen los que no aprobaron ${esc(parentEx.name)} y los que faltaron. La columna <b>${origParts?"EVAL.":"EVALUACIÓN"}</b> muestra, de sólo lectura, lo que sacó cada uno ese día ("A" = faltó, "–" = sin nota); se corrige desde la evaluación, no desde acá. Estas notas se reflejan al lado de la nota original.${soyRecuPorPartes?` Las partes que cada alumno ya aprobó aparecen con "–": sólo se carga la que se llevó, y la nota final combina las dos. Acá el que faltó no recuperó, así que esa parte cuenta 1 en el promedio — igual, si le fue peor que en la evaluación, le queda la nota original.`:""}`
       :"La recu reemplaza a la nota sólo si la mejora: nunca se la baja. Si la fecha del examen coincide con una clase, la nota aparece en Clases."))}</div>`;
   const pm=g.passMark||7;
   // En un recuperatorio por partes, la parte que ya aprobó en la evaluación no se
@@ -6436,6 +6450,16 @@ function renderExamEntry(g,t,e,body){
     return typeof v==="number"&&v>=pm;
   };
   const rayita=`<span class="eg-na" style="background:var(--blue-tint);color:var(--blue-ink);">–</span>`;
+  // Lo que sacó en la evaluación que está recuperando: la nota con su color, "A" si
+  // faltó ese día (a mano o según Asistencia) y "–" si nunca se le cargó nada. Es sólo
+  // lectura: se corrige en la pantalla de la evaluación, no acá.
+  function origCellHTML(sid,field){
+    const val=getGrade(t,sid,parentEx.id)[field];
+    if(typeof val==="number") return `<span class="numin ${gradeTierClass(val,pm)}" style="display:inline-flex;align-items:center;justify-content:center;" title="Nota en ${esc(parentEx.name)}">${fmtNum(val)}${motivoMark(getGradeMotivo(t,sid,parentEx.id,field))}</span>`;
+    return gradeAusenteEffective(t,g,sid,parentEx.id,field,parentEx.date)
+      ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;" title="Faltó a ${esc(parentEx.name)}">A</span>`
+      :`<span class="eg-na" title="Sin nota en ${esc(parentEx.name)}">–</span>`;
+  }
   const rows=$("#rows");
   const dis=locked?"disabled":"";
   // Celda genérica de nota (usada para "nota", "recu" y, si la eval se divide en
@@ -6492,7 +6516,12 @@ function renderExamEntry(g,t,e,body){
         ?`<span class="numin gnum-red" style="display:inline-flex;align-items:center;justify-content:center;">A</span>`
         :`<span class="eg-na">–</span>`;
     };
+    const origCells=parentEx
+      ?(origParts?origParts.map((l,pi)=>`<div class="eg-col eg-col-orig">${origCellHTML(s.id,"p"+pi)}</div>`).join("")
+        :`<div class="eg-col eg-col-orig">${origCellHTML(s.id,"nota")}</div>`)
+      :"";
     return `<span class="eg-nm">${idx+1}. ${nameHTML(s)}</span>
+      ${origCells}
       ${notaCell}
       ${!noRecu?(recuParts?recuParts.map((l,pi)=>`<div class="eg-col eg-col-recu">${recuPartCell(pi)}</div>`).join(""):`<div class="eg-col eg-col-recu">${recuCol}</div>`):""}`;
   }

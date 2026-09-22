@@ -739,6 +739,51 @@ Drive o por el botón nuevo de activar con la cuenta de Google.
 
 APP_VER → v2026.09.22-1
 
+## En el recuperatorio se ve la nota de la evaluación al lado (22/9/2026)
+
+Pedido de la dueña: cargar el resultado de un recuperatorio **sin ver cómo le había ido a
+cada uno en la evaluación, o si había estado ausente, es cargar a ciegas**. La pantalla del
+recu (`renderExamEntry` con `e.recuOf`) mostraba sólo la columna NOTA: ni la nota original,
+ni el "A" del que faltó. Para saber de dónde venía cada alumno había que salir, entrar a la
+evaluación, mirar, y volver.
+
+Ella primero propuso lo inverso (cargar la nota del recu desde la pantalla de la
+evaluación, donde ya se ve la columna RECUP. de sólo lectura) y enseguida lo corrigió:
+**la nota anterior se trae a la pantalla del recuperatorio, no al revés** — "en el
+recuperatorio metés las notas anteriores… que se vean ambas acá". La evaluación quedó
+igual que siempre, sin ningún cambio.
+
+Cómo quedó (`renderExamEntry` en `index.html`): cuando la pantalla **es** un recuperatorio
+(o sea, hay `parentEx`), se agrega una columna de **sólo lectura** a la izquierda de NOTA:
+
+- Encabezado **"EVALUACIÓN · <fecha corta>"**; si la evaluación está partida en notas y el
+  recu tiene las mismas, va una columna por nota (**"EVAL. VOCABULARY"**, **"EVAL.
+  GRAMMAR"**), alineada con la columna donde se carga esa misma parte.
+- Cada celda (`origCellHTML`) muestra la nota original con su color de siempre, **"A" en
+  rojo si faltó** a la evaluación (a mano o según Asistencia, vía `gradeAusenteEffective`
+  con la fecha del examen padre) y **"–"** si nunca se le cargó nada. Se arrastra también
+  la marquita de motivo (NQ / IA) con `motivoMark`.
+- Es **sólo lectura a propósito**: la nota de la evaluación se corrige en su propia
+  pantalla, no desde acá. El pie de página lo aclara.
+- CSS nuevo: `.eg-col-orig` (80 px en vez de 104, porque no tiene input ni botón "A", y
+  fondo apagado `#FAF5EF` para que se lea como referencia) y `.eg-head .eg-col-orig`.
+
+**Nada cambia para una evaluación común** (sin `recuOf`): `origHead`/`origCells` quedan
+vacíos y la grilla sale exactamente igual que antes — se verificó que el encabezado de una
+evaluación con recu sigue siendo `["NOTA","RECUP."]`.
+
+Probado con Playwright a 390px, con datos sembrados con las funciones de la app: una
+evaluación con un desaprobado (4), un 1 con motivo "No quiso", un ausente, un 6, un
+aprobado (9, que no entra al recu) y uno sin nota; en el recuperatorio la columna nueva
+mostró `4`, `1 NQ`, `A`, `6` y `–` respectivamente, el aprobado no apareció en la lista, y
+cargar una nota en el casillero de al lado siguió guardando bien. Sin overflow horizontal
+(la grilla mide 356 y entra justa). Con partes (Vocabulary/Grammar): salen las dos columnas
+`EVAL.` alineadas con las dos de carga, la parte ya aprobada sigue con "–" bloqueada, y la
+grilla scrollea al costado con la columna de nombres fija, como siempre. Cero errores de
+consola propios de la app.
+
+APP_VER → v2026.09.22-2
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
