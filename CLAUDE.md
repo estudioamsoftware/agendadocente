@@ -676,6 +676,69 @@ propios de la app.
 
 APP_VER → v2026.09.18-1
 
+### Una verificadora con el Google Drive LLENO: activar sin Drive, y no asustarla (22/9/2026)
+
+Caso real que le llegó a la dueña: sumó a una profe a la lista de verificadoras y, al
+conectar su Google Drive, **no tenía espacio libre**. Dos problemas distintos salieron de
+ahí, y los dos están arreglados:
+
+**1. Sin Drive no había forma de activar la versión completa regalada.** `licRefresh()`
+—la función que chequea `LIC_REGALADAS` y prende la versión completa— **sólo se disparaba
+desde `gdAfterAuth()`**, o sea únicamente al conectar Google Drive. Quien no puede o no
+quiere conectar Drive (Drive lleno, o simplemente no lo quiere usar) se quedaba sin
+ninguna puerta, aunque su mail estuviera cargado en la lista.
+Arreglado en `index.html`:
+- `licRefresh()` se partió en `licRefreshMail(mail)` (chequea cualquier mail y devuelve
+  si activó) + `licRefresh()` (la de siempre, con `gd.email`). Nada cambia para quien sí
+  conecta Drive.
+- El `<script type="module">` de Firebase del final ahora dispara un evento **`fb-user`**
+  con el mail cada vez que cambia la sesión de Google (`onAuthStateChanged`), y la app lo
+  escucha para correr `licRefreshMail()` sola. O sea: **iniciar sesión con Google desde
+  la app ya alcanza para activar una cuenta regalada, sin tocar Drive.**
+- Dos botones nuevos para llegar ahí, los dos llaman a `licActivarConGoogle()`:
+  en el cuadro "Versión completa" (`licPaywall()`), **"Ya me la regalaron · Activar con
+  mi cuenta de Google"**, arriba de los botones de pago; y en el menú ⋯ → Respaldo,
+  dentro del cartel de la prueba cerrada, **"¿No podés conectar Drive? Activala con tu
+  cuenta de Google"**. Si el mail no está en la lista, avisa con el mail que usó (para
+  que se dé cuenta si entró con la cuenta equivocada) y manda a escribir a
+  `estudioam.dev@gmail.com`.
+- 🚨 Ojo: esto **no** cobra nada ni abre ningún pago — es sólo el login de Google
+  (Firebase Auth) + el chequeo contra `LIC_REGALADAS`. Es el mismo login que ya usaba el
+  flujo de compra, nada más que ahora también sirve para activar.
+
+**2. El Drive lleno se veía como un error rojo sin salida.** Google rechaza **cualquier**
+subida cuando la cuenta está al tope, aunque el archivo de la Agenda pese unos pocos KB,
+y la app mostraba el genérico "Error en Drive · Reintentar" — que ahí no lleva a ningún
+lado, porque reintentar nunca va a funcionar hasta que libere espacio. Ahora
+`gdEsDriveLleno(e)` (mismo patrón que `gdEsErrorDeScopes`) detecta ese caso y:
+- el botón de Drive y el cartel dicen **"Tu Google Drive está lleno · tus datos están
+  guardados en este dispositivo"** (en amarillo de aviso, no en rojo de error);
+- tocándolo abre `dlgDriveLleno()`, que explica que **no se perdió nada**, cómo liberar
+  espacio (link directo a `drive.google.com/drive/quota`, vaciar la Papelera de Drive,
+  mirar Gmail y Google Fotos — los 15 GB gratis son compartidos entre los tres) y ofrece
+  el botón **"Guardar copia en un archivo"**, que no usa Drive;
+- la marca `gdDriveLleno` se apaga sola en cuanto una subida sale bien.
+- Se chequea `storage quota` a propósito, y no un "quota exceeded" pelado: ese otro
+  mensaje de Google es el límite de pedidos por minuto, que sí se arregla reintentando.
+
+Probado con Playwright a 390px: el evento `fb-user` con un mail de la lista prende la
+versión completa y avisa, con uno que no está no hace nada; el botón del paywall existe y
+no rompe si Firebase todavía no cargó; el mensaje real de Google ("The user's Drive
+storage quota has been exceeded") se detecta y el de límite de pedidos no; con la marca
+puesta el botón y el cartel muestran el texto nuevo y abren el cuadro de ayuda, sin la
+marca siguen diciendo "Error en Drive · Reintentar" igual que antes; el botón del menú
+Respaldo aparece y no desborda. Cero errores de consola, sin overflow horizontal.
+
+**Para sumar a la profe con OTRO mail** (el camino, por si se repite): (a) agregar ese
+mail a la lista **"Verificadores Agenda Docente"** de Play Console
+(`https://play.google.com/console/u/0/developers/6208089129841152998/app/4974565274805185721/tracks/internal-testing?tab=testers`),
+que es la misma lista que usan la prueba interna y la cerrada; (b) agregar el **hash
+SHA-256 del mail en minúsculas** a `LIC_REGALADAS` en `index.html` (nunca el mail en
+texto plano: el repo es público) y publicar; (c) que la profe entre con ese mail, por
+Drive o por el botón nuevo de activar con la cuenta de Google.
+
+APP_VER → v2026.09.22-1
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,

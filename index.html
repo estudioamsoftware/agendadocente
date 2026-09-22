@@ -832,6 +832,7 @@
       <div class="bkstamps" id="bkStamps"></div>
       <div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:10px 12px;margin:0 0 14px;font-size:12.5px;color:var(--ink);line-height:1.5;">
         ¿Participaste de la prueba cerrada de Agenda Docente? Conectá tu Google Drive con el mismo mail que usaste para probarla — la versión completa te queda activada sola, gratis.
+        <button class="btn subtle" id="bnActivarSinDrive" style="width:100%;margin-top:9px;font-size:12.5px;">¿No podés conectar Drive? Activala con tu cuenta de Google</button>
       </div>
       <button class="sheet-item" id="gdBtn">
         <span class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
@@ -905,7 +906,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.18-1';
+const APP_VER='v2026.09.22-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1744,16 +1745,62 @@ async function licHash(txt){
   const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
-// Se llama al conectar con Google: mira si esa cuenta tiene la versión completa.
-// Por ahora contra la lista de regaladas; más adelante lo contesta Firebase.
-async function licRefresh(){
-  if(!gd.email) return;
-  lic.email=gd.email;
+// Mira si ESE mail tiene la versión completa de regalo. Por ahora contra la
+// lista de regaladas; más adelante lo contesta Firebase. Devuelve true si la
+// activó (o si ya estaba activa para esa cuenta).
+async function licRefreshMail(mail){
+  if(!mail) return false;
+  lic.email=mail;
+  let ok=false;
   try{
-    const h=await licHash(gd.email.trim().toLowerCase());
-    if(LIC_REGALADAS.includes(h)) lic.plan="completa";
+    const h=await licHash(mail.trim().toLowerCase());
+    if(LIC_REGALADAS.includes(h)){ lic.plan="completa"; ok=true; }
   }catch(e){}
   licSave();
+  return ok;
+}
+// Se llama al conectar con Google Drive, con el mail de esa conexión.
+async function licRefresh(){ return licRefreshMail(gd.email); }
+
+// Segunda puerta de activación, SIN Drive de por medio (22/9/2026). Caso real:
+// una verificadora con el Google Drive lleno no podía conectar Drive, y como
+// licRefresh() sólo se disparaba ahí, se quedaba sin ninguna forma de activar
+// la versión completa que se le había regalado. Ahora, apenas inicia sesión con
+// Google desde "Mi suscripción", se chequea igual contra la misma lista.
+window.addEventListener("fb-user",async e=>{
+  const mail=(e.detail&&e.detail.email)||"";
+  if(!mail) return;
+  const yaEstaba=lic.plan==="completa";
+  const ok=await licRefreshMail(mail);
+  if(ok&&!yaEstaba){
+    if(typeof render==="function") render();
+    toastSuccess("✓ Listo, ya tenés la versión completa");
+  }
+});
+
+// Botón "Ya la tengo · Activar con mi cuenta de Google" del cuadro de compra.
+// No cobra nada: sólo inicia sesión con Google y chequea si a esa cuenta se le
+// regaló la versión completa (verificadoras de la prueba cerrada).
+async function licActivarConGoogle(btn){
+  if(typeof window.fbSignIn!=="function"){ toastError("Todavía se está cargando · probá de nuevo en unos segundos"); return; }
+  const antes=btn?btn.textContent:"";
+  if(btn){ btn.disabled=true; btn.textContent="Abriendo Google…"; }
+  try{
+    const user=await window.fbSignIn();
+    const mail=(user&&user.email)||"";
+    const ok=await licRefreshMail(mail);
+    if(ok){
+      closeDlg(); render();
+      toastSuccess("✓ Listo, ya tenés la versión completa");
+      return;
+    }
+    if(btn){ btn.disabled=false; btn.textContent=antes; }
+    // Si tiene un acceso regalado cargado en Firestore (no en la lista del
+    // código), llega solo por el listener de suscripción en unos segundos.
+    toastError("Esa cuenta"+(mail?" ("+mail+")":"")+" todavía no la tiene · escribinos a estudioam.dev@gmail.com");
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent=antes; }
+  }
 }
 
 /* ============ Compra (Google Play Billing) ============
@@ -2074,7 +2121,8 @@ async function licPaywall(){
           · Respaldo en tu Google Drive
         </div>
       </div>
-      <p style="font-size:12px;color:var(--faint);margin:0 0 12px;">¿Participaste de la prueba cerrada? Escribinos a <a href="mailto:estudioam.dev@gmail.com">estudioam.dev@gmail.com</a> antes de pagar — te toca un año gratis.</p>
+      <p style="font-size:12px;color:var(--faint);margin:0 0 10px;">¿Participaste de la prueba cerrada? Escribinos a <a href="mailto:estudioam.dev@gmail.com">estudioam.dev@gmail.com</a> antes de pagar — te toca un año gratis.</p>
+      <button class="btn subtle" id="lic_activar" style="width:100%;margin:0 0 14px;">Ya me la regalaron · Activar con mi cuenta de Google</button>
       ${enTWA?`<div id="lic_plans_area"><p style="font-size:13px;color:var(--muted);margin:0;">Buscando los planes disponibles…</p></div>`
       :`${mpAreaHTML()}
         <p style="font-size:12px;color:var(--faint);margin:10px 0 0;">¿Tenés Android? También podés <a href="${PLAY_STORE_URL}" target="_blank" rel="noopener">instalar la app de Play Store</a> y pagar desde ahí.</p>`}
@@ -2083,6 +2131,7 @@ async function licPaywall(){
       <button class="btn subtle" id="lic_cancel">Ahora no</button>
     </div>`);
   $("#lic_cancel").onclick=closeDlg;
+  const bAct=$("#lic_activar"); if(bAct) bAct.onclick=()=>licActivarConGoogle(bAct);
 
   if(!enTWA){
     wireMpArea();
@@ -8713,6 +8762,10 @@ $("#menuBtn").onclick=openMenu;
 const actAyudaBtn=$("#actAyuda"); if(actAyudaBtn) actAyudaBtn.onclick=promptAyuda;
 const actSuscripcionBtn=$("#actSuscripcion"); if(actSuscripcionBtn) actSuscripcionBtn.onclick=()=>{ closeMenu(); licPaywall(); };
 const actCompartirAppBtn=$("#actCompartirApp"); if(actCompartirAppBtn) actCompartirAppBtn.onclick=()=>{ closeMenu(); shareApp(); };
+// Activar la versión completa regalada sin pasar por Drive — para quien tiene
+// el Drive lleno o directamente no lo quiere conectar (22/9/2026).
+const bnActivarSinDriveBtn=$("#bnActivarSinDrive");
+if(bnActivarSinDriveBtn) bnActivarSinDriveBtn.onclick=()=>licActivarConGoogle(bnActivarSinDriveBtn);
 const actIrPreceptoriaBtn=$("#actIrPreceptoria"); if(actIrPreceptoriaBtn) actIrPreceptoriaBtn.onclick=()=>{ closeMenu(); go({screen:"preceptoria"}); };
 $("#reloadBtn").onclick=async()=>{
   // No alcanza con recargar la página: si quedó una versión vieja del
@@ -8910,6 +8963,18 @@ function gdClearToken(){ try{ sessionStorage.removeItem('gd_tok'); }catch(e){} }
 // eso, si Drive contesta este error puntual, se tira el token y se guarda la marca
 // para que la próxima reconexión sea completa (gdConnect) en vez de silenciosa.
 function gdEsErrorDeScopes(e){ return /insufficient authentication scopes/i.test((e&&e.message)||''); }
+// El Google Drive de la docente está lleno (caso real, 22/9/2026: una
+// verificadora conectó Drive y no entraba ni el archivo de datos, que pesa
+// unos pocos KB — Google rechaza CUALQUIER subida cuando la cuenta está al
+// tope). No es un error de la app ni de los permisos, y sobre todo no se
+// pierde nada: los datos viven en el dispositivo. Por eso se muestra aparte,
+// con una explicación de cómo liberar espacio, en vez del cartel rojo genérico
+// de "Error en Drive · Reintentar", que ahí no lleva a ningún lado.
+// Ojo: se chequea "storage quota" a propósito, y no un "quota exceeded" suelto
+// — ese otro mensaje de Google es el límite de pedidos por minuto, que sí se
+// arregla reintentando.
+function gdEsDriveLleno(e){ return /storage ?quota/i.test((e&&e.message)||''); }
+let gdDriveLleno=false;
 function gdForzarConsentimiento(){ gdClearToken(); gd.tok=null; try{ localStorage.setItem('gd_scope_err','1'); }catch(e){} }
 // Pide un token nuevo en silencio (sin popup de consentimiento) y resuelve true/false,
 // sin disparar gdAfterAuth() — así quien la llama decide qué hacer después.
@@ -9042,7 +9107,9 @@ async function gdPull(){
       }
     } else { toastSuccess('✓ Drive conectado','#8C4108'); }
     gd.st='ok';
-  }catch(e){ gd.st='error'; console.error('gdPull',e); if(gdEsErrorDeScopes(e)) gdForzarConsentimiento(); toastError('Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
+  }catch(e){ gd.st='error'; console.error('gdPull',e); if(gdEsErrorDeScopes(e)) gdForzarConsentimiento();
+    if(gdEsDriveLleno(e)){ gdDriveLleno=true; toastError('Tu Google Drive está lleno · tus datos están guardados en este dispositivo'); }
+    else toastError('Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
 }
 
@@ -9073,6 +9140,7 @@ async function gdPushNow(){
     const d=await r.json(); if(d.id) gd.fid=d.id;
   }
   gd.st='ok';
+  gdDriveLleno=false;
   state.lastSyncedAt=state.lastModified||Date.now();
   markStamp(LAST_DRIVE_PUSH_KEY);
   try{ localStorage.setItem(KEY,JSON.stringify(state)); }catch(e){}
@@ -9117,9 +9185,13 @@ async function gdVaciarCola(){
     console.error('gdPush bg',e);
     gd.st=estamosSinConexion()?'ok':'error';
     if(gdEsErrorDeScopes(e)) gdForzarConsentimiento();
+    if(gdEsDriveLleno(e)) gdDriveLleno=true;
     // El cartel de error se muestra sólo la primera vez de una racha: repetirlo
     // en cada reintento tapa la pantalla y no agrega información.
-    if(gdPushFallos===1&&!estamosSinConexion()) toastError('No se guardó en Drive: '+(e&&e.message?e.message:'')+' — tus datos sí quedaron en este dispositivo.');
+    if(gdPushFallos===1&&!estamosSinConexion()){
+      if(gdDriveLleno) toastError('Tu Google Drive está lleno · tus datos sí quedaron en este dispositivo');
+      else toastError('No se guardó en Drive: '+(e&&e.message?e.message:'')+' — tus datos sí quedaron en este dispositivo.');
+    }
   }finally{
     gdPushEnVuelo=false;
     gdUI();
@@ -9224,6 +9296,28 @@ function moveDocToTrash(g,cat,fid){ const docs=ensureDocs(g); const f=docs[cat].
 function restoreDocFromTrash(g,fid){ if(!g.docsTrash) return; const f=g.docsTrash.find(x=>x.id===fid); if(!f) return; ensureDocs(g); g.docs[f.cat].push({id:f.id,name:f.name,url:f.url}); g.docsTrash=g.docsTrash.filter(x=>x.id!==fid); save(); }
 function emptyDocTrash(g,fid){ if(!g.docsTrash) return; g.docsTrash=g.docsTrash.filter(x=>x.id!==fid); if(fid===undefined) g.docsTrash=[]; save(); }
 
+// Qué hacer cuando el Drive de la docente está lleno. Lo primero y más
+// importante es bajarle el susto: no se perdió nada.
+function dlgDriveLleno(){
+  openDlg("Tu Google Drive está lleno",`<div style="font-size:14.5px;line-height:1.6;color:var(--ink);">
+      <p style="margin:0 0 12px;"><strong>No se perdió nada.</strong> La Agenda guarda todo en este dispositivo. Lo único que no pudo hacer es subir la copia de respaldo a tu Drive, porque tu cuenta de Google no tiene lugar libre.</p>
+      <p style="margin:0 0 6px;font-weight:600;">Para liberar espacio (son 15 GB gratis entre Drive, Gmail y Google Fotos):</p>
+      <div style="font-size:13.5px;color:var(--muted);line-height:1.7;margin:0 0 12px;">
+        1. Entrá a <a href="https://drive.google.com/drive/quota" target="_blank" rel="noopener">drive.google.com/drive/quota</a> — te ordena tus archivos del más pesado al más liviano.<br>
+        2. Borrá los que no uses (videos y fotos son los que más pesan).<br>
+        3. Vaciá la <strong>Papelera</strong> de Drive: lo borrado sigue ocupando 30 días si no la vaciás.<br>
+        4. Mirá también Gmail (mails viejos con archivos adjuntos) y Google Fotos.
+      </div>
+      <p style="margin:0;font-size:13px;color:var(--muted);">Mientras tanto podés guardar una copia en el propio teléfono con <strong>Guardar copia en un archivo</strong>, acá abajo en Respaldo. No usa Drive.</p>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn subtle" id="gdlleno_close">Cerrar</button>
+      <button class="btn" id="gdlleno_export">Guardar copia en un archivo</button>
+    </div>`);
+  $("#gdlleno_close").onclick=closeDlg;
+  $("#gdlleno_export").onclick=()=>{ closeDlg(); exportToFile(); };
+}
+
 function gdUI(){
   const el=$("#gdBtn"); if(!el) return;
   const wasConnected=localStorage.getItem('gd_was_connected')==='1';
@@ -9243,11 +9337,12 @@ function gdUI(){
     bg='var(--canc-bg)'; ink='var(--canc-ink)'; rowBg='var(--canc-bg)';
     action=gdDisconnect;
   } else if(on){
-    label=syncing?'Sincronizando con Drive…':(err?'Error en Drive · Reintentar':(pendiente?'Subiendo a Drive…':'✓ Drive conectado'));
-    sub=err?'Tocá para reintentar':(gd.email||'Tocá para desconectar');
+    const lleno=err&&gdDriveLleno;
+    label=syncing?'Sincronizando con Drive…':(lleno?'Tu Google Drive está lleno':(err?'Error en Drive · Reintentar':(pendiente?'Subiendo a Drive…':'✓ Drive conectado')));
+    sub=lleno?'Tocá para ver cómo liberar espacio':(err?'Tocá para reintentar':(gd.email||'Tocá para desconectar'));
     bg=err?'var(--absent-tint)':'#A9500A'; ink=err?'var(--absent-ink)':'#fff';
     rowBg=err?'var(--absent-tint)':'#FCEBDA';
-    action=err?()=>{gd.st='idle';gdAfterAuth();}:gdDisconnect;
+    action=lleno?dlgDriveLleno:(err?()=>{gd.st='idle';gdAfterAuth();}:gdDisconnect);
   } else if(needsReconnect&&needsFullConsent){
     label='Falta un permiso de Drive'; sub='Tocá y aceptá todos los permisos que pide Google';
     bg='var(--absent-tint)'; ink='var(--absent-ink)'; rowBg=undefined;
@@ -9285,6 +9380,12 @@ function updateGdBanner(needsReconnect,hasError,needsFullConsent){
       <span class="gdb-txt">Reconectar con Drive<small>Tocá acá para sincronizar tus datos</small></span>
       <svg class="gdb-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>`;
     b.onclick=()=>{ gd.st='syncing'; gdUI(); gdReconnect(); };
+  } else if(hasError&&gdDriveLleno){
+    b.style.display='flex'; b.className='gd-banner warn';
+    b.innerHTML=`<svg class="gdb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      <span class="gdb-txt">Tu Google Drive está lleno<small>Tus datos están guardados en este dispositivo · tocá para ver qué hacer</small></span>
+      <svg class="gdb-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    b.onclick=dlgDriveLleno;
   } else if(hasError){
     b.style.display='flex'; b.className='gd-banner err';
     b.innerHTML=`<svg class="gdb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
@@ -9310,7 +9411,9 @@ async function gdSyncNow(){
   if(!gd.tok){ toastSuccess('Conectá Drive primero','#8C4108'); return; }
   toastSuccess('Actualizando Drive…','#8C4108');
   try{ await gdPushNow(); gd.st='ok'; flashSuccess("#actSyncNow","#FCEBDA"); toastSuccess('✓ Drive actualizado','#8C4108'); }
-  catch(e){ gd.st='error'; console.error('gdSyncNow',e); if(gdEsErrorDeScopes(e)) gdForzarConsentimiento(); flashError("#actSyncNow"); toastError('❌ Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
+  catch(e){ gd.st='error'; console.error('gdSyncNow',e); if(gdEsErrorDeScopes(e)) gdForzarConsentimiento(); flashError("#actSyncNow");
+    if(gdEsDriveLleno(e)){ gdDriveLleno=true; dlgDriveLleno(); }
+    else toastError('❌ Error en Drive: '+(e&&e.message?e.message:'desconocido')); }
   gdUI();
 }
 $("#actSyncNow").onclick=gdSyncNow;
@@ -9354,6 +9457,9 @@ if("serviceWorker" in navigator){
 
   onAuthStateChanged(fbAuth, (user) => {
     window.fbUser = user || null;
+    // La app usa este aviso para activar sola las cuentas con la versión
+    // completa de regalo, sin pasar por Google Drive (ver licRefreshMail).
+    window.dispatchEvent(new CustomEvent("fb-user", { detail: { email: (user && user.email) || null } }));
     if (unsubSubscription) { unsubSubscription(); unsubSubscription = null; }
     if (!user) { applySubscriptionStatus("inactive"); return; }
     unsubSubscription = onSnapshot(doc(fbDb, "subscriptions", user.uid), (snap) => {
