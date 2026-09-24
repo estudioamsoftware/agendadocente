@@ -739,6 +739,13 @@ Drive o por el botón nuevo de activar con la cuenta de Google.
 
 APP_VER → v2026.09.22-1
 
+**El cartel verde de la prueba cerrada se esconde con Drive conectado (24/9/2026).** Pedido
+de la dueña: le aparecía igual teniendo Drive conectado, y tocó el botón sin saber para
+qué era. Ahora `gdUI()` le pone `display:none` a `#bkPruebaCerrada` si hay token o
+`gd_was_connected==='1'` (al conectar, `gdAfterAuth()` ya chequea `LIC_REGALADAS` solo, así
+que el cartel no le aporta nada). Vuelve a aparecer si se desconecta Drive a mano.
+APP_VER → v2026.09.24-1
+
 ## En el recuperatorio se ve la nota de la evaluación al lado (22/9/2026)
 
 Pedido de la dueña: cargar el resultado de un recuperatorio **sin ver cómo le había ido a

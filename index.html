@@ -844,7 +844,7 @@
       <h3>Respaldo</h3>
       <p class="sd">Tus datos se guardan solos en tu Google Drive, carpeta "Agenda Docente". Podés descargar una copia extra cuando quieras.</p>
       <div class="bkstamps" id="bkStamps"></div>
-      <div style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:10px 12px;margin:0 0 14px;font-size:12.5px;color:var(--ink);line-height:1.5;">
+      <div id="bkPruebaCerrada" style="background:var(--primary-tint);border:1px solid var(--primary-bd);border-radius:11px;padding:10px 12px;margin:0 0 14px;font-size:12.5px;color:var(--ink);line-height:1.5;">
         ¿Participaste de la prueba cerrada de Agenda Docente? Conectá tu Google Drive con el mismo mail que usaste para probarla — la versión completa te queda activada sola, gratis.
         <button class="btn subtle" id="bnActivarSinDrive" style="width:100%;margin-top:9px;font-size:12.5px;">¿No podés conectar Drive? Activala con tu cuenta de Google</button>
       </div>
@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.22-6';
+const APP_VER='v2026.09.24-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -9407,6 +9407,9 @@ function gdUI(){
   const needsFullConsent=localStorage.getItem('gd_scope_err')==='1';
   const on=!!(gd.tok); const err=gd.st==='error'; const syncing=gd.st==='syncing';
   const needsReconnect=wasConnected&&!on&&!syncing&&!err;
+  // El cartel de la prueba cerrada sólo le sirve a quien todavía no conectó
+  // Drive: al conectar, gdAfterAuth() ya chequea LIC_REGALADAS solo.
+  const bkPC=$("#bkPruebaCerrada"); if(bkPC) bkPC.style.display=(on||wasConnected)?"none":"";
   // Sin señal no es un error: los datos están guardados en el dispositivo y suben
   // solos cuando vuelva. Decirlo así evita el susto de un cartel rojo en el aula,
   // donde muchas veces no hay internet.
