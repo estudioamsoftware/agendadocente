@@ -746,6 +746,34 @@ qué era. Ahora `gdUI()` le pone `display:none` a `#bkPruebaCerrada` si hay toke
 que el cartel no le aporta nada). Vuelve a aparecer si se desconecta Drive a mano.
 APP_VER → v2026.09.24-1
 
+## Un curso que empieza cuando termina otro desaparecía del horario de Inicio (25/9/2026)
+
+Reporte de una profe: un curso de 9:30 a 10:30 aparecía bien, pero otro de 10:30 a 11:30
+el mismo día **no aparecía en ningún lado** (tampoco con 10 minutos de separación).
+Causa real en `renderScheduleTable()`: cada curso ocupa filas de hora entera (9:30–10:30
+tapa las filas 9 y 10), y la grilla **salteaba la fila ya tapada** por el `rowspan` del
+anterior — el curso que "empezaba" en la fila 10 nunca se dibujaba. No era sólo el caso
+de preceptoría (el `.find()`→`.filter()` del 14/9 sólo cubría cursos que empezaban en la
+misma hora exacta).
+
+Arreglado armando **racimos** por día (`clustersByDay`): los cursos cuyas filas se pisan
+van juntos en una sola celda alta, cada uno a su altura real en minutos. Dentro del
+racimo, sólo se reparten el ancho los que se pisan **de verdad en minutos**
+(`c.lane`/`c.lanes`); uno a continuación del otro (10:30 termina / 10:30 empieza) queda
+cada uno a lo ancho, uno debajo del otro. Un curso solo en su celda sale con el `style`
+igual que antes.
+
+**Y el lápiz del curso ahora edita días y horario** (`promptRenameGroup()`, título
+"Editar curso"): antes sólo nombre y color, y el horario estaba escondido en "Escuela y
+horarios" — la dueña no encontraba cómo corregirlo.
+
+Probado con Playwright a 390px: 9:30–10:30 + 10:30–11:30 + 10:40–11:40 el mismo lunes →
+aparecen los tres (el primero a lo ancho, los dos que se pisan a medias); dos cursos
+iguales 8 a 9 siguen repartiéndose el ancho; el diálogo de editar trae el horario y los
+días cargados y guarda los cambios. Sin overflow, cero errores de consola.
+
+APP_VER → v2026.09.25-1
+
 ## En el recuperatorio se ve la nota de la evaluación al lado (22/9/2026)
 
 Pedido de la dueña: cargar el resultado de un recuperatorio **sin ver cómo le había ido a
