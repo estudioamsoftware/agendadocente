@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.24-1';
+const APP_VER='v2026.09.25-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3483,6 +3483,36 @@ function renderScheduleTable(activeGroups){
     });
   });
   
+  // Agrupar los cursos de cada día en "racimos": cursos cuyas horas de la grilla se
+  // pisan (aunque sea en parte) van juntos en UNA sola celda alta. Antes cada celda
+  // sólo miraba los cursos que empezaban en esa hora exacta, y la hora ya tapada por el
+  // rowspan del curso anterior se salteaba entera: un curso de 9:30 a 10:30 ocupa las
+  // filas 9 y 10, así que otro de 10:30 a 11:30 (o de 10:40) "empezaba" en una fila ya
+  // tapada y no se dibujaba nunca — desaparecía de Inicio (reportado por una profe el
+  // 25/9/2026). Ahora los dos van en la misma celda, cada uno a su altura real.
+  const clustersByDay={};
+  DIAS_SEMANA.forEach(([dow,])=>{
+    const list=coursesByDay[dow].slice().sort((a,b)=>a.startHourC-b.startHourC||a.hor.startMin-b.hor.startMin);
+    const clusters=[];
+    list.forEach(c=>{
+      const last=clusters[clusters.length-1];
+      if(last&&c.startHourC<last.endHourC){ last.items.push(c); last.endHourC=Math.max(last.endHourC,c.startHourC+c.rowspan); }
+      else clusters.push({startHourC:c.startHourC,endHourC:c.startHourC+c.rowspan,items:[c]});
+    });
+    // Dentro de un racimo, sólo se reparten el ancho los cursos que se pisan de verdad
+    // en minutos (ej.: dos divisiones a la misma hora). Uno a continuación del otro
+    // (10:30 termina / 10:30 empieza) queda cada uno a lo ancho, uno debajo del otro.
+    clusters.forEach(cl=>{
+      const grupos=[];
+      cl.items.forEach(c=>{
+        const gr=grupos.find(x=>x.some(o=>c.hor.startMin<o.hor.endMin&&o.hor.startMin<c.hor.endMin));
+        if(gr) gr.push(c); else grupos.push([c]);
+      });
+      grupos.forEach(gr=>gr.forEach((c,i)=>{ c.lane=i; c.lanes=gr.length; }));
+    });
+    clustersByDay[dow]=clusters;
+  });
+
   // Rastrear qué celdas ya están renderizadas
   const rendered={};
   DIAS_SEMANA.forEach(([dow,])=>{ rendered[dow]=[]; });
@@ -3502,25 +3532,23 @@ function renderScheduleTable(activeGroups){
         return;
       }
       
-      // Buscar TODOS los cursos que empiezan en esta hora — puede haber más de uno con
-      // el mismo día y horario (típico de una preceptora con 2 o 3 divisiones en el
-      // mismo turno). Antes acá había un .find() que se quedaba con el primero nomás:
-      // el resto quedaba sin ningún bloque en la grilla, y como Inicio no tiene ninguna
-      // otra lista de cursos activos, ese curso quedaba invisible — ni se veía, ni se
-      // podía tocar para entrar (encontrado el 14/9/2026 probando el caso de uso de
-      // preceptoría, pero le puede pasar a cualquiera con dos cursos a la misma hora).
-      const coursesHere=coursesByDay[dow].filter(c=>c.startHourC===h);
+      // Un racimo que arranca en esta hora (ver clustersByDay arriba): todos sus cursos
+      // van en esta misma celda, cada uno a su altura.
+      const cluster=clustersByDay[dow].find(cl=>cl.startHourC===h);
+      const coursesHere=cluster?cluster.items:[];
 
       if(coursesHere.length){
         // La celda tiene que abarcar el más largo de los que empiezan acá — los más
         // cortos ocupan sólo su parte de arriba dentro de esa misma celda alta.
-        const maxRowspan=Math.max(...coursesHere.map(c=>c.rowspan));
+        let maxRowspan=cluster.endHourC-h;
+        if(h+maxRowspan-1>endHour) maxRowspan=endHour-h+1;
+        if(maxRowspan<1) maxRowspan=1;
         const celdaIniMin=h*60;
         const celdaTotalMin=maxRowspan*60;
-        const n=coursesHere.length;
         const GAP=4; // px entre bloques cuando hay más de uno
-        const blocksHTML=coursesHere.map((courseHere,idx)=>{
-          const {g,hor,rowspan,startSnap,endSnap}=courseHere;
+        const blocksHTML=coursesHere.map(courseHere=>{
+          const {g,hor,startSnap,endSnap}=courseHere;
+          const n=courseHere.lanes, idx=courseHere.lane;
           const col=colorOf(g);
           const horarioStr=`${String(Math.floor(hor.startMin/60)).padStart(2,"0")}:${String(hor.startMin%60).padStart(2,"0")} - ${String(Math.floor(hor.endMin/60)).padStart(2,"0")}:${String(hor.endMin%60).padStart(2,"0")}`;
 
@@ -3576,7 +3604,7 @@ function renderScheduleTable(activeGroups){
         row+=`<td rowspan="${maxRowspan}"><div class="schedule-slot">${blocksHTML}</div></td>`;
 
         // Marcar todas las horas que ocupa CADA curso de este horario
-        coursesHere.forEach(c=>{ for(let i=0;i<c.rowspan;i++) rendered[dow].push(c.startHourC+i); });
+        for(let i=0;i<maxRowspan;i++) rendered[dow].push(h+i);
       } else {
         row+=`<td><div class="schedule-slot"></div></td>`;
       }
@@ -4510,7 +4538,7 @@ function groupHeadHTML(g,backBtnHTML){
   return `<div class="ghead2">
     <div class="gh-top"><h1>${titleTxt}</h1>
       <div class="gh-top-right">
-        <button class="titleEdit" id="renameHdr" aria-label="Editar nombre" style="margin-left:0;">${I.pencil}</button>
+        <button class="titleEdit" id="renameHdr" aria-label="Editar curso" style="margin-left:0;">${I.pencil}</button>
         ${backBtnHTML||""}
         <div class="undoredo" id="undoRedoSlot"></div>
       </div></div>
@@ -7688,8 +7716,16 @@ function promptRenameGroup(g){
   const cur=((g.color||0)%PAL.length+PAL.length)%PAL.length;
   const swatches=PAL.map((p,i)=>`<button class="swatch ${cur===i?"on":""}" data-color="${i}" style="background:${p.solid};" aria-label="Color ${i+1}"></button>`).join("");
   const curTipo=g.tipo==="preceptoria"?"preceptoria":"materia";
-  openDlg("Editar nombre del curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" maxlength="20" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
+  // Días y horario también se editan acá (25/9/2026): antes este lápiz sólo dejaba
+  // cambiar nombre/color, y el horario estaba escondido en "Escuela y horarios" — la
+  // dueña no encontraba cómo corregir el horario de un curso recién agregado.
+  let selDias=(g.diasClase||[]).slice();
+  openDlg("Editar curso",`<div class="dlg-field"><label>Año y curso</label><input id="rg_name" maxlength="20" value="${esc(g.name)}" autocomplete="off" enterkeyhint="done"></div>
     <div class="dlg-field"><label>Color</label><div class="swatches" id="rg_swatches">${swatches}</div></div>
+    <div class="dlg-field"><label>Días y horario</label>
+      <div class="daypicker" id="rg_dayPicker">${["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map((l,i)=>`<button type="button" class="daybtn ${selDias.includes(i)?"on":""}" data-dow="${i}">${l}</button>`).join("")}</div>
+      <input id="rg_horario" class="sched-inp" placeholder="Ej: 8:00 a 9:30" style="margin-top:8px;" value="${esc(g.horario||"")}" autocomplete="off">
+      <div id="rg_horario_warn" style="display:none;font-size:11.5px;color:var(--absent-ink);margin-top:4px;">Ese formato no lo reconozco — probá algo como "18 a 19" o "18:00 a 19:00".</div></div>
     <div class="dlg-field"><label>Tipo de curso</label>
       <div class="chiprow" id="rg_tipo_row">
         <button type="button" class="mchip ${curTipo==="materia"?"on":""}" data-tipo="materia">📚 Materia</button>
@@ -7700,9 +7736,13 @@ function promptRenameGroup(g){
     <div class="dlg-actions"><button class="btn subtle" id="rg_cancel">Cancelar</button><button class="btn" id="rg_ok">Guardar</button></div>`);
   const inp=$("#rg_name"); setTimeout(()=>{inp.focus();inp.select();},60);
   let selColor=cur; let selTipo=curTipo;
+  $("#rg_dayPicker").querySelectorAll("[data-dow]").forEach(b=>b.onclick=()=>{ const d=parseInt(b.dataset.dow,10); if(selDias.includes(d)) selDias=selDias.filter(x=>x!==d); else selDias.push(d); b.classList.toggle("on",selDias.includes(d)); });
+  const horInp=$("#rg_horario"); const horWarn=$("#rg_horario_warn");
+  const chkHor=()=>{ const v=horInp.value.trim(); horWarn.style.display=(v&&!parseHorario(v))?"block":"none"; };
+  horInp.addEventListener("input",chkHor); chkHor();
   $("#rg_swatches").querySelectorAll("[data-color]").forEach(b=>b.onclick=()=>{ selColor=parseInt(b.dataset.color,10); $("#rg_swatches").querySelectorAll(".swatch").forEach(x=>x.classList.remove("on")); b.classList.add("on"); });
   $("#rg_tipo_row").querySelectorAll("[data-tipo]").forEach(b=>b.onclick=()=>{ selTipo=b.dataset.tipo; $("#rg_tipo_row").querySelectorAll(".mchip").forEach(x=>x.classList.remove("on")); b.classList.add("on"); });
-  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} renameGroup(g,v); g.color=selColor; if(selTipo==="preceptoria") g.tipo="preceptoria"; else delete g.tipo; save(); closeDlg(); render(); };
+  const ok=()=>{ const v=inp.value.trim(); if(!v){inp.focus();return;} renameGroup(g,v); g.color=selColor; g.diasClase=selDias.slice().sort(); g.horario=horInp.value.trim(); if(selTipo==="preceptoria") g.tipo="preceptoria"; else delete g.tipo; save(); closeDlg(); render(); };
   $("#rg_ok").onclick=ok; inp.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); }); $("#rg_cancel").onclick=closeDlg;
 }
 function promptVocabulario(g,k,id){
