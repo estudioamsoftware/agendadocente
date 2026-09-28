@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.25-1';
+const APP_VER='v2026.09.28-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -9138,6 +9138,18 @@ function gdInit(){
       localStorage.removeItem('gd_scope_err');
       if(gd._pendingResolve){ const r=gd._pendingResolve; gd._pendingResolve=null; r(true); return; }
       gdAfterAuth();
+    },
+    // Sin esto, si la ventana de Google no llega a abrirse (bloqueada por el
+    // navegador/la app instalada) o se cierra antes de terminar, Google no
+    // avisa nada por "callback": el toque en "Conectar" parecía no hacer
+    // nada y el botón podía quedar trabado en "Sincronizando…".
+    error_callback(err){
+      if(gd._pendingResolve){ const r=gd._pendingResolve; gd._pendingResolve=null; r(false); return; }
+      gd.st='idle'; gdUI();
+      const t=err&&err.type;
+      if(t==='popup_failed_to_open') gdDlgPopupFallo();
+      else if(t==='popup_closed') toastError('Se cerró la ventana de Google antes de terminar. Tocá "Conectar" de nuevo y aceptá los permisos.');
+      else toastError('No se pudo abrir Google'+(t?' ('+t+')':''));
     }
   });
   const savedEmail=localStorage.getItem('gd_email'); if(savedEmail) gd.email=savedEmail;
@@ -9153,6 +9165,17 @@ function gdInit(){
   // docente lo toque cuando quiera.
 }
 
+function gdDlgPopupFallo(){
+  openDlg('No se abrió la ventana de Google',`
+    <p style="margin:0 0 10px">Para conectar Drive, Google abre una ventanita aparte, y este dispositivo no la dejó abrir. <b>Tus datos no se perdieron</b>: siguen guardados acá.</p>
+    <p style="margin:0 0 10px">Probá así:</p>
+    <ol style="margin:0 0 12px;padding-left:20px">
+      <li>Cerrá la app del todo y volvé a abrirla. Tocá "Conectar con Google Drive" otra vez.</li>
+      <li>Si sigue igual, abrí la Agenda desde <b>Chrome</b> (no desde la app instalada), permití las ventanas emergentes si Chrome lo pregunta, y conectá Drive desde ahí.</li>
+    </ol>
+    <button class="btn" id="gdpop_ok" style="width:100%">Entendido</button>`);
+  $("#gdpop_ok").onclick=closeDlg;
+}
 // select_account: sin esto Google usa la cuenta con la que ya esta abierto el navegador
 // y no deja elegir otra. Con esto siempre muestra el selector de cuentas.
 function gdConnect(){ gd.tc?gd.tc.requestAccessToken({prompt:'select_account consent'}):toastSuccess('Cargando Google…','#8C4108'); }
