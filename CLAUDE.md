@@ -760,8 +760,11 @@ toque en "Conectar" no mostraba nada, y en "Reconectar" el botón podía quedar 
 - `popup_closed` → cartel "Se cerró la ventana de Google antes de terminar…".
 - Si había un refresco silencioso esperando (`gd._pendingResolve`), se resuelve en `false`
   en vez de esperar los 15 s del timeout.
-Probado con Playwright simulando los dos errores. **No confirmado todavía en la tablet** —
-falta que la dueña diga qué mensaje le aparece ahora.
+Probado con Playwright simulando los dos errores. **Confirmado por la dueña (28/9/2026): en
+la tablet conectó.** Comentó que antes "era como si la hubiera abierto de la página web en
+vez de la app instalada" — no se llegó a saber la causa exacta. Si se repite, preguntar
+primero desde dónde abrió la Agenda (ícono de la app o link en Chrome) y qué mensaje sale
+al tocar "Conectar".
 
 APP_VER → v2026.09.28-1
 
