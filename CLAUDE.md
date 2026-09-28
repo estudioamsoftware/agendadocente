@@ -513,6 +513,12 @@ puesta, el botón y el cartel muestran el mensaje nuevo y tocarlos llama a `gdCo
 la marca, siguen mostrando "Reconectar con Drive" y llamando a `gdReconnect`, igual que
 antes del cambio. **Confirmado por la dueña que a la profe ya le funcionó** (16/9/2026).
 
+**Se repitió el 28/9/2026 con otra profe** (Respaldo mostraba Drive "sin conectar"): era lo
+mismo, faltaba aceptar los permisos. Se resolvió tocando "Conectar con Google Drive" y
+**tildando todos los permisos** en la pantalla de Google. Si vuelve a pasar, eso es lo
+primero que hay que indicar. Ojo: el botón "¿No podés conectar Drive? Activala con tu cuenta
+de Google" **no conecta Drive**, sólo activa la versión completa regalada.
+
 APP_VER → v2026.09.16-1
 
 ### "¿Te gusta la Agenda? Compartila con otro/a docente" (16/9/2026)
