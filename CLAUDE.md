@@ -974,6 +974,17 @@ encontró probando esto; va el nombre pelado.
 
 APP_VER → v2026.09.22-4
 
+## Asistencia: los "tarde" cuentan dentro de Presentes (28/9/2026)
+
+Corrección de la dueña: "el presente tarde es presente también". El contador de abajo de
+la lista de Asistencia (`tally()` en `renderAsist`) tenía tres pills (Presentes / Tarde /
+Ausentes) y **los tarde no sumaban a Presentes**. Ahora hay sólo dos pills: **Presentes**
+(incluye a los que llegaron tarde, con "(N tarde)" al lado si hay alguno) y **Ausentes**.
+Sólo cambió ese conteo en pantalla: el botón "T" sigue igual, y en las estadísticas la
+llegada tarde sigue valiendo media falta (`presEq` en el resumen), no se tocó.
+
+APP_VER → v2026.09.28-2
+
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
 Pedido que le llegó a la dueña de una preceptora real: necesita cargar, por alumno, DNI,
