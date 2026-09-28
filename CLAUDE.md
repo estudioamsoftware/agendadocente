@@ -519,6 +519,23 @@ mismo, faltaba aceptar los permisos. Se resolvió tocando "Conectar con Google D
 primero que hay que indicar. Ojo: el botón "¿No podés conectar Drive? Activala con tu cuenta
 de Google" **no conecta Drive**, sólo activa la versión completa regalada.
 
+**Y como ya iban dos profes, la app ahora lo explica sola (28/9/2026).** `gdConnect()`
+(`index.html`) ya no abre la pantalla de Google de una: primero muestra un cuadro
+"Conectar con Google Drive" que pide elegir la cuenta, **tildar todos los permisos** y
+tocar Continuar, y aclara que la Agenda sólo ve sus propios archivos de Drive. Recién con
+"Entendido, conectar" llama a `gdConnectGoogle()`, que es la función vieja con otro
+nombre. Como ese botón lo toca la docente, la ventana de Google sigue abriéndose por un
+gesto suyo y el navegador no la bloquea. Si alguien llamó con `gd.st='syncing'` ya puesto
+(el cartel de "Falta un permiso"), se vuelve a `idle` mientras el cuadro está abierto, y a
+`syncing` recién al confirmar. Así cerrarlo con "Ahora no", volver o tocar afuera no deja
+el botón trabado en "Sincronizando…". La reconexión silenciosa (`gdReconnect`) no pasa
+por este cuadro: no muestra ninguna pantalla de Google.
+Probado con Playwright a 390px: el cuadro sale y no pide nada a Google hasta confirmar;
+"Entendido" pide el token una vez y cierra el cuadro; "Ahora no" no lo pide y deja
+`gd.st` en `idle`. Sin overflow y sin errores de consola.
+
+APP_VER → v2026.09.28-5
+
 APP_VER → v2026.09.16-1
 
 ### "¿Te gusta la Agenda? Compartila con otro/a docente" (16/9/2026)
