@@ -765,6 +765,14 @@ la tablet conectó.** Comentó que antes "era como si la hubiera abierto de la p
 vez de la app instalada" — no se llegó a saber la causa exacta. Si se repite, preguntar
 primero desde dónde abrió la Agenda (ícono de la app o link en Chrome) y qué mensaje sale
 al tocar "Conectar".
+Más detalle que dio después: la abrió **desde el mismo ícono de siempre**. Le apareció el
+cartel "¿No podés conectar Drive?…" (o sea, Drive figuraba desconectado) y **abajo de todo
+un aviso para instalarla**. Ese aviso de instalar lo pone Chrome, no la app, y sólo sale
+cuando la página corre en una pestaña de navegador. O sea que ese día **la app instalada
+abrió en modo navegador** en vez de como app. Esa es la caída de una TWA cuando Android no
+logra verificar el dominio al arrancar (sin señal justo en ese momento, Chrome recién
+actualizado, etc.). Cerrar y volver a abrir desde el mismo ícono lo arregló solo. Si se
+repite seguido, revisar `assetlinks.json` (las dos huellas, ver "Datos confirmados").
 
 APP_VER → v2026.09.28-1
 
