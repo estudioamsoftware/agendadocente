@@ -746,6 +746,25 @@ qué era. Ahora `gdUI()` le pone `display:none` a `#bkPruebaCerrada` si hay toke
 que el cartel no le aporta nada). Vuelve a aparecer si se desconecta Drive a mano.
 APP_VER → v2026.09.24-1
 
+## "No me conecta la tablet con Drive": tocar Conectar no hacía nada (28/9/2026)
+
+Reporte de la dueña desde su tablet (Respaldo mostraba "Conectar con Google Drive", con la
+última subida a Drive del 17/9). Bug real en `gdInit()` (`index.html`): el
+`initTokenClient` de Google no tenía `error_callback`. Cuando la ventanita de Google **no
+llega a abrirse** (bloqueada por el navegador o por la app instalada) o **se cierra antes
+de terminar**, Google avisa SÓLO por `error_callback`, nunca por `callback` — así que el
+toque en "Conectar" no mostraba nada, y en "Reconectar" el botón podía quedar trabado en
+"Sincronizando…". Ahora:
+- `popup_failed_to_open` → abre `gdDlgPopupFallo()`: explica que los datos no se
+  perdieron, y que pruebe cerrar y reabrir la app, o conectar desde Chrome.
+- `popup_closed` → cartel "Se cerró la ventana de Google antes de terminar…".
+- Si había un refresco silencioso esperando (`gd._pendingResolve`), se resuelve en `false`
+  en vez de esperar los 15 s del timeout.
+Probado con Playwright simulando los dos errores. **No confirmado todavía en la tablet** —
+falta que la dueña diga qué mensaje le aparece ahora.
+
+APP_VER → v2026.09.28-1
+
 ## Un curso que empieza cuando termina otro desaparecía del horario de Inicio (25/9/2026)
 
 Reporte de una profe: un curso de 9:30 a 10:30 aparecía bien, pero otro de 10:30 a 11:30
