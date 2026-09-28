@@ -3112,3 +3112,17 @@ qué es ni cómo se usa. Quedó anotado ahora para que no se vuelva a perder.
     - Toca la base de cómo se guarda todo (no es un ajuste chico): hay que revisar cada
       lugar que lee/escribe `localStorage`, la lógica de `gd` (Drive) y de `lic`/Firebase
       Auth para que queden separados por perfil, en vez de global al dispositivo.
+
+## "¿Cuál versión querés quedarte?" con los mismos números en las dos columnas (28/9/2026)
+
+Reporte de la dueña desde el celu: se le desconectó Drive, al reconectar salió el cuadro de
+conflicto con **todo igual** (9 cursos, 196 alumnos, 591 notas, 306 clases) y sólo 2
+minutos de diferencia en "Última edición". Causa: `gdPull()` decide "conflicto" mirando
+sólo las FECHAS (`lastModified` de los dos lados contra `lastSyncedAt`), y cualquier
+`save()` automático al abrir la app (en el celu o en la tablet) mueve la fecha aunque no
+cambie ningún dato. Arreglado con `mismosDatos(a,b)`: compara las dos versiones enteras
+sin contar `lastModified`/`lastSyncedAt`; si son idénticas, sube la local y avisa "todo al
+día", sin preguntar. Si difieren en lo más mínimo, sigue saliendo el cuadro como siempre
+(no se tocó ninguna otra regla anti-pisada).
+
+APP_VER → v2026.09.28-4

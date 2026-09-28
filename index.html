@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.28-3';
+const APP_VER='v2026.09.28-4';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -1282,6 +1282,14 @@ function deviceLabel(){
 }
 /* Cuenta lo que de verdad importa, para poder comparar dos versiones sin
    confiar solo en la fecha: alumnos, notas cargadas y clases registradas. */
+/* ¿Las dos versiones tienen exactamente los mismos datos, sin contar las
+   marcas de cuándo se guardó/sincronizó? */
+function mismosDatos(a,b){
+  try{
+    const limpio=st=>JSON.stringify(Object.assign({},st,{lastModified:0,lastSyncedAt:0}));
+    return limpio(a)===limpio(b);
+  }catch(e){ return false; }
+}
 function countData(st){
   let students=0,grades=0,sessions=0;
   (st&&st.groups||[]).forEach(g=>{
@@ -9237,7 +9245,12 @@ async function gdPull(){
       const cLocal=countData(state), cRemote=countData(remote);
       const remotePierdeDatos = (cRemote.students < cLocal.students) || (cRemote.grades < cLocal.grades) || (cRemote.groups < cLocal.groups);
       const localPierdeDatos  = (cLocal.students < cRemote.students) || (cLocal.grades < cRemote.grades) || (cLocal.groups < cRemote.groups);
-      if(localChanged&&remoteChanged&&sonDistintos){
+      if(sonDistintos&&mismosDatos(state,remote)){
+        /* Mismo contenido, sólo cambia la fecha (un guardado automático al
+           abrir la app, en este dispositivo o en otro): no hay nada que elegir. */
+        await gdPushNow();
+        toastSuccess('✓ Drive conectado · todo al día','#8C4108');
+      } else if(localChanged&&remoteChanged&&sonDistintos){
         gd.st='ok'; gdUI();
         showSyncConflictDialog(remote);
         return;
