@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.28-5';
+const APP_VER='v2026.09.28-6';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -9131,6 +9131,7 @@ async function gdEnsureToken(){
 }
 
 function gdInit(){
+  if(gd.tc) return; // ya inicializado (gdCargarGoogle puede volver a llamarla)
   if(!window.google||!window.google.accounts){ setTimeout(gdInit,300); return; }
   gd.tc=google.accounts.oauth2.initTokenClient({
     client_id:GD_CID, scope:GD_SCOPE,
@@ -9186,7 +9187,32 @@ function gdDlgPopupFallo(){
 }
 // select_account: sin esto Google usa la cuenta con la que ya esta abierto el navegador
 // y no deja elegir otra. Con esto siempre muestra el selector de cuentas.
-function gdConnectGoogle(){ gd.tc?gd.tc.requestAccessToken({prompt:'select_account consent'}):toastSuccess('Cargando Google…','#8C4108'); }
+// Si el script de Google no llegó a cargar al abrir la app (sin señal en ese momento),
+// el <script> del <head> no se reintenta nunca y "Conectar" quedaba sin hacer nada hasta
+// recargar la app (le pasó a una profe el 28/9). Esto lo vuelve a pedir. La ventana de
+// Google no se abre sola al terminar de cargar (ya no sería un toque de la docente y el
+// navegador la bloquearía): se le avisa que toque de nuevo.
+let gdGsiCargando=false;
+function gdCargarGoogle(avisar){
+  if(gd.tc||gdGsiCargando) return;
+  if(window.google&&window.google.accounts){ gdInit(); return; }
+  gdGsiCargando=true;
+  const sc=document.createElement('script');
+  sc.src='https://accounts.google.com/gsi/client?r='+Date.now(); sc.async=true;
+  const fallo=()=>{ gdGsiCargando=false; sc.remove(); if(avisar) toastError('No se pudo cargar Google. Revisá que tengas internet y volvé a tocar.'); };
+  // onload también dispara si llegó cualquier cosa que no es el script (ej. una página
+  // de error de un wifi con login): sólo vale si de verdad quedó google.accounts.
+  sc.onload=()=>{ if(!(window.google&&window.google.accounts)) return fallo(); gdGsiCargando=false; gdInit(); if(avisar) toastSuccess('Listo, Google ya cargó. Tocá "Conectar" de nuevo.','#8C4108'); };
+  sc.onerror=fallo;
+  document.head.appendChild(sc);
+}
+window.addEventListener('online',()=>gdCargarGoogle(false));
+function gdSinGoogle(){
+  if(gd.st==='syncing'){ gd.st='idle'; gdUI(); }
+  toastSuccess('Cargando Google… esperá unos segundos y tocá de nuevo.','#8C4108');
+  gdCargarGoogle(true);
+}
+function gdConnectGoogle(){ gd.tc?gd.tc.requestAccessToken({prompt:'select_account consent'}):gdSinGoogle(); }
 // Antes de abrir la pantalla de Google, avisar que hay que tildar TODOS los permisos:
 // ya les pasó a dos profes (16/9 y 28/9) quedar sin conectar por destildar el de Drive.
 // El botón de este cuadro es un toque de la docente, así que la ventana de Google
@@ -9208,7 +9234,7 @@ function gdConnect(){
   $("#gdc_go").onclick=()=>{ closeDlg(); if(eraSync){ gd.st='syncing'; gdUI(); } gdConnectGoogle(); };
   $("#gdc_no").onclick=closeDlg;
 }
-function gdReconnect(){ gd.tc?gd.tc.requestAccessToken({prompt:''}):toastSuccess('Cargando Google…','#8C4108'); }
+function gdReconnect(){ gd.tc?gd.tc.requestAccessToken({prompt:''}):gdSinGoogle(); }
 function gdDisconnect(){
   if(gd.tok){ try{ google.accounts.oauth2.revoke(gd.tok,()=>{}); }catch(e){} }
   gd={tok:null,exp:0,fid:null,st:'idle',tc:gd.tc,email:null,_pendingResolve:null};

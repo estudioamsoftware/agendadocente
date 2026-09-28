@@ -536,6 +536,26 @@ Probado con Playwright a 390px: el cuadro sale y no pide nada a Google hasta con
 
 APP_VER → v2026.09.28-5
 
+**La causa de fondo de esta profe era otra: tocaba "Conectar" y no pasaba nada, hasta que
+recargó la app (28/9/2026).** Lo más probable, sin confirmar, es que al abrir la app no
+hubiera señal. El script de Google (`<script src=".../gsi/client">` en el `<head>`) no
+cargó, y ese `<script>` **no se reintenta nunca**. `gdInit()` quedaba esperando para
+siempre, `gd.tc` seguía en `null` y cada toque en "Conectar" sólo mostraba un toast
+fugaz "Cargando Google…". Sólo recargar la app lo destrababa.
+Arreglado con `gdCargarGoogle()`: si al tocar Conectar/Reconectar no hay `gd.tc`
+(`gdSinGoogle()`), vuelve a pedir el script con una etiqueta nueva. Cuando carga, hace el
+`gdInit()` y avisa "Listo, Google ya cargó. Tocá Conectar de nuevo". Si no carga, avisa
+que revise internet. **No abre la ventana de Google sola al terminar de cargar, a
+propósito:** ya no sería un toque de la docente y el navegador la bloquearía. También se
+reintenta solo con el evento `online`. `onload` sólo cuenta si de verdad quedó
+`google.accounts` (un wifi con login puede devolver HTML). `gdInit()` ganó un guard
+`if(gd.tc) return;` para no inicializar dos veces (evita un `gdAfterAuth` doble).
+Probado con Playwright bloqueando la primera carga del script: el primer toque no deja el
+botón trabado en "Sincronizando…", el script se vuelve a pedir, sale el aviso, y el
+segundo toque abre Google. Con el script cargando bien, todo igual que antes.
+
+APP_VER → v2026.09.28-6
+
 APP_VER → v2026.09.16-1
 
 ### "¿Te gusta la Agenda? Compartila con otro/a docente" (16/9/2026)
