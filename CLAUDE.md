@@ -979,11 +979,14 @@ APP_VER → v2026.09.22-4
 Corrección de la dueña: "el presente tarde es presente también". El contador de abajo de
 la lista de Asistencia (`tally()` en `renderAsist`) tenía tres pills (Presentes / Tarde /
 Ausentes) y **los tarde no sumaban a Presentes**. Ahora hay sólo dos pills: **Presentes**
-(incluye a los que llegaron tarde, con "(N tarde)" al lado si hay alguno) y **Ausentes**.
-Sólo cambió ese conteo en pantalla: el botón "T" sigue igual, y en las estadísticas la
-llegada tarde sigue valiendo media falta (`presEq` en el resumen), no se tocó.
+(incluye a los que llegaron tarde) y **Ausentes**. 🚨 **Sin "(N tarde)" ni ningún conteo de
+tardes en esa pantalla** — se probó y la dueña lo pidió sacar: "acá no me interesa saber
+cuántos tardes hay, sólo quién está presente y quién no, y cuántos tengo en el aula".
+La media falta de la llegada tarde se computa **sólo en el Resumen** (`stats()`, `presEq`:
+un tarde = 0,5 falta en el % y en la columna de faltas) — eso ya estaba así, no se tocó.
+El botón "T" de cada alumno sigue igual.
 
-APP_VER → v2026.09.28-2
+APP_VER → v2026.09.28-3
 
 ## Ficha de Preceptoría — sección aparte de Alumnos (14/9/2026)
 
