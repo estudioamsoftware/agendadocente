@@ -1017,6 +1017,19 @@ encontró probando esto; va el nombre pelado.
 
 APP_VER → v2026.09.22-4
 
+## En Clases, el recuperatorio salía dos veces (29/9/2026)
+
+Reporte de la dueña. El día de un recuperatorio (examen aparte, con `recuOf`), Clases
+mostraba el bloque del recu y, abajo, otro "Recuperatorio" con el nombre de la
+evaluación original y sin notas. Causa: al crear el recu, la app le anota
+`parent.recuDate=recu.date` a la evaluación, y `renderClase()` sumaba también toda
+evaluación con `recuDate===date` como bloque "recu" (el modo viejo). Arreglado: ese
+segundo filtro saltea las evaluaciones que tienen `linkedRecuExam()`. El modo viejo
+(`recuDate` sin examen aparte) sigue mostrándose igual. Probado con Playwright: antes 2
+bloques, ahora 1.
+
+APP_VER → v2026.09.29-1
+
 ## Asistencia: los "tarde" cuentan dentro de Presentes (28/9/2026)
 
 Corrección de la dueña: "el presente tarde es presente también". El contador de abajo de
