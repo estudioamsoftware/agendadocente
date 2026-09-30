@@ -1030,6 +1030,16 @@ bloques, ahora 1.
 
 APP_VER → v2026.09.29-1
 
+## Licencia médica: se sumó el tope de la provisional (30/9/2026)
+
+Dato que pasó la dueña. En "¿Cuántos días te corresponden por ley?" (`LICENCIA_INFO.medica`
+en `index.html`) faltaba la situación **provisional**: 25 días por año con sueldo completo,
+sin tramo al 50% ni sin goce. Titular (25 + 35 al 50% + 60 sin goce = 120) y suplente
+(3 por mes trabajado, máx. 20) ya estaban bien. Es sólo texto informativo: no toca ningún
+conteo.
+
+APP_VER → v2026.09.30-1
+
 ## Asistencia: los "tarde" cuentan dentro de Presentes (28/9/2026)
 
 Corrección de la dueña: "el presente tarde es presente también". El contador de abajo de

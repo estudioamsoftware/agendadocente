@@ -920,7 +920,7 @@ const KEY="agendaDocente.v1";
 const APP_BUILD='2026-09-01-agregar-evento-debajo-del-recuadro-licencias';
 // Versión corta para la barra de arriba (siempre visible, sin abrir menús) —
 // APP_BUILD de arriba es más descriptivo pero no entra ahí sin cortarse.
-const APP_VER='v2026.09.29-1';
+const APP_VER='v2026.09.30-1';
 (function(){ const el=document.getElementById('topVersion'); if(el) el.textContent=APP_VER; })();
 /* Feriados nacionales de Argentina, calculados para cualquier año (fecha fija + Pascua móvil + regla de traslado a lunes). No requiere actualización manual. */
 function easterSundayISO(year){
@@ -3013,7 +3013,7 @@ const LICENCIA_TIPOS=[
   {id:"matrimonio",label:"Matrimonio"}
 ];
 const LICENCIA_INFO={
-  medica:"Titular: hasta 120 días corridos por año (25 con sueldo completo + 35 al 50% + 60 sin sueldo). Suplente: 3 días por cada mes trabajado, hasta 20 al año.",
+  medica:"Titular: hasta 120 días corridos por año (25 con sueldo completo + 35 al 50% + 60 sin sueldo). Provisional: 25 días por año con sueldo completo. Suplente: 3 días por cada mes trabajado, con sueldo completo, hasta 20 al año.",
   examen_medico:"Hasta 2 días hábiles por año, con sueldo completo, para estudios de prevención (Papanicolau, mamografía, próstata, etc.).",
   familiar:"Hasta 20 días corridos por año con sueldo completo, ampliable 30 días más sin sueldo. Suplente: 2 días hábiles por año.",
   duelo:"5 días corridos (cónyuge, padres, hijos, hermanos, nietos) o 3 días (abuelos, suegros, cuñados, bisabuelos, primos hermanos). +2 días si hay que viajar a más de 200 km.",
