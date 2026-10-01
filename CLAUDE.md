@@ -2402,6 +2402,8 @@ unificar los dos enfoques:
   dice "No" desde el 29/8, pero `LIC_ENFORCE` está prendido desde el 3/9: hay que pasarlo
   a "Sí" y explicar que lo pago es sólo tener más de un curso; (c) recién entonces
   `landing.html` puede sumar el link público de Play.
+  **Solicitud ENVIADA el 1/10/2026 a las 0:12** (Google dice "7 días o menos"; avisa por
+  mail a `estudioam.dev@gmail.com`). Mientras tanto no hay nada que hacer.
   **Ojo, esto NO es un trámite de una sola vez para toda la cuenta de desarrollador — se
   repite con CADA app nueva** que se quiera sacar de prueba a producción (confirmado
   investigando, 29/8/2026: aplica a toda cuenta personal creada después del 13/11/2023, que
