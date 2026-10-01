@@ -2394,6 +2394,14 @@ unificar los dos enfoques:
   licencia / la lista "Verificadores Agenda Docente". No bloquea nada del trabajo
   técnico mientras tanto. El reloj de los 14 días arranca recién cuando los 12 ya hayan
   aceptado la invitación, así que conviene sumar a los últimos 3 cuanto antes.
+  ✅ **1/10/2026: los tres requisitos aparecen tachados en el Panel (12+ verificadores,
+  14 días cumplidos) y ya está el botón "Solicitar acceso a producción".** Ojo para
+  después de que Google lo apruebe: (a) la aprobación sólo habilita la pista de
+  Producción — hay que crear la versión ahí ("Agregar desde la biblioteca", la misma
+  versión 2) y mandarla a revisión aparte; (b) "Detalles de acceso" (Contenido de la app)
+  dice "No" desde el 29/8, pero `LIC_ENFORCE` está prendido desde el 3/9: hay que pasarlo
+  a "Sí" y explicar que lo pago es sólo tener más de un curso; (c) recién entonces
+  `landing.html` puede sumar el link público de Play.
   **Ojo, esto NO es un trámite de una sola vez para toda la cuenta de desarrollador — se
   repite con CADA app nueva** que se quiera sacar de prueba a producción (confirmado
   investigando, 29/8/2026: aplica a toda cuenta personal creada después del 13/11/2023, que
