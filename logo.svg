@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 730 512" role="img" aria-label="Agenda Docente">
+  <title>Agenda Docente</title>
+  <path d="M 280 82 H 580 A 110 110 0 0 1 690 192 V 357 A 110 110 0 0 1 580 467 H 385" fill="none" stroke="#E8801E" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="none" stroke="#2B2B2B" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 58 464 L 237 50 L 382 464"/>
+    <path d="M 129 300 L 325 300"/>
+  </g>
+  <g fill="none" stroke="#2B2B2B" stroke-width="22" stroke-linecap="round"><path d="M 375 47 V 122"/><path d="M 458 47 V 122"/><path d="M 540 47 V 122"/></g>
+  <rect x="384.0" y="179.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="469.0" y="179.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="557.0" y="179.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="384.0" y="264.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="469.0" y="264.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="557.0" y="264.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="384.0" y="347.0" width="36" height="36" rx="10" fill="#2B2B2B"/><rect x="469.0" y="347.0" width="36" height="36" rx="10" fill="#2B2B2B"/>
+  <path d="M 558 365 L 575 384 L 612 340" fill="none" stroke="#E8801E" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

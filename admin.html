@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda Docente · Administrador</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root{color-scheme:dark;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:#141414;color:#eee;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;}
+  h1{font-size:18px;margin:0 0 4px;}
+  .sub{color:#999;font-size:13px;margin:0 0 20px;}
+  button{background:#1f1f1f;border:1px solid #3a3a3a;color:#eee;padding:9px 16px;border-radius:8px;font-size:14px;cursor:pointer;}
+  button:hover{background:#2a2a2a;}
+  button:disabled{opacity:.5;cursor:default;}
+  .bar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+  .msg{padding:12px 14px;border-radius:8px;background:#1f1f1f;border:1px solid #3a3a3a;font-size:14px;max-width:520px;}
+  .msg.err{border-color:#7a2e2e;color:#ff9b9b;}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #2a2a2a;white-space:nowrap;}
+  th{color:#999;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em;}
+  tr:hover td{background:#1a1a1a;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;}
+  .pill.active{background:#173a1f;color:#7ee08a;}
+  .pill.inactive{background:#2a2a2a;color:#999;}
+  .count{color:#999;font-size:13px;margin-bottom:12px;}
+  .pill.warn{background:#3a2e14;color:#f0c060;}
+  .tabla{overflow-x:auto;}
+  .chico{color:#999;font-size:12px;}
+</style>
+</head>
+<body>
+
+<h1>Agenda Docente — Administrador</h1>
+<p class="sub">Quién se conectó alguna vez con Google adentro de la app, y su estado de suscripción. No es la lista de quién instaló la app — Google no la da.</p>
+
+<div class="bar" id="bar"></div>
+<div id="area"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-functions.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBxDVr9MfxKBDwuT1o-zz97JvW1zMoLOzY",
+    authDomain: "agenda-docente-8c53d.firebaseapp.com",
+    projectId: "agenda-docente-8c53d",
+    storageBucket: "agenda-docente-8c53d.firebasestorage.app",
+    messagingSenderId: "903525915752",
+    appId: "1:903525915752:web:b086ebfb1986e27081efdd",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const functions = getFunctions(app);
+
+  const bar = document.getElementById("bar");
+  const area = document.getElementById("area");
+
+  function esc(s){ const d=document.createElement("div"); d.textContent=String(s); return d.innerHTML; }
+  function fmtFecha(iso){
+    if(!iso) return "—";
+    try{ return new Date(iso).toLocaleString("es-AR",{dateStyle:"medium",timeStyle:"short"}); }
+    catch(e){ return iso; }
+  }
+
+  function renderLogin(){
+    bar.innerHTML = `<button id="btnLogin">Iniciar sesión con Google</button>`;
+    area.innerHTML = "";
+    document.getElementById("btnLogin").onclick = () =>
+      signInWithPopup(auth, (()=>{ const p=new GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); return p; })()).catch(e => {
+        area.innerHTML = `<div class="msg err">No se pudo iniciar sesión: ${esc(e.message||e)}</div>`;
+      });
+  }
+
+  function renderNoAutorizada(email){
+    bar.innerHTML = `<button id="btnSalir">Salir</button>`;
+    area.innerHTML = `<div class="msg err">La cuenta ${esc(email)} no tiene permiso para ver este panel.</div>`;
+    document.getElementById("btnSalir").onclick = () => signOut(auth);
+  }
+
+  async function cargarDatos(){
+    area.innerHTML = `<div class="msg">Cargando…</div>`;
+    try{
+      const adminListUsers = httpsCallable(functions, "adminListUsers");
+      const { data: res } = await adminListUsers();
+      // Antes devolvía sólo la lista; ahora { usuarios, regaladas }.
+      const data = Array.isArray(res) ? res : (res.usuarios || []);
+      const regaladas = Array.isArray(res) ? null : (res.regaladas || []);
+      const conectados = new Set(data.map(u => String(u.email).toLowerCase()));
+      const regaladasHTML = !regaladas ? "" : (() => {
+        const conocidas = regaladas.filter(Boolean).sort();
+        const sinId = regaladas.length - conocidas.length;
+        return `<h2 style="font-size:15px;margin:26px 0 6px;">Versión completa regalada (${regaladas.length})</h2>
+          <p class="chico" style="margin:0 0 10px;">Tienen la versión completa gratis para siempre, estén o no en la lista de Play Store.</p>
+          <div class="tabla"><table><tbody>${conocidas.map(m => `<tr><td>${esc(m)}</td><td>${conectados.has(m)?'<span class="pill active">Entró con Google</span>':'<span class="chico">todavía no entró con Google</span>'}</td></tr>`).join("")}
+          ${sinId?`<tr><td colspan="2" class="chico">+ ${sinId} sin identificar: aparecen acá solas apenas inicien sesión con Google en la app.</td></tr>`:""}</tbody></table></div>`;
+      })();
+      if(!data.length){
+        area.innerHTML = `<div class="msg">Todavía nadie se conectó con Google.</div>` + regaladasHTML;
+        return;
+      }
+      const activos = data.filter(u => u.subscriptionStatus === "active").length;
+      const sinTerminar = data.filter(u => u.intentoPago && u.subscriptionStatus !== "active" && !u.regalada).length;
+      const ORIGEN = { playstore:"App de Play Store", instalada:"Instalada desde la página", navegador:"Navegador" };
+      const DISP = { android:"Android", iphone:"iPhone", ipad:"iPad", compu:"Compu" };
+      const desde = u => u.origen ? `${ORIGEN[u.origen]||u.origen}${u.dispositivo?` <span class="chico">· ${DISP[u.dispositivo]||u.dispositivo}</span>`:""}` : `<span class="chico">sin dato</span>`;
+      const intento = u => {
+        if(!u.intentoPago) return "—";
+        const veces = u.intentosPago>1 ? ` <span class="chico">(${u.intentosPago} veces)</span>` : "";
+        const sinTerm = (u.subscriptionStatus!=="active" && !u.regalada) ? ` <span class="pill warn">No terminó</span>` : "";
+        return `${fmtFecha(u.intentoPago)}${veces}${sinTerm}`;
+      };
+      const filas = data.map(u => `
+        <tr>
+          <td>${esc(u.email)}</td>
+          <td>${fmtFecha(u.firstSignIn)}</td>
+          <td>${fmtFecha(u.lastSignIn)}</td>
+          <td>${u.regalada?'<span class="pill active">Regalada</span>':`<span class="pill ${u.subscriptionStatus==="active"?"active":"inactive"}">${u.subscriptionStatus==="active"?"Activa":"Sin suscripción"}</span>`}</td>
+          <td>${fmtFecha(u.currentPeriodEnd)}</td>
+          <td>${desde(u)}</td>
+          <td>${intento(u)}</td>
+          <td>${u.recordatorioEnviado?fmtFecha(u.recordatorioEnviado):"—"}</td>
+        </tr>`).join("");
+      area.innerHTML = `
+        <div class="count">${data.length} cuentas conectadas · ${activos} con suscripción activa · ${sinTerminar} intentaron pagar y no terminaron</div>
+        <div class="tabla"><table>
+          <thead><tr><th>Mail</th><th>Primera conexión</th><th>Última conexión</th><th>Suscripción</th><th>Vence</th><th>Desde dónde</th><th>Intentó pagar (Mercado Pago)</th><th>Mail de ayuda</th></tr></thead>
+          <tbody>${filas}</tbody>
+        </table></div>
+        <p class="chico" style="margin-top:14px;">"Desde dónde" se registra desde el 15/10/2026: las que entraron antes dicen "sin dato" hasta que vuelvan a abrir la app. "Mail de ayuda" es el mail automático a quien no terminó de pagar (sale 24 hs después, una sola vez).</p>` + regaladasHTML;
+    }catch(e){
+      area.innerHTML = String(e.message||e).includes("No autorizada") ? `<div class="msg err">Entraste con ${esc(auth.currentUser?.email||"otra cuenta")}. Este panel sólo funciona con estudioam.dev@gmail.com: tocá <b>Salir</b> y volvé a entrar eligiendo esa cuenta.</div>` : `<div class="msg err">No se pudo cargar: ${esc(e.message||e)}</div>`;
+    }
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if(!user){ renderLogin(); return; }
+    bar.innerHTML = `<button id="btnActualizar">↻ Actualizar</button><button id="btnSalir">Salir</button><span class="sub" style="margin:0;">conectada como ${esc(user.email)}</span>`;
+    document.getElementById("btnActualizar").onclick = cargarDatos;
+    document.getElementById("btnSalir").onclick = () => signOut(auth);
+    cargarDatos().catch(e => {
+      if(String(e.message||e).includes("permission-denied")) renderNoAutorizada(user.email);
+    });
+  });
+</script>
+</body>
+</html>
